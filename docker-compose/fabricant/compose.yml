@@ -1,0 +1,80 @@
+include:
+  - compose.authentik.yml
+  - compose.grafana.yml
+  - compose.label-studio.yml
+  - compose.outline.yml
+  - compose.mlflow.yml
+
+services:
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik-data/letsencrypt:/letsencrypt:z
+    command:
+      - "--log.level=DEBUG"
+      # - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entryPoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.forwardedHeaders.insecure=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=e4e@ucsd.edu"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      # - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--providers.docker.network=traefik_proxy"
+      - "--metrics.prometheus=true"
+    networks:
+      authentik:
+      traefik_proxy:
+        aliases:
+          - s3.fabricant.ucsd.edu
+          - auth.fabricant.ucsd.edu
+          - labeler.e4e.ucsd.edu
+          - orchestrator.fishsense.e4e.ucsd.edu
+          - data.smartfin.e4e.ucsd.edu
+          - wiki.fabricant.ucsd.edu
+          - roster.e4e.ucsd.edu
+          - github-sync.e4e.ucsd.edu
+          - mlflow.krg.ucsd.edu
+
+  # minio:
+  #   image: quay.io/minio/minio
+  #   container_name: minio
+  #   restart: always
+  #   volumes:
+  #     - ./minio:/data
+  #   environment:
+  #     MINIO_ROOT_USER: e4e_minio_admin
+  #     MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_admin_password
+  #   command: server /data --console-address ":9001"
+  #   secrets:
+  #     - minio_admin_password
+  #   networks:
+  #     - caddy_proxy
+  #   labels:
+  #     caddy_0: s3.fabricant.ucsd.edu
+  #     caddy_0.reverse_proxy: "{{upstreams 9000}}"
+  #     caddy_1: mc.fabricant.ucsd.edu
+  #     caddy_1.reverse_proxy: "{{upstreams 9001}}"
+
+# secrets:
+#   minio_admin_password:
+#     file: .secrets/minio_admin_password.txt
+
+networks:
+  traefik_proxy:
+    external: true
+  authentik:
+    external: true

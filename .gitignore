@@ -1,0 +1,14 @@
+# Runtime secrets — NEVER commit these
+.secrets/
+*.env.local
+
+# NixOS build artifacts
+result
+result-*
+
+# Nix evaluation cache
+.direnv/
+
+
+
+oec-qualystrellixinstallers-linux.tgz

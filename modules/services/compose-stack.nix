@@ -1,0 +1,122 @@
+{ config, lib, pkgs, ... }:
+with lib;
+let
+  cfg = config.krg.composeStacks;
+
+  stackOpts = { name, ... }: {
+    options = {
+      description = mkOption {
+        type    = types.str;
+        default = "${name} Docker Compose stack";
+      };
+
+      # Ordered list of compose files.
+      # Pass the directory as a Nix path then string-interpolate:
+      #   composeFiles = [ "${../../docker-compose/fabricant}/compose.yml" ];
+      # This copies the whole directory to the store so that Docker Compose
+      # `include:` directives can resolve sibling files from the same path.
+      composeFiles = mkOption {
+        type = types.listOf types.str;
+      };
+
+      # Runtime directory for secrets, data, and config that must live outside
+      # the Nix store (e.g. .secrets/, postgres/data/, grafana/).
+      # Docker Compose path resolution uses this as the project directory so
+      # relative paths in compose files (like ./.secrets/foo.txt) resolve here.
+      workingDirectory = mkOption {
+        type    = types.str;
+        default = "/var/lib/krg/${name}";
+      };
+
+      envFile = mkOption {
+        type    = types.nullOr types.str;
+        default = null;
+      };
+
+      after = mkOption {
+        type    = types.listOf types.str;
+        default = [];
+      };
+
+      requires = mkOption {
+        type    = types.listOf types.str;
+        default = [];
+      };
+
+      # External Docker networks that must exist before this stack starts.
+      # A separate oneshot service is created per network.
+      networks = mkOption {
+        type    = types.listOf types.str;
+        default = [];
+      };
+    };
+  };
+
+  composeCmd = stack:
+    let
+      fileFlags = concatStringsSep " " (map (f: "-f ${f}") stack.composeFiles);
+      envFlag   = optionalString (stack.envFile != null) "--env-file ${stack.envFile}";
+    in
+      "${pkgs.docker}/bin/docker compose --project-directory ${stack.workingDirectory} ${fileFlags} ${envFlag}";
+
+  # Unique network names across all stacks
+  allNetworks = unique (flatten (mapAttrsToList (_: s: s.networks) cfg));
+in {
+  options.krg.composeStacks = mkOption {
+    type        = types.attrsOf (types.submodule stackOpts);
+    default     = {};
+    description = "Docker Compose stacks managed as systemd services";
+  };
+
+  config = mkIf (cfg != {}) {
+    # Ensure working directories and .secrets/ subdirectories exist
+    systemd.tmpfiles.rules =
+      flatten (mapAttrsToList (name: stack: [
+        "d ${stack.workingDirectory}         0750 root docker -"
+        "d ${stack.workingDirectory}/.secrets 0700 root root   -"
+      ]) cfg);
+
+    systemd.services = mkMerge [
+      # One oneshot per external Docker network
+      (listToAttrs (map (net: nameValuePair "docker-network-${net}" {
+        description = "Create Docker network ${net}";
+        after       = [ "docker.service" ];
+        requires    = [ "docker.service" ];
+        wantedBy    = [ "multi-user.target" ];
+        serviceConfig = {
+          Type            = "oneshot";
+          RemainAfterExit = true;
+          ExecStart       = pkgs.writeShellScript "create-network-${net}" ''
+            ${pkgs.docker}/bin/docker network inspect ${net} >/dev/null 2>&1 \
+              || ${pkgs.docker}/bin/docker network create ${net}
+          '';
+        };
+      }) allNetworks))
+
+      # One service per compose stack
+      (mapAttrs (name: stack: {
+        description = stack.description;
+        after       = [ "docker.service" "network-online.target" ]
+          ++ map (n: "docker-network-${n}.service") stack.networks
+          ++ stack.after;
+        requires    = [ "docker.service" ]
+          ++ map (n: "docker-network-${n}.service") stack.networks
+          ++ stack.requires;
+        wantedBy    = [ "multi-user.target" ];
+        serviceConfig = {
+          Type            = "oneshot";
+          RemainAfterExit = true;
+          WorkingDirectory = stack.workingDirectory;
+          ExecStart       = "${composeCmd stack} up -d --remove-orphans";
+          ExecStop        = "${composeCmd stack} down";
+          ExecReload      = pkgs.writeShellScript "reload-${name}" ''
+            ${composeCmd stack} pull
+            ${composeCmd stack} up -d --remove-orphans
+          '';
+          Restart         = "on-failure";
+          RestartSec      = "30s";
+        };
+      }) cfg)
+    ];
+  };
+}

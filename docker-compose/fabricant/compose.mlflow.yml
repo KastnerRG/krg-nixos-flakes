@@ -1,0 +1,66 @@
+services:
+  mlflow_postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mlflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mlflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./mlflow/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mlflow_internal
+
+  mlflow:
+    build: ./mlflow/config
+    restart: unless-stopped
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD}@mlflow_postgres:5432/mlflow
+      OIDC_USERS_DB_URI: postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD}@mlflow_postgres:5432/mlflow_auth
+      MLFLOW_ARTIFACTS_DESTINATION: /mlflow/artifacts
+      MLFLOW_SERVER_ALLOWED_HOSTS: "mlflow.krg.ucsd.edu"
+      MLFLOW_SERVER_CORS_ALLOWED_ORIGINS: "https://mlflow.krg.ucsd.edu"
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      SECRET_KEY: ${SECRET_KEY}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
+      OIDC_GROUP_NAME: ${OIDC_GROUP_NAME}
+      OIDC_ADMIN_GROUP_NAME: ${OIDC_ADMIN_GROUP_NAME}
+      OIDC_SCOPE: ${OIDC_SCOPE}
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    depends_on:
+      mlflow_postgres:
+        condition: service_healthy
+    networks:
+      - mlflow_internal
+      - traefik_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mlflow.rule=Host(`mlflow.krg.ucsd.edu`)"
+      - "traefik.http.routers.mlflow.entrypoints=websecure"
+      - "traefik.http.routers.mlflow.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mlflow.middlewares=mlflow-cors-headers"
+      - "traefik.http.services.mlflow.loadbalancer.server.port=5000"
+      - "traefik.http.middlewares.mlflow-cors-headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,PATCH,DELETE"
+      - "traefik.http.middlewares.mlflow-cors-headers.headers.accesscontrolalloworiginlist=https://mlflow.krg.ucsd.edu"
+      - "traefik.http.middlewares.mlflow-cors-headers.headers.accesscontrolallowheaders=Content-Type,Authorization,X-Requested-With,X-Mlflow-Workspace,X-Mlflow-Experiment-Id"
+      - "traefik.http.middlewares.mlflow-cors-headers.headers.accesscontrolallowcredentials=true"
+      - "traefik.http.middlewares.mlflow-cors-headers.headers.accesscontrolmaxage=3600"
+      - "traefik.http.middlewares.mlflow-cors-headers.headers.addvaryheader=true"
+
+volumes:
+  postgres_data:
+  mlflow_artifacts:
+
+networks:
+  mlflow_internal:
+  traefik_proxy:
+    external: true

@@ -1,0 +1,56 @@
+services:
+  outline:
+    image: docker.getoutline.com/outlinewiki/outline:latest
+    env_file:
+      - ./outline/docker.env
+      - ./.secrets/outline_secrets.env
+    volumes:
+      - ./outline/outline_data:/var/lib/outline/data
+    depends_on:
+      - outline_postgres
+      - outline_redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.outline.rule=Host(`wiki.fabricant.ucsd.edu`)"
+      - "traefik.http.routers.outline.entrypoints=websecure"
+      - "traefik.http.routers.outline.tls.certresolver=letsencrypt"
+    user: "${USER_ID}:${GROUP_ID}"
+    networks:
+      - outline
+      - traefik_proxy
+
+  outline_redis:
+    image: redis:8
+    env_file:
+      - ./outline/docker.env
+      - ./.secrets/outline_secrets.env
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+    networks:
+      - outline
+
+  outline_postgres:
+    image: postgres:18
+    env_file:
+      - ./outline/docker.env
+      - ./.secrets/outline_secrets.env
+    volumes:
+      - ./outline/postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "outline", "-U", "user"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    environment:
+      POSTGRES_USER: 'outline_user'
+      POSTGRES_DB: 'outline'
+    networks:
+      - outline
+
+networks:
+  outline:
+  traefik_proxy:
+    external: true

@@ -1,0 +1,41 @@
+services:
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:v1.10.2
+    volumes:
+      - /:/host:ro,rslave
+    restart: unless-stopped
+    network_mode: host
+    command: >
+      --path.rootfs=/host
+      --collector.systemd
+      --collector.systemd.unit-whitelist="(xrdp).service"
+
+  dcgm_exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.4.2-4.7.1-distroless
+    container_name: dcgm_exporter
+    restart: always
+    ports:
+      - 9400:9400
+    cap_add:
+      - SYS_ADMIN
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  blackbox_exporter:
+    image: quay.io/prometheus/blackbox-exporter:v0.28.0
+    container_name: blackbox_exporter
+    volumes:
+      - ./blackbox-exporter:/config:ro
+    command: --config.file=/config/blackbox.yml
+    ports:
+      - 9115:9115
+    dns: 8.8.8.8
+
+secrets:
+  grafana_e4eadmin_password:
+    file: .secrets/gf_admin_password.txt
