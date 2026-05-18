@@ -62,8 +62,9 @@ in {
     "d  /var/lib/krg/fabricant/outline/outline_data          0750 1000 1000 -"
     "d  /var/lib/krg/fabricant/outline/postgres              0750 1000 1000 -"
 
-    # MLflow: no config files in repo; init-db.sql must be added when available
+    # MLflow: working dir for postgres data volumes; config/Dockerfile is in the Nix store
     "d  /var/lib/krg/fabricant/mlflow                        0750 root   docker -"
+    "L  /var/lib/krg/fabricant/mlflow/config                 - - - - ${composeDir}/mlflow/config"
 
     # Grafana, Prometheus data (writable)
     "d  /var/lib/krg/fabricant/grafana-storage               0750 1000 1000 -"

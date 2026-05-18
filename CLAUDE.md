@@ -17,8 +17,8 @@ This repo is a NixOS flake framework replacing the KastnerRG Ansible infrastruct
 nix flake check
 
 # Build a system config without deploying
-nix build .#nixosConfigurations.fabricant.config.system.topLevel
-nix build .#nixosConfigurations.waiter.config.system.topLevel
+nix build .#nixosConfigurations.fabricant.config.system.build.toplevel
+nix build .#nixosConfigurations.waiter.config.system.build.toplevel
 
 # Inspect a config value
 nix eval .#nixosConfigurations.fabricant.config.networking.hostName

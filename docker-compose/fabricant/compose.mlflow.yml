@@ -8,7 +8,6 @@ services:
       POSTGRES_DB: mlflow
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./mlflow/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow}"]
       interval: 5s

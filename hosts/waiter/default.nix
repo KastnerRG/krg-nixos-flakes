@@ -35,6 +35,13 @@ in {
     networks         = [];
   };
 
-  # Provide the OEC installer archive path once the file is available locally.
-  # krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
+  # Installer is gitignored; only wired up when the file is present in the flake source.
+  # Locally: git add -f oec-qualystrellixinstallers-linux.tgz before building.
+  # CI: evaluates to null (safe — activation script is skipped).
+  krg.oecQualysTrellix.installerArchive =
+    let archive = ../../oec-qualystrellixinstallers-linux.tgz;
+    in if builtins.pathExists archive then archive else null;
+
+  # TODO: Secrets — before starting waiter-monitoring stack, populate:
+  #   /var/lib/krg/waiter/.secrets/gf_admin_password.txt
 }

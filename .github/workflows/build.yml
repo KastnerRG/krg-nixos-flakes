@@ -1,0 +1,60 @@
+name: Build NixOS configurations
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # Fast job: evaluates all nixosConfigurations and checks module types.
+  # Catches syntax errors, undefined options, and type mismatches without
+  # downloading most packages.
+  check:
+    name: nix flake check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v16
+
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
+
+      - name: Check flake
+        run: nix flake check --all-systems
+
+  # Full build for each host. Runs after check passes.
+  # Uses GitHub Actions cache (via magic-nix-cache) so subsequent runs
+  # only rebuild what changed. First run will be slow due to NVIDIA/CUDA downloads.
+  build:
+    name: Build ${{ matrix.host }}
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      matrix:
+        host: [fabricant, waiter]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Free up disk space — NixOS + NVIDIA + CUDA closure is large (~8–12 GB).
+      # Without this the runner's default ~14 GB fills up.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - uses: DeterminateSystems/nix-installer-action@v16
+
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
+
+      - name: Build ${{ matrix.host }}
+        run: |
+          nix build \
+            .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel \
+            --no-link \
+            --print-build-logs
