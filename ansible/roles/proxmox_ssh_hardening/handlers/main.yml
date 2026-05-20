@@ -1,0 +1,7 @@
+# Validate the *effective* (merged) sshd config before restarting. The `&&`
+# means a bad config aborts before the restart, so the running daemon — and
+# your current session — stays up. (Restarting sshd does not drop live sessions.)
+- name: Validate and restart sshd
+  ansible.builtin.shell:
+    cmd: sshd -t && systemctl restart ssh
+  changed_when: true

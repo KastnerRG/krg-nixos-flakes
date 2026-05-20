@@ -1,0 +1,4 @@
+# Install with: ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: ansible.posix       # authorized_key, sysctl
+  - name: community.general   # proxmox_* modules (used by later roles)

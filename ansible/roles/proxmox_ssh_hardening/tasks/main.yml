@@ -1,0 +1,28 @@
+# Proxmox host SSH hardening — disable password auth (the breach vector) and
+# make root key-only. Order matters: authorize keys BEFORE the config that
+# turns password auth off, so we never strand the host without a way in.
+- name: Refuse to run without an authorized key (anti-lockout guard)
+  ansible.builtin.assert:
+    that:
+      - proxmox_admin_ssh_keys | length > 0
+    fail_msg: >-
+      proxmox_admin_ssh_keys is empty. Disabling password auth without an
+      authorized key would lock you out. Set the ops key(s) in group_vars first.
+    success_msg: "{{ proxmox_admin_ssh_keys | length }} admin key(s) will be authorized for root."
+
+- name: Authorize admin SSH keys for root
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ item }}"
+    state: present
+    exclusive: false
+  loop: "{{ proxmox_admin_ssh_keys }}"
+
+- name: Install hardened sshd drop-in
+  ansible.builtin.template:
+    src: 10-krg-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-krg-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Validate and restart sshd
