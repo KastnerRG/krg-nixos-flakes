@@ -85,8 +85,9 @@ krg-infra/
     docker-compose/{krg-prod,waiter}/...   # compose stacks mounted by the flake
   ansible/                         # Proxmox hypervisor hosts (Debian/PVE)
     ansible.cfg  requirements.yml
-    inventory/hosts.yml            # the Proxmox hosts (group: proxmox) — currently one host, "fabricant"
-    group_vars/{all,proxmox}.yml   # all.yml = generic baseline (keys/trusted nets via the shared files); proxmox.yml = PVE-specific
+    inventory/
+      hosts.yml                    # the Proxmox hosts (group: proxmox) — currently one host, "fabricant"
+      group_vars/{all,proxmox}.yml # next to the inventory (so ansible-playbook loads it): all.yml = generic baseline (keys/trusted nets via the shared files); proxmox.yml = PVE-specific
     playbooks/site.yml             # all hosts → base; proxmox group → proxmox_firewall
     roles/
       base/                        # THE baseline: OS basics (timezone, packages incl tmux, unattended upgrades, sysctl) + composes the security/monitoring roles below (import_role, ordered: krg_admin → ssh_hardening → fail2ban → monitoring → oec)

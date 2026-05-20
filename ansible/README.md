@@ -19,10 +19,11 @@ one). No Bitwarden — real secrets will live in HashiCorp Vault later.
 ansible/
   ansible.cfg
   requirements.yml            # collections: ansible.posix, community.general
-  inventory/hosts.yml         # the Proxmox hosts (group: proxmox) — fill in
-  group_vars/
-    all.yml                   # generic baseline vars (admin keys, timezone, fail2ban, trusted nets)
-    proxmox.yml               # PVE-specific vars (firewall IPSets / VM map — with proxmox_firewall)
+  inventory/
+    hosts.yml                 # the Proxmox hosts (group: proxmox) — fill in
+    group_vars/               # MUST live next to the inventory so ansible-playbook loads it
+      all.yml                 # generic baseline vars (admin keys, timezone, fail2ban, trusted nets)
+      proxmox.yml             # PVE-specific vars (firewall IPSets / VM map — with proxmox_firewall)
   playbooks/site.yml          # applies the baseline to all hosts
   roles/
     base/                     # THE baseline — OS basics (timezone, packages incl tmux,
@@ -50,7 +51,7 @@ Admin SSH keys are **shared** with the NixOS layer — edit `nix/keys/admins.jso
 1. `ansible-galaxy collection install -r requirements.yml`
 2. Add the host(s) to `inventory/hosts.yml` (currently: one host, `fabricant`).
 3. Set the real ops key(s) in `nix/keys/admins.json` and `krg_trusted_nets` in
-   `group_vars/all.yml`.
+   `inventory/group_vars/all.yml`.
 
 > **Anti-lockout:** `ssh_hardening` authorizes your key *before* turning password
 > auth off, asserts a key is set, and validates `sshd -t` before restarting (a
