@@ -25,14 +25,22 @@ ansible/
     proxmox.yml               # PVE-specific vars (firewall IPSets / VM map — with proxmox_firewall)
   playbooks/site.yml          # applies the baseline to all hosts
   roles/
-    base/                     # timezone, packages (incl tmux), unattended security upgrades, sysctl
+    base/                     # THE baseline — OS basics (timezone, packages incl tmux,
+                              #   unattended upgrades, sysctl) + composes the security +
+                              #   monitoring stack below (import_role, in order)
     krg_admin/                # break-glass krg-admin (sudo, key-only) — mirrors nix/users/admin.nix
     ssh_hardening/            # disable password auth, root key-only (the breach fix)
     fail2ban/                 # sshd brute-force jail
-    # monitoring/             # node + ipmi exporters (next)
-    # oec_qualys_trellix/     # campus-mandated Qualys + Trellix (next)
-    # proxmox_firewall/       # PVE host.fw + per-guest <vmid>.fw (next)
+    monitoring/               # node + ipmi exporters (systemd) — on every host
+    oec_qualys_trellix/       # campus-mandated Qualys + Trellix (set oec_installer)
+    proxmox_firewall/         # PVE cluster.fw + per-guest <vmid>.fw (proxmox group only)
 ```
+
+Every host gets the baseline by applying a single role, `base`, which composes
+`krg_admin`, `ssh_hardening`, `fail2ban`, `monitoring`, and `oec_qualys_trellix`
+in a deliberate order (see `roles/base/tasks/main.yml`). `proxmox_firewall` is the
+one perimeter concern that stays a separate, `proxmox`-group-only play in
+`site.yml` (it's a hypervisor concern, not an all-hosts default).
 
 Admin SSH keys are **shared** with the NixOS layer — edit `nix/keys/admins.json`
 (read by both); do not duplicate keys here.
@@ -59,8 +67,14 @@ ansible-playbook playbooks/site.yml
 
 ## Not done yet (next)
 
-- `monitoring` (node + ipmi exporters) and `oec_qualys_trellix` roles — migrating
-  the rest of `fabricant-host` so every host gets the same security + monitoring.
+The roles are all built and wired in; what remains is real inputs + on-box
+validation, not new code:
+
+- **Inputs**: fill `inventory/hosts.yml`, set the real ops key(s) in
+  `nix/keys/admins.json` and `krg_trusted_nets`, and point `oec_installer` at the
+  local vendor archive (no archive → the OEC step no-ops rather than failing).
+- **On-box validation**: confirm `monitoring` (node + ipmi exporters) and
+  `oec_qualys_trellix` (Qualys + Trellix enroll/run) on a real PVE host.
 - `proxmox_firewall`: `cluster.fw` (IPSets `public`/`sealab`/`ucsd`) + per-guest
   `<vmid>.fw` (krg-ldap = 100). **Tightens SSH + the exporters off `+dc/public`**
   — services → `ucsd`/`sealab`, compute → public SSH, exporters → monitoring host.

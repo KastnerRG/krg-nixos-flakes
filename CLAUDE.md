@@ -87,13 +87,15 @@ krg-infra/
     ansible.cfg  requirements.yml
     inventory/hosts.yml            # the Proxmox hosts (group: proxmox) — currently one host, "fabricant"
     group_vars/{all,proxmox}.yml   # all.yml = generic baseline (keys/trusted nets via the shared files); proxmox.yml = PVE-specific
-    playbooks/site.yml             # secure + up to date by default
+    playbooks/site.yml             # all hosts → base; proxmox group → proxmox_firewall
     roles/
-      base/                        # timezone, packages (incl tmux), unattended security upgrades, sysctl
+      base/                        # THE baseline: OS basics (timezone, packages incl tmux, unattended upgrades, sysctl) + composes the security/monitoring roles below (import_role, ordered: krg_admin → ssh_hardening → fail2ban → monitoring → oec)
       krg_admin/                   # key-only sudo krg-admin (mirrors nix/users/admin.nix)
       ssh_hardening/               # disable password auth, root key-only (the breach fix)
       fail2ban/                    # sshd brute-force jail
-      # monitoring/ oec_qualys_trellix/ proxmox_firewall/  (pending — migrating from fabricant-host)
+      monitoring/                  # node + ipmi exporters (systemd) — on every host via base
+      oec_qualys_trellix/          # campus-mandated Qualys + Trellix (set oec_installer) — via base
+      proxmox_firewall/            # PVE cluster.fw + per-guest <vmid>.fw (proxmox group only, separate play)
 ```
 
 > **Naming note:** `fabricant` now refers only to the Proxmox **host** (hypervisor,
@@ -183,9 +185,9 @@ The grafana/prometheus/loki compose services mount config from the working direc
 - [ ] Add SSSD/realmd client integration so hosts authenticate human/lab users against Samba AD (replaces the removed per-host user lists; only `nix/users/admin.nix` break-glass admin stays local). Do NOT import the old domain's password hashes — they're compromised; users get new passwords.
 - [ ] Add real SSH public keys to `nix/keys/admins.json` (shared by both layers).
 - [ ] Replace placeholder `hardware-configuration.nix` files for the hosts.
-- [~] Qualys Cloud Agent + Trellix HX (xagt): nix module `nix/modules/security/oec-qualys-trellix.nix` (enabled for all hosts via `base.nix`); Ansible counterpart `oec_qualys_trellix` role pending. Installer archive at `/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz` (NOT in git — live credentials). **Still needs on-box validation.**
+- [~] Qualys Cloud Agent + Trellix HX (xagt): nix module `nix/modules/security/oec-qualys-trellix.nix` (enabled for all hosts via `base.nix`); Ansible counterpart `oec_qualys_trellix` role built and composed into the `base` role (runs on every host; set `oec_installer` to the vendor archive, else it no-ops). Installer archive at `/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz` (NOT in git — live credentials). **Both sides still need on-box validation.**
 - [~] Samba AD domain controller (`krg-ldap`, VMID 100 on the `fabricant` Proxmox host): `nix/modules/samba-ad.nix`, enabled via `nix/profiles/directory.nix` (new forest `KRG.LOCAL`, `SAMBA_INTERNAL` DNS). **Domain provisioning is a one-time on-box `samba-tool domain provision`** (documented in the module). Still needs on-box provisioning + validation.
-- [~] Proxmox host hardening (`ansible/`): generic `base` + `krg_admin` + `ssh_hardening` + `fail2ban` roles built (secure + up to date by default), applied via `playbooks/site.yml`. **Pending:** `monitoring` (node + ipmi exporters) and `oec_qualys_trellix` roles; the `proxmox_firewall` role (`cluster.fw` templated from `trusted.json` + per-guest `<vmid>.fw`, e.g. `100.fw` for krg-ldap) — **this fixes the live cluster.fw finding** (SSH + exporters currently open to `+dc/public`). Then fill in `inventory/hosts.yml` + real keys/trusted nets and run the playbook.
+- [~] Proxmox host hardening (`ansible/`): the `base` role IS the baseline — OS basics + `krg_admin` + `ssh_hardening` + `fail2ban` + `monitoring` (node + ipmi exporters) + `oec_qualys_trellix`, composed in order via `import_role` (secure + up to date + monitored + enrolled by default). `proxmox_firewall` (`cluster.fw` templated from `trusted.json` + per-guest `<vmid>.fw`, e.g. `100.fw` for krg-ldap) is a separate `proxmox`-group play — **it fixes the live cluster.fw finding** (SSH + exporters currently open to `+dc/public`). All roles built; **pending:** fill `inventory/hosts.yml` + real keys/trusted nets + `oec_installer`, then on-box validation (run the playbook).
 - [ ] nix in-guest service-SSH restriction (read `ucsd`/`sealab` from `trusted.json` so service hosts restrict 22 in-guest too).
 - [ ] TOTP 2FA on the PVE realm; PVE web-UI fail2ban jail (needs `filter.d/proxmox.conf`); PVE patching + persistence hunting (post-breach).
 - [ ] Add Vault for secrets management (replacing manual `.secrets/` population).

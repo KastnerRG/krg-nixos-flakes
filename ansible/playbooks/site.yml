@@ -10,12 +10,11 @@
   hosts: all
   become: true
   roles:
-    - base                  # timezone, packages (incl tmux), unattended security upgrades, sysctl
-    - krg_admin             # named break-glass sudo admin (before the SSH lockdown)
-    - ssh_hardening         # password auth off, root key-only
-    - fail2ban              # sshd brute-force jail
-    - monitoring            # node + ipmi exporters (systemd)
-    - oec_qualys_trellix    # campus-mandated Qualys + Trellix (set oec_installer)
+    # The full baseline lives in the `base` role: OS basics (timezone, packages,
+    # unattended upgrades, sysctl) PLUS the security + monitoring stack it composes
+    # in order — krg_admin, ssh_hardening, fail2ban, monitoring, oec_qualys_trellix.
+    # See roles/base/tasks/main.yml. Set `oec_installer` to enroll Qualys/Trellix.
+    - base
 
 # Proxmox/PVE perimeter firewall (source restriction; pairs with the in-guest
 # NixOS firewall). cluster.fw IPSets come from the shared nix/networks/trusted.json.

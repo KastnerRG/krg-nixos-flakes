@@ -1,9 +1,22 @@
-# krg-infra base role — "secure and up to date by default".
+# krg-infra base role — the full "secure + up to date by default" baseline that
+# EVERY managed host gets. It does two things:
+#   1. OS baseline       — timezone, packages (incl tmux), unattended security
+#                          upgrades, sysctl.
+#   2. Security + monitoring baseline — composes krg_admin, ssh_hardening,
+#                          fail2ban, monitoring, and oec_qualys_trellix (below).
 #
 # CROSS-REFERENCE: this is the Proxmox/Debian counterpart of the NixOS baseline
-# in nix/profiles/base.nix. When you change the baseline on EITHER side
-# (timezone, packages incl tmux, auto-updates, sysctl), apply the equivalent
-# change to the other. Platform differences are expected and fine.
+# profile nix/profiles/base.nix, which likewise bundles SSH hardening + fail2ban +
+# OEC + node-exporter onto every host. When you change the baseline on EITHER side
+# (timezone, packages, auto-updates, sysctl, OR which security/monitoring concerns
+# are default), apply the equivalent change to the other. Platform differences are
+# expected and fine.
+#
+# The security/monitoring roles are composed with import_role (not meta
+# dependencies) so base's own OS tasks run FIRST and the krg_admin -> ssh_hardening
+# ordering stays explicit and auditable — see the anti-lockout note below.
+
+# --- 1. OS baseline ---------------------------------------------------------
 - name: Set timezone
   community.general.timezone:
     name: "{{ base_timezone }}"
@@ -39,3 +52,29 @@
     state: present
     reload: true
   loop: "{{ base_sysctl | dict2items }}"
+
+# --- 2. Security + monitoring baseline (every host) -------------------------
+# ORDER IS LOAD-BEARING: krg_admin creates the named, key-only sudo admin BEFORE
+# ssh_hardening turns password auth off. This repo exists because a host's root
+# SSH was dictionary-attacked — do NOT reorder krg_admin after ssh_hardening, or a
+# run with no authorized key would lock you out. (Both roles also assert a key is
+# present and ssh_hardening validates `sshd -t` before restart, but keep the order.)
+- name: Break-glass admin (before the SSH lockdown)
+  ansible.builtin.import_role:
+    name: krg_admin
+
+- name: SSH hardening (password auth off, root key-only)
+  ansible.builtin.import_role:
+    name: ssh_hardening
+
+- name: fail2ban (sshd brute-force jail)
+  ansible.builtin.import_role:
+    name: fail2ban
+
+- name: Monitoring (node + ipmi exporters) — on every host by default
+  ansible.builtin.import_role:
+    name: monitoring
+
+- name: Endpoint security (campus-mandated Qualys + Trellix)
+  ansible.builtin.import_role:
+    name: oec_qualys_trellix
