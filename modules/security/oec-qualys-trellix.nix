@@ -21,10 +21,16 @@ with lib;
 let
   cfg = config.krg.oecQualysTrellix;
 
+  # System libraries the agents need at runtime under nix-ld. glibc +
+  # libstdc++/libgcc_s cover the base; the agents' bundled .so's additionally
+  # need libblkid.so.1 (util-linux) and libmagic.so.1 (file), which xagt does
+  # not ship. Everything else the agents need is bundled and found via RPATH.
+  agentLibs = with pkgs; [ stdenv.cc.cc.lib glibc util-linux.lib file ];
+
   # Loader environment for the unpatched vendor binaries (see header).
   nixLdEnv = [
     "NIX_LD=${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
-    "NIX_LD_LIBRARY_PATH=${makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.glibc ]}"
+    "NIX_LD_LIBRARY_PATH=${makeLibraryPath agentLibs}"
   ];
 
   # One-time installer: extract the .deb payloads to /opt/fireeye and
@@ -48,8 +54,10 @@ let
     # ── Trellix xagt → /opt/fireeye ───────────────────────────────────────
     echo "oec-install: installing Trellix xagt"
     dpkg-deb -x "$SRC/xagt_36.21.0-1.ubuntu16_amd64.deb" "$STAGE/xagt"
-    mkdir -p /opt /var/lib/fireeye
-    cp -a "$STAGE/xagt/opt/fireeye" /opt/
+    # Copy CONTENTS into the target dirs so re-runs (after a failed enrollment)
+    # don't nest, e.g. /opt/fireeye/fireeye.
+    mkdir -p /opt/fireeye /var/lib/fireeye
+    cp -a "$STAGE/xagt/opt/fireeye/." /opt/fireeye/
     cp -a "$STAGE/xagt/var/lib/fireeye/." /var/lib/fireeye/
     install -m 0600 "$SRC/agent_config.json" /opt/fireeye/agent_config.json
     echo "oec-install: enrolling Trellix (creates /var/lib/fireeye/xagt/main.db)"
@@ -58,8 +66,8 @@ let
     # ── Qualys Cloud Agent → /usr/local/qualys ────────────────────────────
     echo "oec-install: installing Qualys Cloud Agent"
     dpkg-deb -x "$SRC/qualys_cloud_agent.deb" "$STAGE/qualys"
-    mkdir -p /usr/local /etc/qualys /var/log/qualys /var/spool/qualys
-    cp -a "$STAGE/qualys/usr/local/qualys" /usr/local/
+    mkdir -p /usr/local/qualys /etc/qualys /var/log/qualys /var/spool/qualys
+    cp -a "$STAGE/qualys/usr/local/qualys/." /usr/local/qualys/
     cp -a "$STAGE/qualys/etc/qualys/." /etc/qualys/
     ACT="$(grep -oE 'ActivationId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
     CID="$(grep -oE 'CustomerId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
@@ -69,6 +77,12 @@ let
     else
       echo "oec-install: WARNING — Qualys ActivationId/CustomerId not found in archive; skipping activation" >&2
     fi
+
+    # Success sentinel — set -e means we only reach this if every step above
+    # succeeded. The oec-install service is gated on its ABSENCE, so a failed
+    # run (e.g. enrollment error) re-runs on the next rebuild; remove it to
+    # force a reinstall.
+    touch /var/lib/krg/oec/.installed
     echo "oec-install: done"
   '';
 in {
@@ -123,7 +137,7 @@ in {
       wants         = [ "network-online.target" ];
       wantedBy      = [ "multi-user.target" ];
       before        = [ "xagt.service" "qualys-cloud-agent.service" ];
-      unitConfig.ConditionPathExists = [ cfg.installerArchive "!${cfg.trellixBin}" ];
+      unitConfig.ConditionPathExists = [ cfg.installerArchive "!/var/lib/krg/oec/.installed" ];
       serviceConfig = {
         Type            = "oneshot";
         RemainAfterExit = true;
