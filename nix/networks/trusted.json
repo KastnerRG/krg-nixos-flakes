@@ -1,0 +1,28 @@
+{
+  "_comment": "Single source of truth for trusted networks / Proxmox IPSets. Consumers: ansible proxmox_firewall (templates cluster.fw IPSETs), ansible group_vars (trusted nets, fail2ban allow-list), nix krg.firewall (monitoring source, service SSH restriction). Edit here only. Lives under nix/ because the flake can only read its own subtree.",
+  "monitoring_host": "132.239.95.67",
+  "ipsets": {
+    "public": [
+      { "cidr": "0.0.0.0/1" },
+      { "cidr": "128.0.0.0/1" }
+    ],
+    "sealab": [
+      { "cidr": "132.239.10.0/24", "comment": "Sealab Wifi?" },
+      { "cidr": "132.239.17.124", "comment": "e4e-nas.ucsd.edu" },
+      { "cidr": "137.110.161.106", "comment": "krg-prod.ucsd.edu" },
+      { "cidr": "137.110.161.107", "comment": "krg-ad.ucsd.edu (old AD, being decommissioned)" },
+      { "cidr": "137.110.161.109", "comment": "krg-ldap.ucsd.edu" }
+    ],
+    "ucsd": [
+      { "cidr": "100.0.0.0/8" },
+      { "cidr": "128.54.0.0/16" },
+      { "cidr": "132.239.10.0/24", "comment": "Sealab Wifi?" },
+      { "cidr": "132.239.17.124", "comment": "e4e-nas.ucsd.edu" },
+      { "cidr": "137.110.0.0/16" },
+      { "cidr": "137.110.161.106", "comment": "krg-prod.ucsd.edu" },
+      { "cidr": "137.110.161.107", "comment": "krg-ad.ucsd.edu (old AD, being decommissioned)" },
+      { "cidr": "137.110.161.109", "comment": "krg-ldap.ucsd.edu" },
+      { "cidr": "97.252.106.89", "comment": "Chris Home" }
+    ]
+  }
+}

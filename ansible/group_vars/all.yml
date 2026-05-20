@@ -17,9 +17,12 @@ fail2ban_bantime:  "1h"
 fail2ban_findtime: "10m"
 fail2ban_maxretry: 3
 
-# Trusted networks / hosts (shared posture with the Proxmox firewall IPSets and
-# the NixOS krg.firewall monitoringSourceIp). REPLACE/extend with real subnets.
-krg_trusted_nets:
-  - "137.110.161.0/24"      # local subnet
-krg_monitoring_host: "132.239.95.67"
+# Trusted networks / Proxmox IPSets — SHARED source of truth at
+# nix/networks/trusted.json (also templated into the PVE cluster.fw and read by
+# nix krg.firewall). Edit there, not here.
+krg_trusted_file: "{{ (playbook_dir | dirname) | dirname }}/nix/networks/trusted.json"
+krg_trusted: "{{ lookup('file', krg_trusted_file) | from_json }}"
+krg_monitoring_host: "{{ krg_trusted.monitoring_host }}"
+# fail2ban allow-list: don't ban the sealab/admin hosts.
+krg_trusted_nets: "{{ krg_trusted.ipsets.sealab | map(attribute='cidr') | list }}"
 fail2ban_ignoreip: "{{ ['127.0.0.1/8', '::1'] + krg_trusted_nets }}"

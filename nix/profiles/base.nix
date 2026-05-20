@@ -6,6 +6,9 @@
 with lib;
 let
   cfg = config.krg.base;
+  # Shared trusted-network data — single source of truth, also consumed by the
+  # Ansible layer (cluster.fw IPSets + group_vars). Edit nix/networks/trusted.json.
+  trusted = builtins.fromJSON (builtins.readFile ../networks/trusted.json);
 in {
   imports = [
     ../modules/security/oec-qualys-trellix.nix
@@ -91,6 +94,10 @@ in {
     # may reach the VM — it does not replace this layer. A host can still set
     # krg.firewall.enable = false explicitly if it really must.
     krg.firewall.enable = mkDefault true;
+
+    # Prometheus scrape source — sourced from the shared trusted-networks file
+    # so the monitoring host isn't duplicated across nix / ansible / PVE.
+    krg.firewall.monitoringSourceIp = mkDefault trusted.monitoring_host;
 
     # QEMU guest agent on VMs (graceful shutdown + IP reporting to Proxmox).
     services.qemuGuest.enable = mkDefault cfg.isVM;
