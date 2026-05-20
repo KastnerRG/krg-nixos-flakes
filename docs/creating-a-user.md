@@ -42,8 +42,9 @@ are never imported.
 Nothing to do here. The SSSD client uses **algorithmic ID mapping**
 (`krg.adClient.idMapping = true`, the default): each user's uid/gid is derived from
 their AD SID — deterministic and identical on every SSSD host — and the home
-directory and shell come from the client config (`/home/<username>`, `/bin/bash`).
-You never assign `uidNumber`/`gidNumber` per user.
+directory and login shell come from the client config (`/home/<username>`, and a
+Nix-store `bash` — *not* `/bin/bash`, which doesn't exist on NixOS). You never
+assign `uidNumber`/`gidNumber` per user.
 
 > Only on a host configured with `idMapping = false` (RFC2307 mode) must each
 > account carry `uidNumber`, `gidNumber`, `unixHomeDirectory` and `loginShell`
@@ -176,6 +177,12 @@ sudo systemctl restart samba-ad-dc
   running the `sshKeysFromAD` config yet (no SSSD `ssh` responder). Deploy it
   (`git pull && sudo nixos-rebuild switch --flake ./nix#<host>`) and check the
   `services =` line in `/etc/sssd/sssd.conf` includes `ssh`.
+- **`ssh` fails with "Permission denied (publickey)" but the key is confirmed
+  correct** — check the sshd log (`sudo journalctl -u sshd -b | tail`). On NixOS,
+  a login shell of `/bin/bash` doesn't exist, so sshd rejects the account *pre-auth*
+  as an "invalid user" ("shell /bin/bash does not exist"), which masquerades as a
+  publickey denial. The module sets a valid store-path shell; if you hit this, the
+  host isn't on the fixed config — `git pull && nixos-rebuild switch`.
 - **`getent passwd <username>` empty** — in the default id-mapping mode, usually a
   stale cache (`sudo sss_cache -E`) or the SSSD domain being offline
   (`sudo sssctl domain-status KRG.LOCAL`). In RFC2307 mode (`idMapping = false`),

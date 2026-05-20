@@ -115,7 +115,9 @@ in {
 
         [nss]
         fallback_homedir = /home/%u
-        default_shell = /bin/bash
+        # NixOS has no /bin/bash — a login shell must be a real path (store bash)
+        # or sshd rejects the account pre-auth: "shell /bin/bash does not exist".
+        default_shell = ${pkgs.bashInteractive}/bin/bash
 
         [pam]
         ${optionalString cfg.sshKeysFromAD "\n[ssh]\n"}
@@ -133,7 +135,7 @@ in {
         cache_credentials = true
         krb5_store_password_if_offline = true
         fallback_homedir = /home/%u
-        default_shell = /bin/bash
+        default_shell = ${pkgs.bashInteractive}/bin/bash
         # This host is (or shares the box with) the DC — never let SSSD rotate the
         # machine-account password or push DNS updates.
         ad_maximum_machine_account_password_age = 0
