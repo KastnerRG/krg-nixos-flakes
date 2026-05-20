@@ -2,9 +2,8 @@
 # Import this in a host's default.nix, then add host-specific networking.
 { ... }: {
   imports = [
-    ../modules/base.nix
+    ./base.nix
     ../modules/users.nix
-    ../modules/security/firewall.nix
     ../users/admin.nix
     # ../modules/samba-ad.nix   # Layer 2: enable once the Samba AD DC module exists
   ];
@@ -14,11 +13,14 @@
     autoUpgrade = true;
   };
 
+  # Ingress ports for the directory role. These apply when the NixOS firewall
+  # is enabled (physical hosts); on VMs base.nix disables it and the equivalent
+  # rules must be opened in the Proxmox firewall instead.
+  # Layer 2 adds the Samba AD DC port set (53, 88, 135, 137-139, 389, 445, 464,
+  # 636, 3268-3269 + dynamic RPC, TCP and UDP) alongside the samba-ad module.
   krg.firewall = {
-    enable = true;
-    # SSH only for now. The Samba AD DC port set (53, 88, 135, 137-139, 389,
-    # 445, 464, 636, 3268-3269 + dynamic RPC, TCP and UDP) is added together
-    # with the samba-ad module in Layer 2.
     allowedTCPPorts = [ 22 ];
+    # node exporter (enabled in base.nix)
+    monitoringPorts = [ 9100 ];
   };
 }

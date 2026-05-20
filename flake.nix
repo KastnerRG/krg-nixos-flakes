@@ -20,7 +20,7 @@
     };
   in {
     nixosModules = {
-      base          = import ./modules/base.nix;
+      base          = import ./profiles/base.nix;
       docker        = import ./modules/docker.nix;
       users         = import ./modules/users.nix;
       zfs           = import ./modules/zfs.nix;

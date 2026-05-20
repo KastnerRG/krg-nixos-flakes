@@ -10,6 +10,10 @@ in {
     ./hardware-configuration.nix
   ];
 
+  # Proxmox VM — the hypervisor owns the firewall, so base.nix leaves the
+  # NixOS firewall disabled. Open ingress ports in the Proxmox firewall.
+  krg.base.isVM = true;
+
   networking = {
     hostName = "fabricant";
     domain   = "ucsd.edu";
@@ -92,8 +96,8 @@ in {
   #   mlflow.env                        (POSTGRES_PASSWORD, OIDC_* vars)
   #
   # Also create /var/lib/krg/fabricant/.env with:
-  #   USER_ID=<UID of fabricant-admin user>
-  #   GROUP_ID=<GID of fabricant-admin user>
+  #   USER_ID=<UID of the account that owns the working directory>
+  #   GROUP_ID=<GID of the account that owns the working directory>
   krg.composeStacks.fabricant = {
     description      = "Fabricant production stack (Traefik + Authentik + Grafana + services)";
     composeFiles     = [ "${composeDir}/compose.yml" ];

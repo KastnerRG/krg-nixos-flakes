@@ -8,6 +8,10 @@
   # Baseline admin account for this machine (krg-admin is the default).
   krg.adminAccount = "krg-admin";
 
+  # Proxmox VM — the hypervisor owns the firewall, so base.nix leaves the
+  # NixOS firewall disabled.
+  krg.base.isVM = true;
+
   # Proxmox/QEMU VM — bootloader carried over from the installer config.
   boot.loader.grub = {
     enable      = true;

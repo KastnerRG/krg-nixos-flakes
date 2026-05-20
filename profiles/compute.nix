@@ -1,22 +1,19 @@
 # Waiter-style compute profile: GPU/CUDA, FPGA tools, XRDP desktop, research users.
 # Import this in a host's default.nix, then add host-specific compose stacks and users.
-{ pkgs, ... }: {
+{ ... }: {
   imports = [
-    ../modules/base.nix
+    ./base.nix
     ../modules/docker.nix
     ../modules/users.nix
     ../modules/zfs.nix
-    ../modules/security/fail2ban.nix
-    ../modules/security/firewall.nix
     ../modules/services/compose-stack.nix
-    ../modules/services/node-exporter.nix
     ../modules/services/ipmi-exporter.nix
     ../modules/hardware/nvidia.nix
     ../modules/hardware/fpga.nix
     ../modules/desktop/xrdp.nix
     ../modules/nix-ld.nix
     ../users/admin.nix
-    ../users/waiter-users.nix
+    # Lab users come from Samba AD; only the local break-glass admin stays.
   ];
 
   krg.base = {
@@ -35,7 +32,7 @@
     autoSnapshot.enable = true;
   };
 
-  krg.fail2ban.enable = true;
+  # krg.fail2ban.enable is set by base.nix (true on every host).
 
   krg.nvidia = {
     enable     = true;
@@ -48,9 +45,9 @@
   # Native IPMI exporter systemd service (from waiter monitoring.yaml)
   krg.ipmiExporter.enable = true;
 
-  # Node exporter also runs natively for the xrdp collector
-  # (the waiter compose also has node_exporter in Docker — both can coexist
-  # by binding to different addresses or using the compose version only)
+  # Override base.nix's default-on node exporter: waiter runs node_exporter in
+  # its Docker monitoring stack (network_mode: host, binds 9100), so the native
+  # systemd exporter would clash on the same port.
   krg.nodeExporter.enable = false;
 
   # Qualys + Trellix are enabled for all machines in base.nix.
@@ -58,8 +55,8 @@
 
   krg.users.defaultGroups = [ "docker" "cuda" "rdp_users" ];
 
+  # waiter is physical, so base.nix keeps the NixOS firewall enabled.
   krg.firewall = {
-    enable          = true;
     allowedTCPPorts = [ 22 ];
     allowRDP        = true;
     # waiter UFW: node-exporter (9100), docker metrics (9323), prometheus client (9000),
@@ -73,6 +70,4 @@
 
   # Enable Zsh system-wide (waiter playbook modified /etc/zsh/zshrc for Nix)
   programs.zsh.enable = true;
-
-  environment.systemPackages = [ pkgs.nodejs_22 ];
 }
