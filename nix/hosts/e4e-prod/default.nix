@@ -22,4 +22,6 @@
   # E4E project services attach here as krg.composeStacks.<name> once defined,
   # following the krg-prod pattern (compose dir under nix/docker-compose/e4e-prod/,
   # working dir /var/lib/krg/e4e-prod). SSO can federate to krg-prod's Authentik.
+
+  system.stateVersion = "25.11";
 }

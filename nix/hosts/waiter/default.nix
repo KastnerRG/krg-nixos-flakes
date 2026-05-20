@@ -47,4 +47,6 @@ in {
 
   # TODO: Secrets — before starting waiter-monitoring stack, populate:
   #   /var/lib/krg/waiter/.secrets/gf_admin_password.txt
+
+  system.stateVersion = "25.11";
 }

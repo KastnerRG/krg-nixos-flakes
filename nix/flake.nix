@@ -2,11 +2,12 @@
   description = "KRG NixOS Flakes - Infrastructure configuration replacing Ansible";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
+    # Latest NixOS stable (release branch, not unstable): production rebuilds and
+    # the nightly autoUpgrade then only pull backported fixes, not rolling churn.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-stable, ... }@inputs:
+  outputs = { self, nixpkgs, ... }@inputs:
   let
     system = "x86_64-linux";
 

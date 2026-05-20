@@ -113,4 +113,6 @@ in {
 
   # Provide the OEC installer archive path once the file is available locally.
   # krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
+
+  system.stateVersion = "25.11";
 }
