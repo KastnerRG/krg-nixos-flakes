@@ -133,7 +133,13 @@ in {
   config = mkIf cfg.enable {
     # Make the unpatched vendor ELF binaries (and any helpers they exec) runnable.
     programs.nix-ld.enable    = true;
-    programs.nix-ld.libraries = with pkgs; [ stdenv.cc.cc.lib glibc ];
+    programs.nix-ld.libraries = agentLibs;
+
+    # The vendor shell scripts (and the running agents) assume an FHS layout —
+    # e.g. /bin/bash shebangs and /usr/bin/systemd-run. envfs makes /bin/* and
+    # /usr/bin/* resolve to whatever is on PATH, so those work at install and
+    # runtime without per-path symlinks.
+    services.envfs.enable = true;
 
     # Where the admin drops the installer archive.
     systemd.tmpfiles.rules = [ "d /var/lib/krg/oec 0700 root root -" ];
@@ -149,6 +155,10 @@ in {
       wants         = [ "network-online.target" ];
       wantedBy      = [ "multi-user.target" ];
       before        = [ "xagt.service" "qualys-cloud-agent.service" ];
+      # Wait for the envfs /bin and /usr/bin mounts so /bin/bash etc. exist when
+      # the vendor scripts run (also orders correctly on the switch that first
+      # enables envfs).
+      unitConfig.RequiresMountsFor = [ "/bin" "/usr/bin" ];
       unitConfig.ConditionPathExists = [ cfg.installerArchive "!/var/lib/krg/oec/.installed" ];
       serviceConfig = {
         Type            = "oneshot";
