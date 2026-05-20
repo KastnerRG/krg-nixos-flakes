@@ -5,6 +5,7 @@
     ./base.nix
     ../modules/users.nix
     ../modules/samba-ad.nix
+    ../modules/sssd-ad-client.nix
     ../users/admin.nix
   ];
 
@@ -31,5 +32,17 @@
     enable    = true;
     realm     = "KRG.LOCAL";
     workgroup = "KRG";
+  };
+
+  # Log into this host with AD accounts (SSSD). It's the directory server, so
+  # restrict SSH to Domain Admins — lab users get AD login on member hosts, not
+  # the DC. SSH stays key-only (base.nix); see the runtime prerequisites at the
+  # top of modules/sssd-ad-client.nix (keytab export, POSIX attrs, key planting).
+  krg.adClient = {
+    enable        = true;
+    realm         = "KRG.LOCAL";
+    domain        = "krg.local";
+    server        = "krg-ldap.krg.local";   # the DC is this host itself
+    allowedGroups = [ "Domain Admins" ];
   };
 }

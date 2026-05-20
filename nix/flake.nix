@@ -32,6 +32,7 @@
       ipmi-exporter  = import ./modules/services/ipmi-exporter.nix;
 
       samba-ad      = import ./modules/samba-ad.nix;
+      ad-client     = import ./modules/sssd-ad-client.nix;
 
       firewall           = import ./modules/security/firewall.nix;
       fail2ban           = import ./modules/security/fail2ban.nix;
