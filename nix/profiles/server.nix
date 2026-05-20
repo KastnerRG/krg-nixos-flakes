@@ -29,11 +29,12 @@
   # Provide the installer archive in the host config:
   #   krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
 
-  # Ingress ports for the server role. These apply when the NixOS firewall is
-  # enabled (physical hosts); on VMs base.nix disables it and the equivalent
-  # rules must be opened in the Proxmox firewall instead.
+  # Ingress for the server role. The in-guest firewall is ON on every host
+  # (base.nix); serviceHost = true (set in krg.base above) source-restricts SSH
+  # to the trusted UCSD nets in-guest, and the Proxmox perimeter restricts the rest.
   krg.firewall = {
-    # Web ingress: SSH + 80 + 443 + 8080 open globally
+    # 80/443/8080 open globally; SSH (22) is source-restricted (serviceHost), so
+    # the firewall module moves it from the open list to a per-source rule.
     allowedTCPPorts = [ 22 80 443 8080 ];
     # node-exporter (9100) + service exporter (9000) from the monitoring host only
     monitoringPorts = [ 9100 9000 ];

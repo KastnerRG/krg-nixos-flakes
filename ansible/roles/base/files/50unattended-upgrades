@@ -1,5 +1,9 @@
 // Managed by Ansible (krg-infra base role). Auto-install Debian SECURITY
 // updates only; no automatic reboot (matches the NixOS autoUpgrade posture).
+//
+// NOTE: ${distro_codename} is an unattended-upgrades *macro*, expanded at runtime
+// by the tool itself (see unattended-upgrades(8) Origins-Pattern) — NOT a shell
+// or Jinja variable. Copying this file verbatim is correct; it must stay literal.
 Unattended-Upgrade::Origins-Pattern {
         "origin=Debian,codename=${distro_codename},label=Debian-Security";
         "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";

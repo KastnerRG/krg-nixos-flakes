@@ -10,8 +10,8 @@
   # this host starts empty because none of the current services are project-specific.
   krg.adminAccount = "e4e-admin";
 
-  # Proxmox VM — the hypervisor owns the firewall (base.nix leaves the NixOS
-  # firewall disabled). Open ingress ports in the Proxmox firewall.
+  # Proxmox VM. The in-guest NixOS firewall stays ON (base.nix) — isVM just
+  # enables the QEMU guest agent. Proxmox adds the additive perimeter on top.
   krg.base.isVM = true;
 
   networking = {

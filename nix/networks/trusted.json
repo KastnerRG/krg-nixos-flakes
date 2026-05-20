@@ -1,6 +1,6 @@
 {
-  "_comment": "Single source of truth for trusted networks / Proxmox IPSets. Consumers: ansible proxmox_firewall (templates cluster.fw IPSETs), ansible group_vars (trusted nets, fail2ban allow-list), nix krg.firewall (monitoring source, service SSH restriction). Edit here only. Lives under nix/ because the flake can only read its own subtree.",
-  "monitoring_host": "132.239.95.67",
+  "_comment": "Single source of truth for trusted networks / Proxmox IPSets. Consumers: ansible proxmox_firewall (templates cluster.fw IPSETs), ansible group_vars (trusted nets, fail2ban allow-list), nix krg.firewall (monitoring source, service SSH restriction). Edit here only. Lives under nix/ because the flake can only read its own subtree. monitoring_host = the IP that runs Prometheus and scrapes the node/ipmi exporters (currently krg-prod, which hosts the monitoring compose stack).",
+  "monitoring_host": "137.110.161.106",
   "ipsets": {
     "public": [
       { "cidr": "0.0.0.0/1" },
