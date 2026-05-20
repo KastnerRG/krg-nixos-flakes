@@ -7,16 +7,10 @@ with lib;
 let
   account = config.krg.adminAccount;
 
-  # Canonical SSH keys per team admin. Add teammates' keys to the right list.
-  adminKeys = {
-    krg-admin = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF2Z7LbaDPTNkdnuvFivXTUx8X9gU0ZyWrrYBH7KSmG3 chris@chris-laptop"
-    ];
-    e4e-admin = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF2Z7LbaDPTNkdnuvFivXTUx8X9gU0ZyWrrYBH7KSmG3 chris@chris-laptop"
-      # Add additional E4E admin SSH public keys here.
-    ];
-  };
+  # Canonical SSH keys per team admin — single source of truth shared with the
+  # Ansible layer. Edit nix/keys/admins.json (public keys, not secret); both the
+  # flake (here) and Ansible (ansible/group_vars) read that same file.
+  adminKeys = builtins.fromJSON (builtins.readFile ../keys/admins.json);
 in {
   options.krg.adminAccount = mkOption {
     type        = types.enum [ "krg-admin" "e4e-admin" ];

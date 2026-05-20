@@ -1,13 +1,14 @@
 # Variables for the Proxmox hypervisor hosts.
 
 # --- SSH access (key-only) ---------------------------------------------------
-# Public keys authorized for root. After hardening, password auth is OFF and
-# these become the ONLY way in — make sure at least one is correct and you hold
-# the matching private key BEFORE running the play, or you will lock yourself
-# out (recoverable only via the Proxmox console).
-# REPLACE the example below with the real ops key(s).
-proxmox_admin_ssh_keys:
-  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF2Z7LbaDPTNkdnuvFivXTUx8X9gU0ZyWrrYBH7KSmG3 chris@chris-laptop"
+# Public keys authorized for root + krg-admin. After hardening, password auth is
+# OFF and these become the ONLY way in — make sure at least one is correct and
+# you hold the matching private key BEFORE running the play (recoverable only via
+# the Proxmox console otherwise).
+# SHARED SOURCE OF TRUTH: nix/keys/admins.json — the same file the NixOS flake
+# reads (nix/users/admin.nix). Edit keys there, not here.
+krg_keys_file: "{{ (playbook_dir | dirname) | dirname }}/nix/keys/admins.json"
+proxmox_admin_ssh_keys: "{{ (lookup('file', krg_keys_file) | from_json)['krg-admin'] }}"
 
 # Root login policy: "prohibit-password" = key-only root (PVE relies on root for
 # cluster ops). Use "no" only once a separate sudo-capable admin user exists.
