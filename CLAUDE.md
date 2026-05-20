@@ -4,108 +4,129 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Goal
 
-This repo is a NixOS flake framework replacing the KastnerRG Ansible infrastructure at [fabricant-prod](https://github.com/KastnerRG/fabricant-prod) and [waiter](https://github.com/KastnerRG/waiter). New VMs are configured by combining profile modules — no per-host playbooks.
+`krg-infra` is the KastnerRG infrastructure monorepo, replacing the old Ansible
+infrastructure at [fabricant-prod](https://github.com/KastnerRG/fabricant-prod)
+and [waiter](https://github.com/KastnerRG/waiter). It has **two coequal layers**,
+split by configuration tool (not by guest/host role — some NixOS machines are
+physical):
 
-**What the old Ansible repos did (the target feature set):**
-- **fabricant-prod**: production services on fabricant.ucsd.edu — Traefik, Authentik (SSO), Grafana/Prometheus/Loki, Blackbox Exporter, PostgreSQL, Outline, MLflow, Label Studio, node/IPMI exporters, UFW firewall, unattended upgrades
-- **waiter**: research/compute machines at 132.239.95.67 — NVIDIA CUDA + Container Toolkit, FPGA tooling (Vivado, Vitis, Verilator), XRDP+XFCE desktop, Fail2ban, UFW, Prometheus (node/DCGM/blackbox via Docker), btrfs snapshots (snapper), user management (100+ lab users)
+- **`nix/`** — every machine configured by **NixOS** (the flake): physical hosts
+  (waiter) *and* Proxmox VMs (fabricant, krg-ldap). Machines are composed from
+  profile modules — no per-host playbooks.
+- **`ansible/`** — the **Proxmox/Debian hypervisor hosts** those VMs run on.
+
+This whole rebuild is incident-response driven: a Proxmox host's root SSH was
+dictionary-attacked. The hypervisors had no config management — `ansible/` closes
+that gap (SSH hardening + fail2ban + a key-only `krg-admin`), and the old AD
+(inside the blast radius) is being rebuilt clean as a new Samba AD forest on
+krg-ldap.
+
+**Target feature set (from the old Ansible repos):**
+- **fabricant-prod**: production services on fabricant.ucsd.edu — Traefik, Authentik (SSO), Grafana/Prometheus/Loki, Blackbox Exporter, PostgreSQL, Outline, MLflow, Label Studio, node/IPMI exporters, firewall, unattended upgrades
+- **waiter**: research/compute at 132.239.95.67 — NVIDIA CUDA + Container Toolkit, FPGA tooling (Vivado, Vitis, Verilator), XRDP+XFCE desktop, Fail2ban, Prometheus (node/DCGM/blackbox via Docker), btrfs snapshots (snapper)
 
 ## Common Commands
 
+The flake lives in `nix/`. Run from the repo root with the `./nix` ref shown
+below, or `cd nix` and drop the prefix.
+
 ```bash
-# Validate the entire flake (Nix syntax + module type checking)
-nix flake check
+# Validate the flake (Nix syntax + module type checking)
+nix flake check ./nix
 
 # Build a system config without deploying
-nix build .#nixosConfigurations.fabricant.config.system.build.toplevel
-nix build .#nixosConfigurations.waiter.config.system.build.toplevel
+nix build ./nix#nixosConfigurations.fabricant.config.system.build.toplevel
+nix build ./nix#nixosConfigurations.waiter.config.system.build.toplevel
 
 # Inspect a config value
-nix eval .#nixosConfigurations.fabricant.config.networking.hostName
+nix eval ./nix#nixosConfigurations.fabricant.config.networking.hostName
 
 # Deploy to the current machine
-sudo nixos-rebuild switch --flake .#fabricant
+sudo nixos-rebuild switch --flake ./nix#fabricant
 
 # Deploy remotely over SSH
-nixos-rebuild switch --flake .#fabricant --target-host fabricant-admin@fabricant.ucsd.edu --use-remote-sudo
-nixos-rebuild switch --flake .#waiter --target-host waiter-admin@132.239.95.67 --use-remote-sudo
+nixos-rebuild switch --flake ./nix#fabricant --target-host fabricant-admin@fabricant.ucsd.edu --use-remote-sudo
+nixos-rebuild switch --flake ./nix#waiter --target-host waiter-admin@132.239.95.67 --use-remote-sudo
 
-# Update all flake inputs
-nix flake update
+# Update flake inputs (run inside nix/)
+cd nix && nix flake update          # or: nix flake update nixpkgs
 
-# Update a single input
-nix flake update nixpkgs
+# Format .nix files
+alejandra nix    # or: nixfmt nix
 
-# Format all .nix files
-alejandra .    # or: nixfmt .
+# --- Proxmox hosts (ansible/) ---
+cd ansible
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook playbooks/harden.yml --check     # dry run
+ansible-playbook playbooks/harden.yml
 ```
 
 ## Repository Structure
 
 ```
-flake.nix                        # inputs + nixosConfigurations outputs
-modules/
-  docker.nix                     # Docker CE + daemon config (metrics, Loki driver, NVIDIA runtime)
-  users.nix                      # user/SSH key management module with option types
-  snapper.nix                    # btrfs snapshot schedules (root, home, docker-volumes)
-  samba-ad.nix                   # Samba AD domain controller (samba4Full daemon, krb5.conf, DNS/resolver, AD ports)
-  security/
-    fail2ban.nix                 # fail2ban SSH protection with incrementing bans
-    firewall.nix                 # NixOS firewall wrapper (replaces UFW); supports monitoring-only ports
-  services/
-    compose-stack.nix            # Generic systemd service that runs a docker compose project
-    node-exporter.nix            # Native Prometheus node exporter (on by default for every host via base.nix; waiter overrides to Docker)
-    ipmi-exporter.nix            # Native Prometheus IPMI exporter (fabricant only)
-  hardware/
-    nvidia.nix                   # NVIDIA driver (open), CUDA, container toolkit, cuda group GID 65533
-    fpga.nix                     # Verilator, GTKWave, Vivado system libs, license server env var
-  desktop/
-    xrdp.nix                     # XRDP + XFCE (waiter remote desktop)
-profiles/
-  base.nix                       # imported by every host: SSH hardening, auto-upgrade, OEC + fail2ban + node-exporter on all hosts; firewall enabled on physical, disabled on VMs (krg.base.isVM)
-  server.nix                     # fabricant role: docker+loki, ipmi exporter, web ingress ports
-  compute.nix                    # waiter role: NVIDIA, FPGA, XRDP, ZFS snapshots
-  directory.nix                  # krg-ldap role: base + users + admin + samba-ad (AD DC, realm KRG.LOCAL)
-hosts/
-  fabricant/
-    default.nix                  # fabricant-specific: compose stack, networking, krg.base.isVM = true
-    hardware-configuration.nix   # REPLACE with nixos-generate-config output
-  waiter/
-    default.nix                  # waiter-specific: static IP, monitoring compose stack (physical)
-    hardware-configuration.nix   # REPLACE with nixos-generate-config output
-  krg-ldap/
-    default.nix                  # krg-ldap-specific: static IP, krg.base.isVM = true
-    hardware-configuration.nix
-users/
-  admin.nix                      # local break-glass admin (krg-admin/e4e-admin) via krg.adminAccount; human/lab users come from Samba AD
-docker-compose/
-  fabricant/
-    compose.yml                  # Traefik + `include:` for all sub-stacks
-    compose.authentik.yml        # Authentik SSO + PostgreSQL
-    compose.grafana.yml          # Grafana, Loki, Promtail, Prometheus, Blackbox
-    compose.label-studio.yml     # Label Studio + PostgreSQL
-    compose.mlflow.yml           # MLflow + PostgreSQL (OIDC via Authentik)
-    compose.outline.yml          # Outline wiki + PostgreSQL + Redis
-    blackbox-exporter/blackbox.yml
-  waiter/
-    compose.yml                  # node_exporter, dcgm_exporter, blackbox_exporter
-    blackbox-exporter/blackbox.yml
+krg-infra/
+  CLAUDE.md  README.md  LICENSE  .github/workflows/build.yml
+  nix/                             # NixOS machines (physical + Proxmox guests)
+    flake.nix                      # inputs + nixosConfigurations outputs
+    modules/
+      docker.nix                   # Docker CE + daemon config (metrics, Loki driver, NVIDIA runtime)
+      users.nix                    # user/SSH key management module with option types
+      snapper.nix                  # btrfs snapshot schedules
+      samba-ad.nix                 # Samba AD domain controller (samba4Full daemon, krb5.conf, DNS/resolver, AD ports)
+      security/
+        fail2ban.nix               # fail2ban SSH protection
+        firewall.nix               # NixOS firewall wrapper (single switch); monitoring-only ports
+      services/
+        compose-stack.nix          # systemd service that runs a docker compose project
+        node-exporter.nix          # Prometheus node exporter (on by default via base.nix; waiter uses Docker)
+        ipmi-exporter.nix          # Prometheus IPMI exporter (fabricant only)
+      hardware/{nvidia,fpga}.nix
+      desktop/xrdp.nix             # XRDP + XFCE (waiter)
+    profiles/
+      base.nix                     # every host: SSH hardening, auto-upgrade, OEC + fail2ban + node-exporter + in-guest firewall; isVM enables qemu-guest-agent
+      server.nix                   # fabricant role
+      compute.nix                  # waiter role (physical)
+      directory.nix                # krg-ldap role: Samba AD DC (realm KRG.LOCAL)
+    hosts/{fabricant,waiter,krg-ldap}/{default,hardware-configuration}.nix
+    users/admin.nix                # local break-glass admin (krg-admin/e4e-admin); human users come from Samba AD
+    docker-compose/{fabricant,waiter}/...   # compose stacks mounted by the flake
+  ansible/                         # Proxmox hypervisor hosts (Debian/PVE)
+    ansible.cfg  requirements.yml
+    inventory/hosts.yml            # the Proxmox hosts (group: proxmox)
+    group_vars/proxmox.yml         # admin SSH keys, trusted nets, fail2ban knobs
+    playbooks/harden.yml
+    roles/
+      krg_admin/                   # key-only sudo krg-admin (mirrors nix/users/admin.nix)
+      proxmox_ssh_hardening/       # disable password auth, root key-only (the breach fix)
+      proxmox_fail2ban/            # sshd brute-force jail
 ```
 
-## Architecture: Two Key Patterns
+## Architecture: Key Patterns
+
+### 0. Firewall ownership (defense-in-depth, split by layer)
+
+Each layer owns the firewall concern it's best at, so they don't drift:
+- **In-guest NixOS firewall (`krg.firewall`) — on EVERY host, VMs included.** It
+  owns *which ports* a service exposes (e.g. `samba-ad.nix` declares the AD port
+  set) and gives **fail2ban** a backend (the direct countermeasure to the
+  dictionary attack that drove this rebuild). `profiles/base.nix` sets it
+  `mkDefault true`.
+- **Proxmox host firewall (`ansible/`) — additive perimeter.** It owns *which
+  sources* may reach a VM, plus containment if a guest is compromised. It does
+  **not** replace the in-guest layer.
 
 ### 1. NixOS modules vs Docker Compose
 
 Services that were **native systemd** in Ansible (node_exporter, ipmi_exporter) use native NixOS `services.prometheus.exporters.*` modules. Everything else stays as **Docker Compose** stacks managed by `krg.composeStacks`.
 
-The `compose-stack` module runs each stack as a `systemd` oneshot service with `docker compose --project-directory <workingDir> -f <nix-store-path> up -d`. The `--project-directory` flag makes Docker Compose resolve relative volume paths (like `./.secrets/foo.txt`) against the **working directory** (e.g. `/var/lib/krg/fabricant/`), not the Nix store. The compose files themselves stay read-only in the store, but all runtime data (databases, secrets, config) lives in the working directory.
+The `compose-stack` module runs each stack as a `systemd` oneshot service with `docker compose --project-directory <workingDir> -f <nix-store-path> up -d`. The `--project-directory` flag makes Docker Compose resolve relative volume paths (like `./.secrets/foo.txt`) against the **working directory** (e.g. `/var/lib/krg/fabricant/`), not the Nix store. The compose files stay read-only in the store; runtime data (databases, secrets, config) lives in the working directory.
 
 ### 2. Compose file `include:` and the directory reference pattern
 
-`compose.yml` uses Docker Compose's `include:` directive to pull in sub-stacks. For this to work when the compose files are in the Nix store, the entire `docker-compose/fabricant/` **directory** must be in the same store path. Always reference the directory, not individual files:
+`compose.yml` uses Docker Compose's `include:` directive to pull in sub-stacks. For this to work when the compose files are in the Nix store, the entire `nix/docker-compose/fabricant/` **directory** must be in the same store path. Always reference the directory, not individual files:
 
 ```nix
-# In hosts/fabricant/default.nix — correct pattern
+# In nix/hosts/fabricant/default.nix — correct pattern
 let composeDir = ../../docker-compose/fabricant; in
 {
   krg.composeStacks.fabricant.composeFiles = [ "${composeDir}/compose.yml" ];
@@ -114,13 +135,12 @@ let composeDir = ../../docker-compose/fabricant; in
 # so include: can find compose.authentik.yml etc. alongside compose.yml.
 ```
 
-### 3. Adding a new machine
+### 3. Adding a new machine (NixOS)
 
-1. Run `nixos-generate-config --show-hardware-config` on the target; save as `hosts/<name>/hardware-configuration.nix`
-2. Create `hosts/<name>/default.nix` importing the appropriate profile plus any `krg.composeStacks`
-3. Add the host to `flake.nix` under `nixosConfigurations`
-4. Add any machine-specific users under `users/`
-5. `nix flake check` locally, then deploy with `nixos-rebuild switch --flake .#<name> --target-host ...`
+1. Run `nixos-generate-config --show-hardware-config` on the target; save as `nix/hosts/<name>/hardware-configuration.nix`
+2. Create `nix/hosts/<name>/default.nix` importing the appropriate profile plus any `krg.composeStacks`
+3. Add the host to `nix/flake.nix` under `nixosConfigurations`
+4. `nix flake check ./nix` locally, then deploy with `nixos-rebuild switch --flake ./nix#<name> --target-host ...`
 
 ## Secrets (Pre-sops-nix)
 
@@ -146,16 +166,18 @@ The `.secrets/` directories are in `.gitignore`. When sops-nix is added later, t
 The grafana/prometheus/loki compose services mount config from the working directory. Before starting the fabricant stack, populate:
 - `/var/lib/krg/fabricant/grafana/` — Grafana config
 - `/var/lib/krg/fabricant/loki/loki-config.yaml` — Loki config
-- `/var/lib/krg/fabricant/loki/promtail-config.yaml` — Promtail config (note: the Ansible log path no longer applies; update to NixOS journal or `/var/log`)
+- `/var/lib/krg/fabricant/loki/promtail-config.yaml` — Promtail config (update to NixOS journal or `/var/log`)
 - `/var/lib/krg/fabricant/prometheus/prometheus.yml` — Prometheus scrape config
-- `/var/lib/krg/fabricant/blackbox-exporter/blackbox.yml` — copy from `docker-compose/fabricant/blackbox-exporter/blackbox.yml`
+- `/var/lib/krg/fabricant/blackbox-exporter/blackbox.yml` — copy from `nix/docker-compose/fabricant/blackbox-exporter/blackbox.yml`
 
 ## Pending Items
 
-- [ ] Add SSSD/realmd client integration so hosts authenticate human/lab users against Samba AD (replaces the removed per-host user lists; only `users/admin.nix` break-glass admin stays local)
-- [ ] Add real SSH public keys to the break-glass admin in `users/admin.nix`
+- [ ] Add SSSD/realmd client integration so hosts authenticate human/lab users against Samba AD (replaces the removed per-host user lists; only `nix/users/admin.nix` break-glass admin stays local). Do NOT import the old domain's password hashes — they're compromised; users get new passwords.
+- [ ] Add real SSH public keys to the break-glass admin in `nix/users/admin.nix` and to `ansible/group_vars/proxmox.yml`
 - [ ] Replace placeholder `hardware-configuration.nix` files for both hosts
-- [~] Qualys Cloud Agent + Trellix HX (xagt): implemented in `modules/security/oec-qualys-trellix.nix` and enabled for all hosts via `base.nix`. Runs the proprietary `.deb` binaries under nix-ld (they only need glibc + libstdc++ from the system; the rest is bundled via RPATH). The `oec-install` one-shot service extracts the `.deb`s to `/opt/fireeye` + `/usr/local/qualys` and enrolls both agents on first boot. Place the installer archive at the runtime path `/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz` (NOT in the Nix store — it holds live credentials). **Still needs on-box validation** of enrollment + daemon operation (binary linking is verified; cloud registration is not).
-- [~] Samba AD domain controller (`krg-ldap`): implemented in `modules/samba-ad.nix` and enabled via `profiles/directory.nix` (new forest, realm `KRG.LOCAL` / workgroup `KRG`, `SAMBA_INTERNAL` DNS). The module installs `samba4Full`, runs the combined `samba` daemon as `systemd` service `samba-ad-dc`, frees port 53 (disables systemd-resolved, points the resolver at `127.0.0.1` with an upstream fallback), and renders `/etc/krb5.conf`. The module also declares the AD DC port set in `krg.firewall`, but since krg-ldap is a VM (`krg.base.isVM = true`) the NixOS firewall is off, so those declarations are inert — **Proxmox owns the firewall** for this host (see the `proxmox/firewall/` configs). **The domain is NOT created by Nix** — after the first deploy, run the one-time `samba-tool domain provision` documented at the bottom of `modules/samba-ad.nix`, then `systemctl start samba-ad-dc`. Still needs on-box provisioning + validation.
+- [~] Qualys Cloud Agent + Trellix HX (xagt): implemented in `nix/modules/security/oec-qualys-trellix.nix`, enabled for all hosts via `base.nix`. Runs the proprietary `.deb` binaries under nix-ld. The `oec-install` one-shot service extracts to `/opt/fireeye` + `/usr/local/qualys` and enrolls on first boot. Place the installer archive at `/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz` (NOT in the Nix store — live credentials). **Still needs on-box validation.**
+- [~] Samba AD domain controller (`krg-ldap`, VMID 100): implemented in `nix/modules/samba-ad.nix`, enabled via `nix/profiles/directory.nix` (new forest, realm `KRG.LOCAL` / workgroup `KRG`, `SAMBA_INTERNAL` DNS). Installs `samba4Full`, runs the combined `samba` daemon as `systemd` service `samba-ad-dc`, frees port 53 (disables systemd-resolved, resolver → `127.0.0.1` + fallback), renders `/etc/krb5.conf`, and opens the AD DC port set in the in-guest `krg.firewall` (active — defense-in-depth; Proxmox adds the source-restricting perimeter). **The domain is NOT created by Nix** — after first deploy, run the one-time `samba-tool domain provision` documented at the bottom of `samba-ad.nix`, then `systemctl start samba-ad-dc`. Still needs on-box provisioning + validation.
+- [~] Proxmox host hardening (`ansible/`): `krg_admin` + `proxmox_ssh_hardening` + `proxmox_fail2ban` roles built. **Pending:** fill in `inventory/hosts.yml`, real admin keys + `krg_trusted_nets` in `group_vars/proxmox.yml`, then run `playbooks/harden.yml`. Next role: the Proxmox **perimeter firewall** (`host.fw` restricting 22/8006 to trusted nets + per-guest `<vmid>.fw`, e.g. `100.fw` for krg-ldap).
+- [ ] TOTP 2FA on the PVE realm; PVE web-UI fail2ban jail (needs `filter.d/proxmox.conf`); PVE patching + persistence hunting (post-breach)
 - [ ] Add sops-nix for secrets management (replacing manual `.secrets/` population)
 - [ ] Review `promtail-config.yaml` — the old Ansible deploy log path is no longer relevant

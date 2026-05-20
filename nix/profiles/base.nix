@@ -26,7 +26,8 @@ in {
 
     flakeUrl = mkOption {
       type        = types.str;
-      default     = "github:KastnerRG/krg-nixos-flakes";
+      # The flake lives in the nix/ subtree of the krg-infra monorepo.
+      default     = "github:KastnerRG/krg-infra?dir=nix";
       description = "Flake URL used for auto-upgrades";
     };
 
