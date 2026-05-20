@@ -105,7 +105,10 @@ in {
     }];
 
     # samba-tool, samba, smbclient, wbinfo, ldbsearch on the operator's PATH.
-    environment.systemPackages = [ cfg.package ];
+    # krb5 adds the Kerberos client tools (kinit/klist/kdestroy) — Samba ships
+    # none, and the post-provision validation (kinit administrator@KRG.LOCAL,
+    # see below) needs them. It reads the /etc/krb5.conf rendered above.
+    environment.systemPackages = [ cfg.package pkgs.krb5 ];
 
     # Samba's internal DNS must own port 53 — get systemd-resolved out of the way
     # and resolve through the DC itself (with an upstream fallback pre-provision).
