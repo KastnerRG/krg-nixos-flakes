@@ -21,7 +21,7 @@ in {
 
     flakeUrl = mkOption {
       type        = types.str;
-      default     = "github:KastnerRG/KRG-NixOS-Flakes";
+      default     = "github:KastnerRG/krg-nixos-flakes";
       description = "Flake URL used for auto-upgrades";
     };
   };
