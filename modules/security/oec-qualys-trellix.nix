@@ -39,7 +39,9 @@ let
   # so they never enter the Nix store.
   oecInstall = pkgs.writeShellScriptBin "oec-install" ''
     set -euo pipefail
-    export PATH=${makeBinPath [ pkgs.dpkg pkgs.gnutar pkgs.gzip pkgs.coreutils pkgs.gnugrep pkgs.bash ]}:$PATH
+    # gawk/gnused/findutils are required by the Qualys activation shell script
+    # (qualys-cloud-agent.sh parses its args with awk, etc.).
+    export PATH=${makeBinPath [ pkgs.dpkg pkgs.gnutar pkgs.gzip pkgs.coreutils pkgs.gnugrep pkgs.gnused pkgs.gawk pkgs.findutils pkgs.bash ]}:$PATH
 
     ARCHIVE="''${1:?usage: oec-install <path-to-oec-archive.tgz>}"
     [ -r "$ARCHIVE" ] || { echo "oec-install: archive not readable: $ARCHIVE" >&2; exit 1; }
@@ -60,8 +62,14 @@ let
     cp -a "$STAGE/xagt/opt/fireeye/." /opt/fireeye/
     cp -a "$STAGE/xagt/var/lib/fireeye/." /var/lib/fireeye/
     install -m 0600 "$SRC/agent_config.json" /opt/fireeye/agent_config.json
-    echo "oec-install: enrolling Trellix (creates /var/lib/fireeye/xagt/main.db)"
-    /opt/fireeye/bin/xagt -i /opt/fireeye/agent_config.json
+    # Enroll only if not already enrolled, so a retry (after a later step failed)
+    # doesn't re-import on top of an existing registration.
+    if [ ! -e /var/lib/fireeye/xagt/main.db ]; then
+      echo "oec-install: enrolling Trellix (creates /var/lib/fireeye/xagt/main.db)"
+      /opt/fireeye/bin/xagt -i /opt/fireeye/agent_config.json
+    else
+      echo "oec-install: Trellix already enrolled (main.db present), skipping import"
+    fi
 
     # ── Qualys Cloud Agent → /usr/local/qualys ────────────────────────────
     echo "oec-install: installing Qualys Cloud Agent"
