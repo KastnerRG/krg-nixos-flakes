@@ -1,0 +1,4 @@
+# Guests with a per-VM firewall file (copied to /etc/pve/firewall/<vmid>.fw).
+# NOTE: a guest .fw only takes effect if that VM's NIC has the firewall option
+# enabled (qm set <vmid> --net0 ...,firewall=1 / the "Firewall" checkbox).
+proxmox_guests: []

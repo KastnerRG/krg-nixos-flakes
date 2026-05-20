@@ -139,6 +139,8 @@ in {
 
     # AD DC well-known ports. These concatenate with the host's other
     # krg.firewall port declarations (NixOS merges listOf options).
+    # CROSS-REFERENCE: the Proxmox perimeter source-restricts this same port set
+    # in ansible/roles/proxmox_firewall/files/krg-ldap.fw (VMID 100) — keep aligned.
     krg.firewall = mkIf cfg.openFirewall {
       allowedTCPPorts = [
         53    # DNS

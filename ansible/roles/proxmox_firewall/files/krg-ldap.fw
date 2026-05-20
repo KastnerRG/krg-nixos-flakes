@@ -1,0 +1,38 @@
+[OPTIONS]
+
+enable: 1
+
+[RULES]
+
+# krg-ldap — Samba AD domain controller (VMID 100). Proxmox perimeter; source-
+# restricts the AD port set that nix/modules/samba-ad.nix opens in-guest.
+# Service host: SSH from UCSD only (NOT public). Clients use UCSD; DC-to-DC /
+# domain-member traffic (SMB/RPC) is limited to sealab.
+IN SSH(ACCEPT) -source +dc/ucsd -log nolog
+
+# DNS (clients -> DC)
+IN ACCEPT -p udp -dport 53 -source +dc/ucsd -log nolog
+IN ACCEPT -p tcp -dport 53 -source +dc/ucsd -log nolog
+
+# Kerberos + kpasswd
+IN ACCEPT -p udp -dport 88  -source +dc/ucsd -log nolog
+IN ACCEPT -p tcp -dport 88  -source +dc/ucsd -log nolog
+IN ACCEPT -p udp -dport 464 -source +dc/ucsd -log nolog
+IN ACCEPT -p tcp -dport 464 -source +dc/ucsd -log nolog
+
+# LDAP / LDAPS / Global Catalog
+IN ACCEPT -p udp -dport 389 -source +dc/ucsd -log nolog
+IN ACCEPT -p tcp -dport 389 -source +dc/ucsd -log nolog
+IN ACCEPT -p tcp -dport 636 -source +dc/ucsd -log nolog
+IN ACCEPT -p tcp -dport 3268:3269 -source +dc/ucsd -log nolog
+
+# SMB + RPC endpoint mapper + NetBIOS (domain members / DC-to-DC)
+IN ACCEPT -p tcp -dport 445 -source +dc/sealab -log nolog
+IN ACCEPT -p tcp -dport 135 -source +dc/sealab -log nolog
+IN ACCEPT -p tcp -dport 139 -source +dc/sealab -log nolog
+IN ACCEPT -p udp -dport 137:138 -source +dc/sealab -log nolog
+
+# Dynamic RPC (DRSUAPI / domain join / MMC) — DC-to-DC + management
+IN ACCEPT -p tcp -dport 49152:65535 -source +dc/sealab -log nolog
+
+IN DROP -log nolog

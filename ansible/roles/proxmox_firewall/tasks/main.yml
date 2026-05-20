@@ -1,0 +1,33 @@
+# Proxmox perimeter firewall — the source-restriction layer that pairs with the
+# in-guest NixOS firewall (Model 3: in-guest owns ports, Proxmox owns sources).
+#
+# cluster.fw IPSets are templated from the SHARED nix/networks/trusted.json
+# (krg_trusted, loaded in group_vars/all.yml) — single source of truth.
+#
+# SECURITY: this tightens host SSH + the exporters off +dc/public (the live
+# cluster.fw had SSH open to the whole internet — the breach vector).
+#
+# CROSS-REFERENCE: the per-guest krg-ldap (100) ruleset mirrors the in-guest AD
+# port set in nix/modules/samba-ad.nix — keep the two aligned.
+- name: Template cluster firewall (IPSets + host rules)
+  ansible.builtin.template:
+    src: cluster.fw.j2
+    dest: /etc/pve/firewall/cluster.fw
+    owner: root
+    group: www-data
+    mode: "0640"
+    unsafe_writes: true        # /etc/pve is the pmxcfs FUSE filesystem
+  notify: restart pve firewall
+
+- name: Install per-guest firewall configs
+  ansible.builtin.copy:
+    src: "{{ item.fw_file }}"
+    dest: "/etc/pve/firewall/{{ item.vmid }}.fw"
+    owner: root
+    group: www-data
+    mode: "0640"
+    unsafe_writes: true
+  loop: "{{ proxmox_guests }}"
+  loop_control:
+    label: "{{ item.vmid }} ({{ item.name | default('') }})"
+  notify: restart pve firewall

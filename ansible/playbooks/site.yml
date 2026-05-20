@@ -17,9 +17,10 @@
     - monitoring            # node + ipmi exporters (systemd)
     - oec_qualys_trellix    # campus-mandated Qualys + Trellix (set oec_installer)
 
-# Proxmox/PVE-specific layer (perimeter firewall) — added next.
-# - name: Proxmox-specific
-#   hosts: proxmox
-#   become: true
-#   roles:
-#     - proxmox_firewall      # cluster.fw + per-guest <vmid>.fw
+# Proxmox/PVE perimeter firewall (source restriction; pairs with the in-guest
+# NixOS firewall). cluster.fw IPSets come from the shared nix/networks/trusted.json.
+- name: Proxmox perimeter firewall
+  hosts: proxmox
+  become: true
+  roles:
+    - proxmox_firewall      # cluster.fw + per-guest <vmid>.fw

@@ -1,0 +1,24 @@
+{# Managed by Ansible (krg-infra proxmox_firewall). IPSets come from the shared
+   nix/networks/trusted.json (krg_trusted). Edit there, not here. #}
+[OPTIONS]
+
+enable: 1
+
+{% for name, entries in krg_trusted.ipsets.items() %}
+[IPSET {{ name }}]
+
+{% for e in entries %}
+{{ e.cidr }}{% if e.comment is defined %} # {{ e.comment }}{% endif %}
+
+{% endfor %}
+{% endfor %}
+[RULES]
+
+# Host management restricted to UCSD (was +dc/public — that open SSH was the
+# breach vector). Exporters restricted to the monitoring host.
+IN ACCEPT -source +dc/ucsd -p tcp -dport 8006 -log nolog # Proxmox web UI
+IN ACCEPT -source {{ krg_trusted.monitoring_host }} -p tcp -dport 9100 -log nolog # node exporter
+IN ACCEPT -source {{ krg_trusted.monitoring_host }} -p tcp -dport 9290 -log nolog # ipmi exporter
+IN ACCEPT -source {{ krg_trusted.monitoring_host }} -p tcp -dport 9000 -log nolog # service exporter
+IN SSH(ACCEPT) -source +dc/ucsd -log nolog
+IN DROP -log nolog
