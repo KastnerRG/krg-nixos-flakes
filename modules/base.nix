@@ -78,7 +78,6 @@ in {
       wget
       htop
       vim
-      bitwarden-cli
     ];
   };
 }
