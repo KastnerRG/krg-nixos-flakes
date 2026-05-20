@@ -30,6 +30,8 @@
       node-exporter  = import ./modules/services/node-exporter.nix;
       ipmi-exporter  = import ./modules/services/ipmi-exporter.nix;
 
+      samba-ad      = import ./modules/samba-ad.nix;
+
       firewall           = import ./modules/security/firewall.nix;
       fail2ban           = import ./modules/security/fail2ban.nix;
       oec-qualys-trellix = import ./modules/security/oec-qualys-trellix.nix;

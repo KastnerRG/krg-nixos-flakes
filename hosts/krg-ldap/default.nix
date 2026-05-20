@@ -27,9 +27,15 @@
       prefixLength = 24;
     }];
     defaultGateway = "137.110.161.1";
-    # External resolvers for now; becomes 127.0.0.1 once the DC runs its own DNS.
-    nameservers = [ "1.1.1.1" "8.8.8.8" ];
+    # Resolver is owned by modules/samba-ad.nix: it force-sets nameservers to
+    # 127.0.0.1 (the DC's own internal DNS) with an upstream fallback, so any
+    # value here would be overridden.
   };
+
+  # This host is the KRG AD domain controller (role comes from profiles/directory.nix).
+  # The domain is NOT created by Nix — after the first deploy, run the one-time
+  # `samba-tool domain provision` documented in modules/samba-ad.nix, then start
+  # the samba-ad-dc service.
 
   system.stateVersion = "25.11";
 }

@@ -48,6 +48,7 @@ modules/
   docker.nix                     # Docker CE + daemon config (metrics, Loki driver, NVIDIA runtime)
   users.nix                      # user/SSH key management module with option types
   snapper.nix                    # btrfs snapshot schedules (root, home, docker-volumes)
+  samba-ad.nix                   # Samba AD domain controller (samba4Full daemon, krb5.conf, DNS/resolver, AD ports)
   security/
     fail2ban.nix                 # fail2ban SSH protection with incrementing bans
     firewall.nix                 # NixOS firewall wrapper (replaces UFW); supports monitoring-only ports
@@ -64,7 +65,7 @@ profiles/
   base.nix                       # imported by every host: SSH hardening, auto-upgrade, OEC + fail2ban + node-exporter on all hosts; firewall enabled on physical, disabled on VMs (krg.base.isVM)
   server.nix                     # fabricant role: docker+loki, ipmi exporter, web ingress ports
   compute.nix                    # waiter role: NVIDIA, FPGA, XRDP, ZFS snapshots
-  directory.nix                  # krg-ldap role: Samba AD DC (Layer 2 module pending)
+  directory.nix                  # krg-ldap role: base + users + admin + samba-ad (AD DC, realm KRG.LOCAL)
 hosts/
   fabricant/
     default.nix                  # fabricant-specific: compose stack, networking, krg.base.isVM = true
@@ -155,5 +156,6 @@ The grafana/prometheus/loki compose services mount config from the working direc
 - [ ] Add real SSH public keys to the break-glass admin in `users/admin.nix`
 - [ ] Replace placeholder `hardware-configuration.nix` files for both hosts
 - [~] Qualys Cloud Agent + Trellix HX (xagt): implemented in `modules/security/oec-qualys-trellix.nix` and enabled for all hosts via `base.nix`. Runs the proprietary `.deb` binaries under nix-ld (they only need glibc + libstdc++ from the system; the rest is bundled via RPATH). The `oec-install` one-shot service extracts the `.deb`s to `/opt/fireeye` + `/usr/local/qualys` and enrolls both agents on first boot. Place the installer archive at the runtime path `/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz` (NOT in the Nix store — it holds live credentials). **Still needs on-box validation** of enrollment + daemon operation (binary linking is verified; cloud registration is not).
+- [~] Samba AD domain controller (`krg-ldap`): implemented in `modules/samba-ad.nix` and enabled via `profiles/directory.nix` (new forest, realm `KRG.LOCAL` / workgroup `KRG`, `SAMBA_INTERNAL` DNS). The module installs `samba4Full`, runs the combined `samba` daemon as `systemd` service `samba-ad-dc`, frees port 53 (disables systemd-resolved, points the resolver at `127.0.0.1` with an upstream fallback), and renders `/etc/krb5.conf`. The module also declares the AD DC port set in `krg.firewall`, but since krg-ldap is a VM (`krg.base.isVM = true`) the NixOS firewall is off, so those declarations are inert — **Proxmox owns the firewall** for this host (see the `proxmox/firewall/` configs). **The domain is NOT created by Nix** — after the first deploy, run the one-time `samba-tool domain provision` documented at the bottom of `modules/samba-ad.nix`, then `systemctl start samba-ad-dc`. Still needs on-box provisioning + validation.
 - [ ] Add sops-nix for secrets management (replacing manual `.secrets/` population)
 - [ ] Review `promtail-config.yaml` — the old Ansible deploy log path is no longer relevant
