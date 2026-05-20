@@ -114,7 +114,10 @@ in {
 
     # Service hosts restrict in-guest SSH to the trusted nets (mirrors the Proxmox
     # perimeter); compute hosts keep SSH open (key-only auth + fail2ban).
-    krg.firewall.sshSources = mkIf cfg.serviceHost (map (e: e.cidr) trusted.ipsets.ucsd);
+    # ucsd (institutional) + ops (explicit off-campus admin) — not "ucsd" alone,
+    # so remote admin IPs aren't silently folded into the campus set.
+    krg.firewall.sshSources = mkIf cfg.serviceHost
+      (map (e: e.cidr) (trusted.ipsets.ucsd ++ (trusted.ipsets.ops or [])));
 
     # QEMU guest agent on VMs (graceful shutdown + IP reporting to Proxmox).
     services.qemuGuest.enable = mkDefault cfg.isVM;

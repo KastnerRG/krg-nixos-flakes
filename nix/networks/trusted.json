@@ -21,8 +21,10 @@
       { "cidr": "137.110.0.0/16" },
       { "cidr": "137.110.161.106", "comment": "krg-prod.ucsd.edu" },
       { "cidr": "137.110.161.107", "comment": "krg-ad.ucsd.edu (old AD, being decommissioned)" },
-      { "cidr": "137.110.161.109", "comment": "krg-ldap.ucsd.edu" },
-      { "cidr": "97.252.106.89", "comment": "admin remote" }
+      { "cidr": "137.110.161.109", "comment": "krg-ldap.ucsd.edu" }
+    ],
+    "ops": [
+      { "cidr": "97.252.106.89", "comment": "admin remote (off-campus). TODO: remove long-term. Kept in a separate ops set (not ucsd) so off-campus admin access is explicit." }
     ]
   }
 }

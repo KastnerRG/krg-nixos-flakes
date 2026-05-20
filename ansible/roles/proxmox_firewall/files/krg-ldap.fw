@@ -6,9 +6,10 @@ enable: 1
 
 # krg-ldap — Samba AD domain controller (VMID 100). Proxmox perimeter; source-
 # restricts the AD port set that nix/modules/samba-ad.nix opens in-guest.
-# Service host: SSH from UCSD only (NOT public). Clients use UCSD; DC-to-DC /
-# domain-member traffic (SMB/RPC) is limited to sealab.
+# Service host: SSH from UCSD + off-campus admin (ops), NOT public. Clients use
+# UCSD; DC-to-DC / domain-member traffic (SMB/RPC) is limited to sealab.
 IN SSH(ACCEPT) -source +dc/ucsd -log nolog
+IN SSH(ACCEPT) -source +dc/ops  -log nolog
 
 # DNS (clients -> DC)
 IN ACCEPT -p udp -dport 53 -source +dc/ucsd -log nolog
