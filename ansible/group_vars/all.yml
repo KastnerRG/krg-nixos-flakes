@@ -2,7 +2,12 @@
 
 # Admin SSH keys — SHARED with the NixOS layer. Edit nix/keys/admins.json (the
 # single source of truth, read by nix/users/admin.nix too), NOT here.
-krg_keys_file: "{{ (playbook_dir | dirname) | dirname }}/nix/keys/admins.json"
+#
+# Path anchored on inventory_dir (…/ansible/inventory), NOT playbook_dir: it
+# resolves to the same repo root for `ansible-playbook` AND ad-hoc `ansible`/`-m
+# debug` runs (playbook_dir falls back to cwd in ad-hoc mode, climbing one level
+# too far). Assumes the inventory stays at ansible/inventory/.
+krg_keys_file: "{{ (inventory_dir | dirname) | dirname }}/nix/keys/admins.json"
 admin_ssh_keys: "{{ (lookup('file', krg_keys_file) | from_json)['krg-admin'] }}"
 
 # base role
@@ -19,8 +24,8 @@ fail2ban_maxretry: 3
 
 # Trusted networks / Proxmox IPSets — SHARED source of truth at
 # nix/networks/trusted.json (also templated into the PVE cluster.fw and read by
-# nix krg.firewall). Edit there, not here.
-krg_trusted_file: "{{ (playbook_dir | dirname) | dirname }}/nix/networks/trusted.json"
+# nix krg.firewall). Edit there, not here. (inventory_dir anchor — see krg_keys_file.)
+krg_trusted_file: "{{ (inventory_dir | dirname) | dirname }}/nix/networks/trusted.json"
 krg_trusted: "{{ lookup('file', krg_trusted_file) | from_json }}"
 krg_monitoring_host: "{{ krg_trusted.monitoring_host }}"
 # fail2ban allow-list: don't ban the sealab/admin hosts.
