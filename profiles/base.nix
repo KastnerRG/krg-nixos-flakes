@@ -3,7 +3,12 @@ with lib;
 let
   cfg = config.krg.base;
 in {
-  imports = [ ./security/oec-qualys-trellix.nix ];
+  imports = [
+    ../modules/security/oec-qualys-trellix.nix
+    ../modules/security/fail2ban.nix
+    ../modules/security/firewall.nix
+    ../modules/services/node-exporter.nix
+  ];
 
   options.krg.base = {
     enable = mkEnableOption "KRG base system configuration";
@@ -23,6 +28,16 @@ in {
       type        = types.str;
       default     = "github:KastnerRG/krg-nixos-flakes";
       description = "Flake URL used for auto-upgrades";
+    };
+
+    isVM = mkOption {
+      type        = types.bool;
+      default     = false;
+      description = ''
+        Whether this host is a virtual machine. On VMs the hypervisor (Proxmox)
+        owns the firewall, so the NixOS firewall is left disabled; physical
+        hosts run krg.firewall (nftables) instead.
+      '';
     };
   };
 
@@ -51,6 +66,19 @@ in {
     # proprietary and install from a vendor archive — set
     # krg.oecQualysTrellix.installerArchive per host or they stay dormant.
     krg.oecQualysTrellix.enable = true;
+
+    # Prometheus node exporter on every machine (native systemd service).
+    # Hosts that run node_exporter another way override this — e.g. waiter's
+    # Docker monitoring stack binds 9100 on the host network, so compute.nix
+    # sets krg.nodeExporter.enable = false to avoid a port clash.
+    krg.nodeExporter.enable = mkDefault true;
+
+    # Fail2ban SSH brute-force protection on every machine.
+    krg.fail2ban.enable = mkDefault true;
+
+    # Physical hosts run the NixOS firewall (krg.firewall → nftables); VMs leave
+    # it disabled because the hypervisor (Proxmox) owns the firewall.
+    krg.firewall.enable = mkDefault (!cfg.isVM);
 
     # kernel.sysrq = 1 (from waiter sysctl.d/90-sysrq.conf)
     boot.kernel.sysctl."kernel.sysrq" = 1;

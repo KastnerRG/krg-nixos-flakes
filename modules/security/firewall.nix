@@ -36,19 +36,26 @@ in {
     };
   };
 
-  config = mkIf cfg.enable {
-    # extraInputRules uses nftables syntax; enable the nftables backend
-    networking.nftables.enable = true;
+  config = mkMerge [
+    # krg.firewall is the single switch for the OS firewall. Enabling it turns
+    # on nftables + the rules below; disabling it (e.g. VMs where the hypervisor
+    # owns the firewall) explicitly turns the NixOS firewall OFF rather than
+    # letting it fall back to its restrictive enabled-by-default state.
+    { networking.firewall.enable = cfg.enable; }
 
-    networking.firewall = {
-      enable          = true;
-      allowedTCPPorts = cfg.allowedTCPPorts ++ optional cfg.allowRDP 3389;
-      allowedUDPPorts = cfg.allowedUDPPorts;
+    (mkIf cfg.enable {
+      # extraInputRules uses nftables syntax; enable the nftables backend
+      networking.nftables.enable = true;
 
-      # Equivalent of: ufw allow from 132.239.95.67 to any port <n>
-      extraInputRules = concatMapStringsSep "\n" (port: ''
-        ip saddr ${cfg.monitoringSourceIp} tcp dport ${toString port} accept
-      '') cfg.monitoringPorts;
-    };
-  };
+      networking.firewall = {
+        allowedTCPPorts = cfg.allowedTCPPorts ++ optional cfg.allowRDP 3389;
+        allowedUDPPorts = cfg.allowedUDPPorts;
+
+        # Equivalent of: ufw allow from 132.239.95.67 to any port <n>
+        extraInputRules = concatMapStringsSep "\n" (port: ''
+          ip saddr ${cfg.monitoringSourceIp} tcp dport ${toString port} accept
+        '') cfg.monitoringPorts;
+      };
+    })
+  ];
 }

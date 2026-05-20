@@ -7,6 +7,9 @@ in {
     ./hardware-configuration.nix
   ];
 
+  # Physical host — keep the NixOS firewall enabled (this is the default).
+  krg.base.isVM = false;
+
   networking = {
     hostName = "waiter";
     domain   = "ucsd.edu";
@@ -22,7 +25,7 @@ in {
     # ZFS requires a unique hostId — generate with:
     #   python3 -c "import uuid; print(str(uuid.uuid4())[:8])"
     # and set it here.
-    hostId = "00000000"; # REPLACE with a real unique 8-hex-char ID
+    hostId = "34658941";
   };
 
   # Monitoring compose stack (node_exporter in Docker, dcgm_exporter, blackbox_exporter)

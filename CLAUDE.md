@@ -45,7 +45,6 @@ alejandra .    # or: nixfmt .
 ```
 flake.nix                        # inputs + nixosConfigurations outputs
 modules/
-  base.nix                       # timezone, SSH hardening, sysctl, auto-upgrade, nix settings
   docker.nix                     # Docker CE + daemon config (metrics, Loki driver, NVIDIA runtime)
   users.nix                      # user/SSH key management module with option types
   snapper.nix                    # btrfs snapshot schedules (root, home, docker-volumes)
@@ -54,7 +53,7 @@ modules/
     firewall.nix                 # NixOS firewall wrapper (replaces UFW); supports monitoring-only ports
   services/
     compose-stack.nix            # Generic systemd service that runs a docker compose project
-    node-exporter.nix            # Native Prometheus node exporter (fabricant; waiter uses Docker)
+    node-exporter.nix            # Native Prometheus node exporter (on by default for every host via base.nix; waiter overrides to Docker)
     ipmi-exporter.nix            # Native Prometheus IPMI exporter (fabricant only)
   hardware/
     nvidia.nix                   # NVIDIA driver (open), CUDA, container toolkit, cuda group GID 65533
@@ -62,18 +61,22 @@ modules/
   desktop/
     xrdp.nix                     # XRDP + XFCE (waiter remote desktop)
 profiles/
-  server.nix                     # fabricant role: docker+loki, node/ipmi exporters, firewall 80/443
-  compute.nix                    # waiter role: NVIDIA, FPGA, XRDP, fail2ban, snapper, Node.js
+  base.nix                       # imported by every host: SSH hardening, auto-upgrade, OEC + fail2ban + node-exporter on all hosts; firewall enabled on physical, disabled on VMs (krg.base.isVM)
+  server.nix                     # fabricant role: docker+loki, ipmi exporter, web ingress ports
+  compute.nix                    # waiter role: NVIDIA, FPGA, XRDP, ZFS snapshots
+  directory.nix                  # krg-ldap role: Samba AD DC (Layer 2 module pending)
 hosts/
   fabricant/
-    default.nix                  # fabricant-specific: compose stack, networking
+    default.nix                  # fabricant-specific: compose stack, networking, krg.base.isVM = true
     hardware-configuration.nix   # REPLACE with nixos-generate-config output
   waiter/
-    default.nix                  # waiter-specific: static IP, monitoring compose stack
+    default.nix                  # waiter-specific: static IP, monitoring compose stack (physical)
     hardware-configuration.nix   # REPLACE with nixos-generate-config output
+  krg-ldap/
+    default.nix                  # krg-ldap-specific: static IP, krg.base.isVM = true
+    hardware-configuration.nix
 users/
-  fabricant-users.nix            # fabricant-admin, fs-services, sf-services
-  waiter-users.nix               # waiter-admin + template for 100+ lab users
+  admin.nix                      # local break-glass admin (krg-admin/e4e-admin) via krg.adminAccount; human/lab users come from Samba AD
 docker-compose/
   fabricant/
     compose.yml                  # Traefik + `include:` for all sub-stacks
@@ -148,8 +151,8 @@ The grafana/prometheus/loki compose services mount config from the working direc
 
 ## Pending Items
 
-- [ ] Populate `users/waiter-users.nix` from `waiter_users.yaml` (100+ lab users with SSH keys and hashed passwords)
-- [ ] Add real SSH public keys to `users/fabricant-users.nix`
+- [ ] Add SSSD/realmd client integration so hosts authenticate human/lab users against Samba AD (replaces the removed per-host user lists; only `users/admin.nix` break-glass admin stays local)
+- [ ] Add real SSH public keys to the break-glass admin in `users/admin.nix`
 - [ ] Replace placeholder `hardware-configuration.nix` files for both hosts
 - [~] Qualys Cloud Agent + Trellix HX (xagt): implemented in `modules/security/oec-qualys-trellix.nix` and enabled for all hosts via `base.nix`. Runs the proprietary `.deb` binaries under nix-ld (they only need glibc + libstdc++ from the system; the rest is bundled via RPATH). The `oec-install` one-shot service extracts the `.deb`s to `/opt/fireeye` + `/usr/local/qualys` and enrolls both agents on first boot. Place the installer archive at the runtime path `/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz` (NOT in the Nix store — it holds live credentials). **Still needs on-box validation** of enrollment + daemon operation (binary linking is verified; cloud registration is not).
 - [ ] Add sops-nix for secrets management (replacing manual `.secrets/` population)
