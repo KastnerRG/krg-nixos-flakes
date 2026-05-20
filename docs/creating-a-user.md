@@ -37,27 +37,18 @@ and the rebuild this directory replaced was driven by a *dictionary* attack. Do
 **not** reuse any old-domain password; old hashes are considered compromised and
 are never imported.
 
-### 2. POSIX-enable the account (so Unix hosts can resolve it)
+### 2. POSIX identity — automatic
 
-The forest was provisioned `--use-rfc2307`, so SSSD reads the Unix identity
-straight from AD. An account with no POSIX attributes won't resolve at all.
+Nothing to do here. The SSSD client uses **algorithmic ID mapping**
+(`krg.adClient.idMapping = true`, the default): each user's uid/gid is derived from
+their AD SID — deterministic and identical on every SSSD host — and the home
+directory and shell come from the client config (`/home/<username>`, `/bin/bash`).
+You never assign `uidNumber`/`gidNumber` per user.
 
-Pick uid/gid numbers from a range you manage (≥ 10000, kept unique per user). The
-**primary group** needs a `gidNumber` once:
-
-```bash
-sudo EDITOR=nano samba-tool group edit "Domain Users"     # add:  gidNumber: 10000
-```
-
-Then the user (an editor opens — add these lines):
-
-```bash
-sudo EDITOR=nano samba-tool user edit <username>
-#   uidNumber: 10001
-#   gidNumber: 10000
-#   unixHomeDirectory: /home/<username>
-#   loginShell: /bin/bash
-```
+> Only on a host configured with `idMapping = false` (RFC2307 mode) must each
+> account carry `uidNumber`, `gidNumber`, `unixHomeDirectory` and `loginShell`
+> explicitly — set via `samba-tool user edit <username>`, with a matching
+> `gidNumber` on the primary group (`samba-tool group edit "Domain Users"`).
 
 ### 3. Grant access to the right hosts
 
@@ -185,6 +176,8 @@ sudo systemctl restart samba-ad-dc
   running the `sshKeysFromAD` config yet (no SSSD `ssh` responder). Deploy it
   (`git pull && sudo nixos-rebuild switch --flake ./nix#<host>`) and check the
   `services =` line in `/etc/sssd/sssd.conf` includes `ssh`.
-- **`getent passwd <username>` empty** — missing/!mismatched POSIX attrs (step 2),
-  or stale cache (`sudo sss_cache -E`). The user's `gidNumber` must match a group
-  that actually has that `gidNumber`.
+- **`getent passwd <username>` empty** — in the default id-mapping mode, usually a
+  stale cache (`sudo sss_cache -E`) or the SSSD domain being offline
+  (`sudo sssctl domain-status KRG.LOCAL`). In RFC2307 mode (`idMapping = false`),
+  it means the POSIX attrs are missing or the user's `gidNumber` doesn't match a
+  group that has that `gidNumber`.

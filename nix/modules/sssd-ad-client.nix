@@ -3,9 +3,11 @@
 # local users. Pairs with modules/samba-ad.nix (the DC) and is written to be
 # reusable on member hosts (waiter, krg-prod) later — not DC-specific.
 #
-# Identity uses RFC2307 POSIX attributes (uidNumber/gidNumber/unixHomeDirectory/
-# loginShell) read straight from AD — the DC was provisioned `--use-rfc2307` — so
-# `ldap_id_mapping = false`. An account with no POSIX attrs simply won't resolve.
+# By default uid/gid are auto-mapped from each user's AD SID (`idMapping = true`,
+# SSSD's `ldap_id_mapping`) — deterministic and identical across all SSSD hosts, so
+# no per-user uidNumber/gidNumber is ever set. Home dir and shell come from
+# fallback_homedir/default_shell. Set `idMapping = false` to instead read RFC2307
+# attributes from AD (then every account needs uidNumber/gidNumber/home/shell).
 #
 # SSH stays KEY-ONLY (the base.nix hardening that closed the breach): SSSD supplies
 # identity + the account/session phases (incl. home-dir creation), NOT a password
@@ -78,6 +80,18 @@ in {
       description = "Raw ad_access_filter; overrides allowedGroups when set.";
     };
 
+    idMapping = mkOption {
+      type        = types.bool;
+      default     = true;
+      description = ''
+        Auto-assign POSIX uid/gid algorithmically from each user's AD SID
+        (ldap_id_mapping) — deterministic and identical across SSSD hosts, so no
+        per-user uidNumber/gidNumber is ever set. Set false to read RFC2307
+        attributes from AD instead (then every account needs uidNumber, gidNumber,
+        unixHomeDirectory and loginShell, or it won't resolve).
+      '';
+    };
+
     sshKeysFromAD = mkOption {
       type        = types.bool;
       default     = false;
@@ -113,8 +127,8 @@ in {
         ad_domain = ${cfg.domain}
         ${optionalString (cfg.server != null) "ad_server = ${cfg.server}"}
         krb5_realm = ${cfg.realm}
-        # RFC2307: read POSIX uid/gid/home/shell from AD; don't SID-map.
-        ldap_id_mapping = false
+        # uid/gid source: SID-derived id-mapping (automatic) vs RFC2307 attributes.
+        ldap_id_mapping = ${if cfg.idMapping then "True" else "False"}
         use_fully_qualified_names = false
         cache_credentials = true
         krb5_store_password_if_offline = true
