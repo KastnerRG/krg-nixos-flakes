@@ -41,6 +41,43 @@
 #        getent passwd <username>          # resolves via sss
 #        id <username>                     # shows uid/gid/groups (incl. domain admins)
 #        sudo sssctl user-checks <username> -s sshd   # access + PAM evaluation
+#
+# ── Extra prerequisite when sshKeysFromAD = true ────────────────────────────────
+# AD has no SSH-key attribute, so extend the schema ONCE with the OpenSSH-LPK
+# attribute `sshPublicKey` (forest-wide + permanent — deliberate). On the DC:
+#
+#   cat > /tmp/sshpubkey.ldif <<'EOF'
+#   dn: CN=sshPublicKey,CN=Schema,CN=Configuration,DC=krg,DC=local
+#   objectClass: top
+#   objectClass: attributeSchema
+#   cn: sshPublicKey
+#   attributeID: 1.3.6.1.4.1.24552.500.1.1.1.13
+#   lDAPDisplayName: sshPublicKey
+#   attributeSyntax: 2.5.5.10
+#   oMSyntax: 4
+#   isSingleValued: FALSE
+#
+#   dn: CN=ldapPublicKey,CN=Schema,CN=Configuration,DC=krg,DC=local
+#   objectClass: top
+#   objectClass: classSchema
+#   cn: ldapPublicKey
+#   governsID: 1.3.6.1.4.1.24552.500.1.1.2.0
+#   lDAPDisplayName: ldapPublicKey
+#   subClassOf: top
+#   objectClassCategory: 3
+#   mayContain: sshPublicKey
+#   EOF
+#   sudo ldbadd -H /var/lib/samba/private/sam.ldb /tmp/sshpubkey.ldif \
+#        --option="dsdb:schema update allowed"=true
+#   printf 'dn:\nchangetype: modify\nadd: schemaUpdateNow\nschemaUpdateNow: 1\n-\n' | \
+#     sudo ldbmodify -H /var/lib/samba/private/sam.ldb --option="dsdb:schema update allowed"=true
+#   sudo systemctl restart samba-ad-dc
+#
+# Then store the key on the account (replaces step 3's ~/.ssh planting):
+#   sudo samba-tool user edit <username>     # add: objectClass: ldapPublicKey
+#                                            #      sshPublicKey: ssh-ed25519 AAAA... you@laptop
+#   sudo sss_cache -E
+#   sss_ssh_authorizedkeys <username>        # must echo the key back before SSHing
 { config, lib, pkgs, ... }:
 with lib;
 let

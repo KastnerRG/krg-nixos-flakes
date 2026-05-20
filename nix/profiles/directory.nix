@@ -44,5 +44,9 @@
     domain        = "krg.local";
     server        = "krg-ldap.krg.local";   # the DC is this host itself
     allowedGroups = [ "Domain Admins" ];
+    # Pull SSH keys from AD (sss_ssh_authorizedkeys) instead of ~/.ssh. Needs the
+    # one-time OpenSSH-LPK schema extension (sshPublicKey attribute) on the DC and
+    # the key stored on each user object — see modules/sssd-ad-client.nix.
+    sshKeysFromAD = true;
   };
 }
