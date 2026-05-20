@@ -34,9 +34,11 @@ in {
       type        = types.bool;
       default     = false;
       description = ''
-        Whether this host is a virtual machine. On VMs the hypervisor (Proxmox)
-        owns the firewall, so the NixOS firewall is left disabled; physical
-        hosts run krg.firewall (nftables) instead.
+        Whether this host is a Proxmox/QEMU virtual machine. Enables the QEMU
+        guest agent (graceful shutdown, IP reporting to the hypervisor). It does
+        NOT disable the NixOS firewall — the in-guest firewall stays on for
+        defense-in-depth and so fail2ban has a backend (Proxmox adds an
+        additive perimeter layer on top, it does not replace the guest firewall).
       '';
     };
   };
@@ -76,9 +78,17 @@ in {
     # Fail2ban SSH brute-force protection on every machine.
     krg.fail2ban.enable = mkDefault true;
 
-    # Physical hosts run the NixOS firewall (krg.firewall → nftables); VMs leave
-    # it disabled because the hypervisor (Proxmox) owns the firewall.
-    krg.firewall.enable = mkDefault (!cfg.isVM);
+    # In-guest firewall (krg.firewall → nftables) on EVERY host, VMs included.
+    # Defense-in-depth: this owns *which ports* a service exposes and gives
+    # fail2ban a backend to insert bans into (the dictionary attack that drove
+    # this rebuild is exactly what fail2ban mitigates). On Proxmox VMs the
+    # hypervisor firewall is an *additive* perimeter that owns *which sources*
+    # may reach the VM — it does not replace this layer. A host can still set
+    # krg.firewall.enable = false explicitly if it really must.
+    krg.firewall.enable = mkDefault true;
+
+    # QEMU guest agent on VMs (graceful shutdown + IP reporting to Proxmox).
+    services.qemuGuest.enable = mkDefault cfg.isVM;
 
     # kernel.sysrq = 1 (from waiter sysctl.d/90-sysrq.conf)
     boot.kernel.sysctl."kernel.sysrq" = 1;
