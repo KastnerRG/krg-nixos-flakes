@@ -35,6 +35,16 @@
         name: xagt
         enabled: true
         state: started
+  always:
+    # The archive + extracted tree hold live enrollment credentials — never
+    # leave them on disk, even if a step above failed.
+    - name: Remove installer archive + extracted tree
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/oec-qualystrellixinstallers-linux.tgz
+        - /tmp/trellixandqualys
 
 - name: Warn if no installer archive was provided
   ansible.builtin.debug:

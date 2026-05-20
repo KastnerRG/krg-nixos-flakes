@@ -1,7 +1,8 @@
 # Validate the *effective* (merged) sshd config before restarting. The `&&`
 # means a bad config aborts before the restart, so the running daemon — and
 # your current session — stays up. (Restarting sshd does not drop live sessions.)
+# Absolute paths: /usr/sbin isn't always in the non-interactive PATH.
 - name: Validate and restart sshd
   ansible.builtin.shell:
-    cmd: sshd -t && systemctl restart ssh
+    cmd: /usr/sbin/sshd -t && /usr/bin/systemctl restart ssh
   changed_when: true

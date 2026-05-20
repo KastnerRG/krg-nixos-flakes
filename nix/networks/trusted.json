@@ -22,7 +22,7 @@
       { "cidr": "137.110.161.106", "comment": "krg-prod.ucsd.edu" },
       { "cidr": "137.110.161.107", "comment": "krg-ad.ucsd.edu (old AD, being decommissioned)" },
       { "cidr": "137.110.161.109", "comment": "krg-ldap.ucsd.edu" },
-      { "cidr": "97.252.106.89", "comment": "Chris Home" }
+      { "cidr": "97.252.106.89", "comment": "admin remote" }
     ]
   }
 }
