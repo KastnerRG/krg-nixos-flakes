@@ -1,0 +1,32 @@
+# SSH hardening — disable password auth (the breach vector), make root key-only.
+#
+# CROSS-REFERENCE: mirrors the SSH policy in nix/profiles/base.nix
+# (services.openssh). Keep in sync. The PVE divergence is intentional: root is
+# "prohibit-password" (PVE relies on root) rather than "no", and ed25519-only is
+# opt-in (cluster inter-node SSH may use RSA keys).
+#
+# Order matters: keys are authorized BEFORE password auth is turned off.
+- name: Refuse to run without an authorized key (anti-lockout guard)
+  ansible.builtin.assert:
+    that:
+      - admin_ssh_keys | length > 0
+    fail_msg: >-
+      admin_ssh_keys is empty. Disabling password auth without an authorized key
+      would lock you out. Set the keys in nix/keys/admins.json first.
+
+- name: Authorize admin SSH keys for root
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ item }}"
+    state: present
+    exclusive: false
+  loop: "{{ admin_ssh_keys }}"
+
+- name: Install hardened sshd drop-in
+  ansible.builtin.template:
+    src: 10-krg-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-krg-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Validate and restart sshd

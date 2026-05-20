@@ -1,3 +1,7 @@
+# CROSS-REFERENCE: the OS baseline here (timezone, packages incl tmux, SSH
+# hardening, auto-updates, sysctl, fail2ban, firewall) has a Proxmox/Debian
+# counterpart under ansible/roles/ (base, ssh_hardening, fail2ban, krg_admin).
+# When you change the baseline on either side, apply the equivalent to the other.
 { config, lib, pkgs, ... }:
 with lib;
 let

@@ -1,0 +1,41 @@
+# krg-infra base role — "secure and up to date by default".
+#
+# CROSS-REFERENCE: this is the Proxmox/Debian counterpart of the NixOS baseline
+# in nix/profiles/base.nix. When you change the baseline on EITHER side
+# (timezone, packages incl tmux, auto-updates, sysctl), apply the equivalent
+# change to the other. Platform differences are expected and fine.
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ base_timezone }}"
+
+- name: Install baseline packages (incl. tmux + unattended-upgrades)
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Remove unwanted packages
+  ansible.builtin.apt:
+    name: "{{ base_packages_absent }}"
+    state: absent
+
+- name: Enable unattended security upgrades (up to date by default)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/apt/apt.conf.d/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - 20auto-upgrades
+    - 50unattended-upgrades
+
+- name: Apply sysctl settings
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop: "{{ base_sysctl | dict2items }}"

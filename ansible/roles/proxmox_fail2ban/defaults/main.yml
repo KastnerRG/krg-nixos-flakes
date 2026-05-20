@@ -1,6 +1,0 @@
-proxmox_fail2ban_bantime:  "1h"
-proxmox_fail2ban_findtime: "10m"
-proxmox_fail2ban_maxretry: 3
-proxmox_fail2ban_ignoreip:
-  - "127.0.0.1/8"
-  - "::1"

@@ -1,12 +1,15 @@
-# Enforce the krg-admin break-glass admin on the host. Runs before the SSH
-# lockdown so a named, key-capable sudo admin exists before password auth is off.
+# Enforce the krg-admin break-glass admin. Runs before the SSH lockdown so a
+# named, key-capable sudo admin exists before password auth is off.
+#
+# CROSS-REFERENCE: mirrors nix/users/admin.nix (the NixOS break-glass admin);
+# both consume the shared key file nix/keys/admins.json. Keep them aligned.
 - name: Refuse to run without krg-admin SSH keys (anti-lockout guard)
   ansible.builtin.assert:
     that:
       - krg_admin_ssh_keys | length > 0
     fail_msg: >-
       krg_admin_ssh_keys is empty. {{ krg_admin_user }} would have no way to log
-      in (the account is key-only). Set proxmox_admin_ssh_keys in group_vars.
+      in (the account is key-only). Set the keys in nix/keys/admins.json.
 
 - name: Ensure {{ krg_admin_user }} exists (sudo, key-only, locked password)
   ansible.builtin.user:

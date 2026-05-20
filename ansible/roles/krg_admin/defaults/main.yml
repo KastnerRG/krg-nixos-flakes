@@ -1,9 +1,9 @@
-# Break-glass administrator on every Proxmox host. Mirrors the NixOS convention
-# (users/admin.nix: krg-admin in wheel + passwordless sudo, ed25519 key-only).
+# Break-glass administrator on every host. Mirrors the NixOS convention
+# (nix/users/admin.nix: krg-admin in wheel + passwordless sudo, key-only).
 krg_admin_user: "krg-admin"
 krg_admin_comment: "KRG break-glass administrator"
 krg_admin_shell: "/bin/bash"
 krg_admin_extra_groups: []          # 'sudo' is added automatically
 krg_admin_sudo_nopasswd: true       # key-only account, so sudo must be NOPASSWD to be usable
-# Defaults to the same key(s) authorized for root; override to give krg-admin its own set.
-krg_admin_ssh_keys: "{{ proxmox_admin_ssh_keys | default([]) }}"
+# Defaults to the shared admin keys (nix/keys/admins.json via group_vars).
+krg_admin_ssh_keys: "{{ admin_ssh_keys | default([]) }}"

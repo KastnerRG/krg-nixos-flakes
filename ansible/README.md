@@ -1,15 +1,17 @@
 # krg-infra — Proxmox host management (Ansible)
 
-This is the **hypervisor** half of the `krg-infra` monorepo. The NixOS flake at
-the repo root configures the **guests** (VMs); this Ansible tree configures the
-**Proxmox VE hosts** they run on.
+The **hypervisor** half of the `krg-infra` monorepo. The flake under `nix/`
+configures the NixOS machines; this Ansible tree configures the **Proxmox/Debian
+hosts** they run on. Goal: **machines secure and up to date by default.**
 
 ## Why this exists
 
-A Proxmox host's root SSH was **dictionary-attacked** — that breach is what
-drove this whole rebuild. The flake had already hardened the guests (key-only,
-ed25519-only, no root login, fail2ban), but the hypervisors had **no config
-management** and were left at insecure SSH defaults. This tree closes that gap.
+A Proxmox host's root SSH was **dictionary-attacked** — that breach drove this
+rebuild. The NixOS guests were already hardened, but the hypervisors had **no
+config management** and were left at insecure SSH defaults. This tree closes
+that gap, reusing the prior `KastnerRG/fabricant-host` setup but refactored into
+generic, push-based roles applied to *every* host (it was only ever applied to
+one). No Bitwarden — real secrets will live in HashiCorp Vault later.
 
 ## Layout
 
@@ -17,45 +19,50 @@ management** and were left at insecure SSH defaults. This tree closes that gap.
 ansible/
   ansible.cfg
   requirements.yml            # collections: ansible.posix, community.general
-  inventory/hosts.yml         # the Proxmox hosts (fill in)
-  group_vars/proxmox.yml      # admin SSH keys, trusted nets, fail2ban knobs
-  playbooks/harden.yml        # applies the hardening roles
+  inventory/hosts.yml         # the Proxmox hosts (group: proxmox) — fill in
+  group_vars/
+    all.yml                   # generic baseline vars (admin keys, timezone, fail2ban, trusted nets)
+    proxmox.yml               # PVE-specific vars (firewall IPSets / VM map — with proxmox_firewall)
+  playbooks/site.yml          # applies the baseline to all hosts
   roles/
-    krg_admin/                # break-glass krg-admin (sudo, key-only) — mirrors NixOS users/admin.nix
-    proxmox_ssh_hardening/    # disable password auth, root key-only (the breach fix)
-    proxmox_fail2ban/         # brute-force banning (sshd jail)
+    base/                     # timezone, packages (incl tmux), unattended security upgrades, sysctl
+    krg_admin/                # break-glass krg-admin (sudo, key-only) — mirrors nix/users/admin.nix
+    ssh_hardening/            # disable password auth, root key-only (the breach fix)
+    fail2ban/                 # sshd brute-force jail
+    # monitoring/             # node + ipmi exporters (next)
+    # oec_qualys_trellix/     # campus-mandated Qualys + Trellix (next)
+    # proxmox_firewall/       # PVE host.fw + per-guest <vmid>.fw (next)
 ```
 
-`krg_admin` runs first so a named, key-capable sudo admin exists before SSH
-locks down. Once you've confirmed you can SSH in as `krg-admin` and `sudo`, you
-can tighten further: set `ansible_user: krg-admin` (with `become: true`) in the
-inventory and `proxmox_ssh_permit_root: "no"` to stop direct root SSH entirely.
+Admin SSH keys are **shared** with the NixOS layer — edit `nix/keys/admins.json`
+(read by both); do not duplicate keys here.
 
 ## Before you run
 
 1. `ansible-galaxy collection install -r requirements.yml`
-2. Add the rebuilt hosts to `inventory/hosts.yml`.
-3. In `group_vars/proxmox.yml`, set **`proxmox_admin_ssh_keys`** to the real ops
-   key(s) and **`krg_trusted_nets`** to your admin/VPN subnets. The example key
-   is a placeholder.
+2. Add the host(s) to `inventory/hosts.yml` (currently: one host, `fabricant`).
+3. Set the real ops key(s) in `nix/keys/admins.json` and `krg_trusted_nets` in
+   `group_vars/all.yml`.
 
-> **Anti-lockout:** the SSH role authorizes your key *before* it turns password
-> auth off, asserts at least one key is set, and validates `sshd -t` before
-> restarting (a bad config aborts before the restart). Still — keep a Proxmox
-> **console** session open the first time and confirm a *new* key-based SSH
-> session works before closing your current one.
+> **Anti-lockout:** `ssh_hardening` authorizes your key *before* turning password
+> auth off, asserts a key is set, and validates `sshd -t` before restarting (a
+> bad config aborts before the restart). Still — keep a Proxmox **console**
+> session open the first run and confirm a *new* key-based SSH session works
+> before closing your current one.
 
 ## Run
 
 ```bash
-ansible-playbook playbooks/harden.yml --check     # dry run
-ansible-playbook playbooks/harden.yml
+ansible-playbook playbooks/site.yml --check     # dry run
+ansible-playbook playbooks/site.yml
 ```
 
-## What it does NOT do yet (next roles)
+## Not done yet (next)
 
-- **Proxmox firewall** (`host.fw` source-restricting SSH/`8006` to trusted nets,
-  plus per-guest `<vmid>.fw`). This is the hypervisor "perimeter" layer that
-  pairs with the in-guest NixOS firewall (which owns service ports + fail2ban).
-- TOTP 2FA on the PVE realm; PVE patching; post-compromise persistence hunting.
-- PVE web-UI fail2ban jail (needs a `filter.d/proxmox.conf` — see `jail.local`).
+- `monitoring` (node + ipmi exporters) and `oec_qualys_trellix` roles — migrating
+  the rest of `fabricant-host` so every host gets the same security + monitoring.
+- `proxmox_firewall`: `cluster.fw` (IPSets `public`/`sealab`/`ucsd`) + per-guest
+  `<vmid>.fw` (krg-ldap = 100). **Tightens SSH + the exporters off `+dc/public`**
+  — services → `ucsd`/`sealab`, compute → public SSH, exporters → monitoring host.
+- TOTP 2FA on the PVE realm; PVE web-UI fail2ban jail; PVE patching + persistence
+  hunting (post-breach).
