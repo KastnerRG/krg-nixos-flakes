@@ -1,0 +1,13 @@
+# Managed by Ansible (krg-infra ssh_hardening). Drop-in overrides sshd_config
+# (which Includes sshd_config.d/*.conf). Mirrors nix/profiles/base.nix SSH policy.
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin {{ ssh_permit_root }}
+PubkeyAuthentication yes
+MaxAuthTries 3
+LoginGraceTime 30
+X11Forwarding no
+{% if ssh_restrict_algorithms %}
+# ed25519-only. WARNING: can break PVE cluster inter-node SSH if those keys are RSA.
+PubkeyAcceptedAlgorithms {{ ssh_pubkey_algorithms }}
+{% endif %}

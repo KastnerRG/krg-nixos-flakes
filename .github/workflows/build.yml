@@ -18,7 +18,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v9
 
       - name: Check flake
-        run: nix flake check --all-systems
+        run: nix flake check ./nix --all-systems
 
   # Full build for each host. Runs after check passes.
   # Uses GitHub Actions cache (via magic-nix-cache) so subsequent runs
@@ -29,7 +29,7 @@ jobs:
     needs: check
     strategy:
       matrix:
-        host: [fabricant, waiter]
+        host: [krg-prod, e4e-prod, waiter, krg-ldap]
       fail-fast: false
 
     steps:
@@ -55,6 +55,6 @@ jobs:
       - name: Build ${{ matrix.host }}
         run: |
           nix build \
-            .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel \
+            ./nix#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel \
             --no-link \
             --print-build-logs

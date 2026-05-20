@@ -1,0 +1,28 @@
+# Baseline vars for ALL managed hosts (the "secure + up to date by default" set).
+
+# Admin SSH keys — SHARED with the NixOS layer. Edit nix/keys/admins.json (the
+# single source of truth, read by nix/users/admin.nix too), NOT here.
+krg_keys_file: "{{ (playbook_dir | dirname) | dirname }}/nix/keys/admins.json"
+admin_ssh_keys: "{{ (lookup('file', krg_keys_file) | from_json)['krg-admin'] }}"
+
+# base role
+base_timezone: "America/Los_Angeles"
+
+# ssh_hardening
+ssh_permit_root: "prohibit-password"   # key-only root (PVE relies on root)
+ssh_restrict_algorithms: false         # keep false on clusters (inter-node SSH may use RSA)
+
+# fail2ban
+fail2ban_bantime:  "1h"
+fail2ban_findtime: "10m"
+fail2ban_maxretry: 3
+
+# Trusted networks / Proxmox IPSets — SHARED source of truth at
+# nix/networks/trusted.json (also templated into the PVE cluster.fw and read by
+# nix krg.firewall). Edit there, not here.
+krg_trusted_file: "{{ (playbook_dir | dirname) | dirname }}/nix/networks/trusted.json"
+krg_trusted: "{{ lookup('file', krg_trusted_file) | from_json }}"
+krg_monitoring_host: "{{ krg_trusted.monitoring_host }}"
+# fail2ban allow-list: don't ban the sealab/admin hosts.
+krg_trusted_nets: "{{ krg_trusted.ipsets.sealab | map(attribute='cidr') | list }}"
+fail2ban_ignoreip: "{{ ['127.0.0.1/8', '::1'] + krg_trusted_nets }}"

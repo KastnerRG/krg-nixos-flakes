@@ -1,0 +1,79 @@
+# Prometheus node + IPMI exporters as systemd services (pinned release binaries).
+#
+# CROSS-REFERENCE: counterpart of the NixOS exporters
+# (nix/modules/services/node-exporter.nix + ipmi-exporter.nix). Keep versions and
+# ports aligned — both feed the same Prometheus (nix/docker-compose/krg-prod). The
+# scrape source is restricted by the firewall (krg.firewall monitoringPorts on
+# nix; the proxmox_firewall role / cluster.fw on PVE).
+- name: Download node_exporter
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+    checksum: "sha256:{{ node_exporter_sha256 }}"
+    dest: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
+    mode: "0644"
+
+- name: Extract node_exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+
+- name: Install node_exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+    dest: /usr/local/bin/node_exporter
+    mode: "0755"
+    remote_src: true
+
+- name: Install node_exporter unit
+  ansible.builtin.copy:
+    src: node_exporter.service
+    dest: /etc/systemd/system/node_exporter.service
+    mode: "0644"
+  notify: reload systemd
+
+- name: Enable + start node_exporter
+  ansible.builtin.systemd_service:
+    name: node_exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: IPMI exporter
+  when: monitoring_ipmi_exporter | bool
+  block:
+    - name: Download ipmi_exporter
+      ansible.builtin.get_url:
+        url: "https://github.com/prometheus-community/ipmi_exporter/releases/download/v{{ ipmi_exporter_version }}/ipmi_exporter-{{ ipmi_exporter_version }}.linux-amd64.tar.gz"
+        checksum: "sha256:{{ ipmi_exporter_sha256 }}"
+        dest: "/tmp/ipmi_exporter-{{ ipmi_exporter_version }}.tar.gz"
+        mode: "0644"
+
+    - name: Extract ipmi_exporter
+      ansible.builtin.unarchive:
+        src: "/tmp/ipmi_exporter-{{ ipmi_exporter_version }}.tar.gz"
+        dest: /tmp
+        remote_src: true
+        creates: "/tmp/ipmi_exporter-{{ ipmi_exporter_version }}.linux-amd64/ipmi_exporter"
+
+    - name: Install ipmi_exporter binary
+      ansible.builtin.copy:
+        src: "/tmp/ipmi_exporter-{{ ipmi_exporter_version }}.linux-amd64/ipmi_exporter"
+        dest: /usr/local/bin/ipmi_exporter
+        mode: "0755"
+        remote_src: true
+
+    - name: Install ipmi_exporter unit
+      ansible.builtin.copy:
+        src: ipmi_exporter.service
+        dest: /etc/systemd/system/ipmi_exporter.service
+        mode: "0644"
+      notify: reload systemd
+
+    - name: Enable + start ipmi_exporter
+      ansible.builtin.systemd_service:
+        name: ipmi_exporter
+        enabled: true
+        state: started
+        daemon_reload: true

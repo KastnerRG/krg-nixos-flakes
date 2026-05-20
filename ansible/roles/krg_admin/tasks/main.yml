@@ -1,0 +1,41 @@
+# Enforce the krg-admin break-glass admin. Runs before the SSH lockdown so a
+# named, key-capable sudo admin exists before password auth is off.
+#
+# CROSS-REFERENCE: mirrors nix/users/admin.nix (the NixOS break-glass admin);
+# both consume the shared key file nix/keys/admins.json. Keep them aligned.
+- name: Refuse to run without krg-admin SSH keys (anti-lockout guard)
+  ansible.builtin.assert:
+    that:
+      - krg_admin_ssh_keys | length > 0
+    fail_msg: >-
+      krg_admin_ssh_keys is empty. {{ krg_admin_user }} would have no way to log
+      in (the account is key-only). Set the keys in nix/keys/admins.json.
+
+- name: Ensure {{ krg_admin_user }} exists (sudo, key-only, locked password)
+  ansible.builtin.user:
+    name: "{{ krg_admin_user }}"
+    comment: "{{ krg_admin_comment }}"
+    shell: "{{ krg_admin_shell }}"
+    groups: "{{ ['sudo'] + krg_admin_extra_groups }}"
+    append: true
+    create_home: true
+    password_lock: true        # no password login; SSH key only
+    state: present
+
+- name: Authorize {{ krg_admin_user }} SSH keys
+  ansible.posix.authorized_key:
+    user: "{{ krg_admin_user }}"
+    key: "{{ item }}"
+    state: present
+    exclusive: false
+  loop: "{{ krg_admin_ssh_keys }}"
+
+- name: Passwordless sudo for {{ krg_admin_user }}
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ krg_admin_user }}"
+    content: "{{ krg_admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  when: krg_admin_sudo_nopasswd

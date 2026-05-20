@@ -1,0 +1,19 @@
+# Mirrors the OS baseline in nix/profiles/base.nix (see the cross-reference note
+# in tasks/main.yml). Override in group_vars.
+base_timezone: "America/Los_Angeles"
+base_packages:
+  - sudo
+  - git
+  - vim
+  - htop
+  - tmux
+  - polkitd
+  - pkexec
+  - unattended-upgrades
+base_packages_absent:
+  - cups-browsed
+  - cups-filters
+  - cups-filters-core-drivers
+  - libcupsfilters2t64
+base_sysctl:
+  kernel.sysrq: 1

@@ -1,0 +1,5 @@
+admin_ssh_keys: []
+ssh_permit_root: "prohibit-password"
+ssh_restrict_algorithms: false
+# ed25519-only set, matching the NixOS guest policy (nix/profiles/base.nix).
+ssh_pubkey_algorithms: "ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com"

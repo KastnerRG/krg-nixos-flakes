@@ -1,0 +1,11 @@
+# Proxmox/PVE-specific vars. Generic baseline vars live in group_vars/all.yml.
+
+# Guests with a per-VM firewall file: the proxmox_firewall role copies
+# roles/proxmox_firewall/files/<fw_file> to /etc/pve/firewall/<vmid>.fw. The
+# IPSets these reference are defined in cluster.fw (templated from
+# nix/networks/trusted.json). A guest .fw only applies if the VM's NIC has the
+# firewall option enabled.
+proxmox_guests:
+  - vmid: 100
+    name: krg-ldap        # Samba AD DC (service)
+    fw_file: krg-ldap.fw

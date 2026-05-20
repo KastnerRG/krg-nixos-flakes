@@ -1,0 +1,26 @@
+# krg-infra — make managed hosts secure + up to date by default.
+#
+#   ansible-galaxy collection install -r ../requirements.yml
+#   ansible-playbook playbooks/site.yml --check    # dry run first
+#   ansible-playbook playbooks/site.yml
+#
+# SAFETY: keep a Proxmox console session open the first time, and verify you can
+# open a NEW key-based ssh session before closing your current one.
+- name: Baseline (secure + up to date by default)
+  hosts: all
+  become: true
+  roles:
+    - base                  # timezone, packages (incl tmux), unattended security upgrades, sysctl
+    - krg_admin             # named break-glass sudo admin (before the SSH lockdown)
+    - ssh_hardening         # password auth off, root key-only
+    - fail2ban              # sshd brute-force jail
+    - monitoring            # node + ipmi exporters (systemd)
+    - oec_qualys_trellix    # campus-mandated Qualys + Trellix (set oec_installer)
+
+# Proxmox/PVE perimeter firewall (source restriction; pairs with the in-guest
+# NixOS firewall). cluster.fw IPSets come from the shared nix/networks/trusted.json.
+- name: Proxmox perimeter firewall
+  hosts: proxmox
+  become: true
+  roles:
+    - proxmox_firewall      # cluster.fw + per-guest <vmid>.fw
