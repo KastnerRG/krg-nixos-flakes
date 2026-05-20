@@ -24,7 +24,8 @@
       { "cidr": "137.110.161.109", "comment": "krg-ldap.ucsd.edu" }
     ],
     "ops": [
-      { "cidr": "97.252.106.89", "comment": "admin remote (off-campus). TODO: remove long-term. Kept in a separate ops set (not ucsd) so off-campus admin access is explicit." }
+      { "cidr": "97.252.106.89", "comment": "admin remote (chris)" },
+      { "cidr": "107.132.34.148", "comment": "admin remote (sean)"}
     ]
   }
 }
