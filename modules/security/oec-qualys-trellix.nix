@@ -27,11 +27,21 @@ let
   # not ship. Everything else the agents need is bundled and found via RPATH.
   agentLibs = with pkgs; [ stdenv.cc.cc.lib glibc util-linux.lib file ];
 
-  # Loader environment for the unpatched vendor binaries (see header).
+  # A full PATH for the agents and their helper scripts. The Qualys agent's
+  # command-runner shells out to chown/chmod/ls/ps/awk/sed and (via envfs)
+  # /bin/bash, /usr/bin/systemd-run; a minimal PATH makes those fail and the
+  # agent aborts with a SwitchUserError. systemd is included so the activation's
+  # qagent_restart.sh finds systemctl.
+  agentPath = makeBinPath (with pkgs; [
+    bash coreutils gnused gnugrep gawk findutils procps util-linux systemd
+  ]);
+
+  # Loader + PATH environment for the unpatched vendor binaries (see header).
   nixLdEnv = [
     "NIX_LD=${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
     "NIX_LD_LIBRARY_PATH=${makeLibraryPath agentLibs}"
   ];
+  agentEnv = nixLdEnv ++ [ "PATH=${agentPath}" ];
 
   # One-time installer: extract the .deb payloads to /opt/fireeye and
   # /usr/local/qualys, drop the Trellix config, and enroll both agents.
@@ -39,9 +49,9 @@ let
   # so they never enter the Nix store.
   oecInstall = pkgs.writeShellScriptBin "oec-install" ''
     set -euo pipefail
-    # gawk/gnused/findutils are required by the Qualys activation shell script
-    # (qualys-cloud-agent.sh parses its args with awk, etc.).
-    export PATH=${makeBinPath [ pkgs.dpkg pkgs.gnutar pkgs.gzip pkgs.coreutils pkgs.gnugrep pkgs.gnused pkgs.gawk pkgs.findutils pkgs.bash ]}:$PATH
+    # dpkg/tar/gzip for extraction; the rest for the Qualys activation script
+    # (qualys-cloud-agent.sh + qagent_restart.sh use awk/sed/ps/systemctl, etc.).
+    export PATH=${makeBinPath (with pkgs; [ dpkg gnutar gzip bash coreutils gnused gnugrep gawk findutils procps util-linux systemd ])}:$PATH
 
     ARCHIVE="''${1:?usage: oec-install <path-to-oec-archive.tgz>}"
     [ -r "$ARCHIVE" ] || { echo "oec-install: archive not readable: $ARCHIVE" >&2; exit 1; }
@@ -81,6 +91,10 @@ let
       cp -a "$STAGE/qualys/usr/local/qualys/." /usr/local/qualys/
       cp -a "$STAGE/qualys/etc/qualys/." /etc/qualys/
     fi
+    # The .deb postinst (skipped by dpkg-deb -x) creates these dirs; without
+    # them the agent aborts at startup ("File not found: .../manifests").
+    mkdir -p /usr/local/qualys/cloud-agent/manifests /usr/local/qualys/cloud-agent/correlation/manifests
+    chmod 700 /usr/local/qualys/cloud-agent/manifests /usr/local/qualys/cloud-agent/correlation /usr/local/qualys/cloud-agent/correlation/manifests
     ACT="$(grep -oE 'ActivationId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
     CID="$(grep -oE 'CustomerId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
     if [ -n "$ACT" ] && [ -n "$CID" ]; then
@@ -154,7 +168,11 @@ in {
       after         = [ "network-online.target" ];
       wants         = [ "network-online.target" ];
       wantedBy      = [ "multi-user.target" ];
-      before        = [ "xagt.service" "qualys-cloud-agent.service" ];
+      # Not ordered Before qualys-cloud-agent: the Qualys activation calls
+      # qagent_restart.sh which runs `systemctl restart qualys-cloud-agent`, and
+      # an ordering cycle there would deadlock. qualys-cloud-agent is gated on
+      # its binary existing instead.
+      before        = [ "xagt.service" ];
       # Wait for the envfs /bin and /usr/bin mounts so /bin/bash etc. exist when
       # the vendor scripts run (also orders correctly on the switch that first
       # enables envfs).
@@ -163,7 +181,7 @@ in {
       serviceConfig = {
         Type            = "oneshot";
         RemainAfterExit = true;
-        Environment     = nixLdEnv;
+        Environment     = agentEnv;
         ExecStart       = "${oecInstall}/bin/oec-install ${cfg.installerArchive}";
       };
     };
@@ -171,13 +189,13 @@ in {
     # Qualys Cloud Agent daemon (vendor unit: simple, restart on-failure).
     systemd.services.qualys-cloud-agent = {
       description   = "Qualys Cloud Agent";
-      after         = [ "oec-install.service" "network-online.target" ];
+      after         = [ "network-online.target" ];
       wants         = [ "network-online.target" ];
       wantedBy      = [ "multi-user.target" ];
       unitConfig.ConditionPathExists = cfg.qualysBin;
       serviceConfig = {
         Type           = "simple";
-        Environment    = nixLdEnv;
+        Environment    = agentEnv;
         ExecStart      = cfg.qualysBin;
         Restart        = "on-failure";
         RestartSec     = 60;
@@ -195,7 +213,7 @@ in {
       unitConfig.ConditionPathExists = "/var/lib/fireeye/xagt/main.db";
       serviceConfig = {
         Type        = "simple";
-        Environment = nixLdEnv;
+        Environment = agentEnv;
         ExecStart   = "${cfg.trellixBin} -M DAEMON";
         KillMode    = "process";
         Restart     = "always";

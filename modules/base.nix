@@ -78,6 +78,7 @@ in {
       wget
       htop
       vim
+      tmux
     ];
   };
 }
