@@ -54,29 +54,33 @@ let
     [ -d "$SRC" ] || { echo "oec-install: unexpected archive layout" >&2; exit 1; }
 
     # ── Trellix xagt → /opt/fireeye ───────────────────────────────────────
-    echo "oec-install: installing Trellix xagt"
-    dpkg-deb -x "$SRC/xagt_36.21.0-1.ubuntu16_amd64.deb" "$STAGE/xagt"
-    # Copy CONTENTS into the target dirs so re-runs (after a failed enrollment)
-    # don't nest, e.g. /opt/fireeye/fireeye.
-    mkdir -p /opt/fireeye /var/lib/fireeye
-    cp -a "$STAGE/xagt/opt/fireeye/." /opt/fireeye/
-    cp -a "$STAGE/xagt/var/lib/fireeye/." /var/lib/fireeye/
-    install -m 0600 "$SRC/agent_config.json" /opt/fireeye/agent_config.json
-    # Enroll only if not already enrolled, so a retry (after a later step failed)
-    # doesn't re-import on top of an existing registration.
+    # Install + enroll only if not already enrolled. Gating the whole block on
+    # main.db makes retries safe: xagt.service only runs once main.db exists, so
+    # when this block runs the binary is never live ("Text file busy"), and a
+    # retry after a later (Qualys) failure won't re-import or re-copy.
     if [ ! -e /var/lib/fireeye/xagt/main.db ]; then
-      echo "oec-install: enrolling Trellix (creates /var/lib/fireeye/xagt/main.db)"
+      echo "oec-install: installing + enrolling Trellix xagt"
+      dpkg-deb -x "$SRC/xagt_36.21.0-1.ubuntu16_amd64.deb" "$STAGE/xagt"
+      mkdir -p /opt/fireeye /var/lib/fireeye
+      cp -a "$STAGE/xagt/opt/fireeye/." /opt/fireeye/
+      cp -a "$STAGE/xagt/var/lib/fireeye/." /var/lib/fireeye/
+      install -m 0600 "$SRC/agent_config.json" /opt/fireeye/agent_config.json
       /opt/fireeye/bin/xagt -i /opt/fireeye/agent_config.json
     else
-      echo "oec-install: Trellix already enrolled (main.db present), skipping import"
+      echo "oec-install: Trellix already enrolled (main.db present), skipping"
     fi
 
     # ── Qualys Cloud Agent → /usr/local/qualys ────────────────────────────
-    echo "oec-install: installing Qualys Cloud Agent"
-    dpkg-deb -x "$SRC/qualys_cloud_agent.deb" "$STAGE/qualys"
-    mkdir -p /usr/local/qualys /etc/qualys /var/log/qualys /var/spool/qualys
-    cp -a "$STAGE/qualys/usr/local/qualys/." /usr/local/qualys/
-    cp -a "$STAGE/qualys/etc/qualys/." /etc/qualys/
+    # Copy files only if not already installed, to avoid overwriting the running
+    # qualys-cloud-agent binary on a retry. Activation runs every time the
+    # service runs (i.e. until it succeeds and writes the sentinel below).
+    if [ ! -x /usr/local/qualys/cloud-agent/bin/qualys-cloud-agent ]; then
+      echo "oec-install: installing Qualys Cloud Agent"
+      dpkg-deb -x "$SRC/qualys_cloud_agent.deb" "$STAGE/qualys"
+      mkdir -p /usr/local/qualys /etc/qualys /var/log/qualys /var/spool/qualys
+      cp -a "$STAGE/qualys/usr/local/qualys/." /usr/local/qualys/
+      cp -a "$STAGE/qualys/etc/qualys/." /etc/qualys/
+    fi
     ACT="$(grep -oE 'ActivationId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
     CID="$(grep -oE 'CustomerId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
     if [ -n "$ACT" ] && [ -n "$CID" ]; then
