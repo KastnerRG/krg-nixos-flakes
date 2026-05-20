@@ -1,6 +1,10 @@
 # Campus-mandated endpoint security agents: Qualys Cloud Agent (vulnerability
 # management) and Trellix Endpoint Security HX / xagt (EDR + anti-malware).
 #
+# CROSS-REFERENCE: the Proxmox-host counterpart is ansible/roles/oec_qualys_trellix
+# (native .deb install via the vendor script). Same agents — keep the installer
+# archive + enrollment in sync across both layers.
+#
 # These are proprietary Ubuntu/CentOS .deb/.rpm binaries with no nixpkgs
 # package. They are NOT installed via the vendor installer (which uses
 # dpkg/yum/systemctl and won't work on NixOS). Instead we:

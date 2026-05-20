@@ -14,8 +14,8 @@
     - krg_admin             # named break-glass sudo admin (before the SSH lockdown)
     - ssh_hardening         # password auth off, root key-only
     - fail2ban              # sshd brute-force jail
-    # - monitoring           # node + ipmi exporters (next)
-    # - oec_qualys_trellix    # campus-mandated Qualys + Trellix (next)
+    - monitoring            # node + ipmi exporters (systemd)
+    - oec_qualys_trellix    # campus-mandated Qualys + Trellix (set oec_installer)
 
 # Proxmox/PVE-specific layer (perimeter firewall) — added next.
 # - name: Proxmox-specific

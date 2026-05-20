@@ -1,0 +1,44 @@
+# Campus-mandated endpoint security: Qualys Cloud Agent + Trellix HX (xagt).
+#
+# CROSS-REFERENCE: counterpart of nix/modules/security/oec-qualys-trellix.nix
+# (same agents). On Debian/PVE they install natively via the vendor's
+# install_ubuntu.sh; the NixOS side runs the same binaries under nix-ld. Keep the
+# installer archive + enrollment in sync across both. Required on every machine.
+- name: Install + enroll Qualys + Trellix
+  when: oec_installer | length > 0
+  block:
+    - name: Copy installer archive to host
+      ansible.builtin.copy:
+        src: "{{ oec_installer }}"
+        dest: /tmp/oec-qualystrellixinstallers-linux.tgz
+        mode: "0600"
+
+    - name: Extract installer
+      ansible.builtin.unarchive:
+        src: /tmp/oec-qualystrellixinstallers-linux.tgz
+        dest: /tmp
+        remote_src: true
+
+    - name: Run vendor installer (idempotent via creates guard)
+      ansible.builtin.command:
+        cmd: /tmp/trellixandqualys/install_ubuntu.sh
+        creates: /usr/local/qualys/cloud-agent/bin/qualys-cloud-agent
+
+    - name: Ensure Qualys Cloud Agent is running
+      ansible.builtin.systemd_service:
+        name: qualys-cloud-agent
+        enabled: true
+        state: started
+
+    - name: Ensure Trellix (xagt) is running
+      ansible.builtin.systemd_service:
+        name: xagt
+        enabled: true
+        state: started
+
+- name: Warn if no installer archive was provided
+  ansible.builtin.debug:
+    msg: >-
+      oec_installer is unset — skipping Qualys/Trellix install. Set it to the
+      vendor archive path to enroll this host (campus-mandated).
+  when: oec_installer | length == 0

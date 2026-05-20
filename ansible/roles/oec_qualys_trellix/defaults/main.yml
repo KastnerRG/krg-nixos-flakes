@@ -1,0 +1,4 @@
+# Path (on the control node) to the vendor installer archive. It holds live
+# enrollment credentials, so it is NOT in git — point this at a local copy.
+# Empty = skip (the role no-ops rather than failing "secure by default").
+oec_installer: ""

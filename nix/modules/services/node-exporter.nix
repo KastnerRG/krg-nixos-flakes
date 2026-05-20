@@ -1,3 +1,6 @@
+# Prometheus node exporter (native systemd via NixOS).
+# CROSS-REFERENCE: the Proxmox-host counterpart is ansible/roles/monitoring
+# (binary + systemd unit). Keep the port aligned; both feed the same Prometheus.
 { config, lib, ... }:
 with lib;
 let
