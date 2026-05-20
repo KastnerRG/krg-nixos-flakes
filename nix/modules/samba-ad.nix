@@ -19,14 +19,26 @@
 with lib;
 let
   cfg = config.krg.sambaAD;
+
+  # nixpkgs' samba derivation (servers/samba/4.x.nix) builds samba-tool's
+  # PYTHONPATH from `pythonPath = [ dnspython markdown tdb ]` — it omits the
+  # Python `cryptography` module. Samba 4.21+ imports it eagerly (samba.gkdi →
+  # Group Key Distribution / gMSA), which `samba-tool domain provision` pulls in
+  # via samba.provision → samba.join, so provisioning dies at import with
+  # `ModuleNotFoundError: No module named 'cryptography'`. Add it back to
+  # pythonPath; wrapPython then resolves cryptography's transitive closure too.
+  # This forces a from-source samba rebuild (no binary-cache hit for the override).
+  sambaAdDc = pkgs.samba4Full.overrideAttrs (old: {
+    pythonPath = (old.pythonPath or [ ]) ++ [ pkgs.python3Packages.cryptography ];
+  });
 in {
   options.krg.sambaAD = {
     enable = mkEnableOption "Samba Active Directory domain controller";
 
     package = mkOption {
       type        = types.package;
-      default     = pkgs.samba4Full;
-      defaultText = literalExpression "pkgs.samba4Full";
+      default     = sambaAdDc;
+      defaultText = literalExpression "pkgs.samba4Full (+ python3Packages.cryptography on pythonPath)";
       description = "Samba package — must be AD-DC-capable (samba4Full).";
     };
 
