@@ -3,6 +3,8 @@ with lib;
 let
   cfg = config.krg.base;
 in {
+  imports = [ ./security/oec-qualys-trellix.nix ];
+
   options.krg.base = {
     enable = mkEnableOption "KRG base system configuration";
 
@@ -29,15 +31,26 @@ in {
 
     i18n.defaultLocale = "en_US.UTF-8";
 
-    # Disable password auth on SSH (replaces Ansible SSH hardening task)
+    # SSH hardening (replaces Ansible SSH hardening task): key-only auth,
+    # and only ed25519 public keys are accepted — RSA/ECDSA are rejected.
     services.openssh = {
-      enable   = true;
+      enable = true;
       settings = {
-        PasswordAuthentication = false;
-        PermitRootLogin        = "no";
-        X11Forwarding          = false;
+        PasswordAuthentication        = false;
+        KbdInteractiveAuthentication  = false;
+        PermitRootLogin               = "no";
+        X11Forwarding                 = false;
+        # Restrict pubkey auth to ed25519 only (rejects ssh-rsa/rsa-sha2-*).
+        PubkeyAcceptedAlgorithms =
+          "ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com";
       };
     };
+
+    # Campus-mandated endpoint security on EVERY machine: Qualys Cloud Agent
+    # (vulnerability management) + Trellix HX (EDR/anti-malware). The agents are
+    # proprietary and install from a vendor archive — set
+    # krg.oecQualysTrellix.installerArchive per host or they stay dormant.
+    krg.oecQualysTrellix.enable = true;
 
     # kernel.sysrq = 1 (from waiter sysctl.d/90-sysrq.conf)
     boot.kernel.sysctl."kernel.sysrq" = 1;

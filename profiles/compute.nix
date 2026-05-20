@@ -8,7 +8,6 @@
     ../modules/zfs.nix
     ../modules/security/fail2ban.nix
     ../modules/security/firewall.nix
-    ../modules/security/oec-qualys-trellix.nix
     ../modules/services/compose-stack.nix
     ../modules/services/node-exporter.nix
     ../modules/services/ipmi-exporter.nix
@@ -16,6 +15,7 @@
     ../modules/hardware/fpga.nix
     ../modules/desktop/xrdp.nix
     ../modules/nix-ld.nix
+    ../users/admin.nix
     ../users/waiter-users.nix
   ];
 
@@ -53,9 +53,8 @@
   # by binding to different addresses or using the compose version only)
   krg.nodeExporter.enable = false;
 
-  # Qualys + Trellix: set installerArchive in the host config.
-  # e.g.: krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
-  krg.oecQualysTrellix.enable = true;
+  # Qualys + Trellix are enabled for all machines in base.nix.
+  # The installer archive is wired up in hosts/waiter/default.nix.
 
   krg.users.defaultGroups = [ "docker" "cuda" "rdp_users" ];
 

@@ -151,6 +151,6 @@ The grafana/prometheus/loki compose services mount config from the working direc
 - [ ] Populate `users/waiter-users.nix` from `waiter_users.yaml` (100+ lab users with SSH keys and hashed passwords)
 - [ ] Add real SSH public keys to `users/fabricant-users.nix`
 - [ ] Replace placeholder `hardware-configuration.nix` files for both hosts
-- [ ] Wire up Qualys Cloud Agent and Trellix (xagt) — no nixpkgs package exists; requires manual installer or a custom derivation using the binary from the original repo
+- [~] Qualys Cloud Agent + Trellix HX (xagt): implemented in `modules/security/oec-qualys-trellix.nix` and enabled for all hosts via `base.nix`. Runs the proprietary `.deb` binaries under nix-ld (they only need glibc + libstdc++ from the system; the rest is bundled via RPATH). The `oec-install` one-shot service extracts the `.deb`s to `/opt/fireeye` + `/usr/local/qualys` and enrolls both agents on first boot. Place the installer archive at the runtime path `/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz` (NOT in the Nix store — it holds live credentials). **Still needs on-box validation** of enrollment + daemon operation (binary linking is verified; cloud registration is not).
 - [ ] Add sops-nix for secrets management (replacing manual `.secrets/` population)
 - [ ] Review `promtail-config.yaml` — the old Ansible deploy log path is no longer relevant

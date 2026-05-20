@@ -43,6 +43,7 @@
     nixosConfigurations = {
       fabricant = mkSystem "fabricant";
       waiter    = mkSystem "waiter";
+      krg-ldap  = mkSystem "krg-ldap";
     };
   };
 }

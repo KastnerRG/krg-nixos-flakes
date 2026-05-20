@@ -35,12 +35,12 @@ in {
     networks         = [];
   };
 
-  # Installer is gitignored; only wired up when the file is present in the flake source.
-  # Locally: git add -f oec-qualystrellixinstallers-linux.tgz before building.
-  # CI: evaluates to null (safe — activation script is skipped).
-  krg.oecQualysTrellix.installerArchive =
-    let archive = ../../oec-qualystrellixinstallers-linux.tgz;
-    in if builtins.pathExists archive then archive else null;
+  # Qualys/Trellix agents are enabled for all hosts in base.nix. The installer
+  # archive is referenced by a runtime path (default
+  # /var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz) so its embedded
+  # credentials never enter the Nix store — place it there out-of-band:
+  #   scp oec-qualystrellixinstallers-linux.tgz waiter:/var/lib/krg/oec/
+  # then rebuild; the oec-install service enrolls the agents on next boot.
 
   # TODO: Secrets — before starting waiter-monitoring stack, populate:
   #   /var/lib/krg/waiter/.secrets/gf_admin_password.txt

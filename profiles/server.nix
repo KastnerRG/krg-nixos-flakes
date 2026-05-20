@@ -6,10 +6,10 @@
     ../modules/docker.nix
     ../modules/users.nix
     ../modules/security/firewall.nix
-    ../modules/security/oec-qualys-trellix.nix
     ../modules/services/compose-stack.nix
     ../modules/services/node-exporter.nix
     ../modules/services/ipmi-exporter.nix
+    ../users/admin.nix
     ../users/fabricant-users.nix
   ];
 
@@ -26,9 +26,9 @@
   krg.nodeExporter.enable = true;
   krg.ipmiExporter.enable = true;
 
-  # Qualys + Trellix: set installerArchive in the host config or environment.
-  # e.g.: krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
-  krg.oecQualysTrellix.enable = true;
+  # Qualys + Trellix are enabled for all machines in base.nix.
+  # Provide the installer archive in the host config:
+  #   krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
 
   krg.firewall = {
     enable          = true;

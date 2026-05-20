@@ -1,76 +1,90 @@
+# Campus-mandated endpoint security agents: Qualys Cloud Agent (vulnerability
+# management) and Trellix Endpoint Security HX / xagt (EDR + anti-malware).
+#
+# These are proprietary Ubuntu/CentOS .deb/.rpm binaries with no nixpkgs
+# package. They are NOT installed via the vendor installer (which uses
+# dpkg/yum/systemctl and won't work on NixOS). Instead we:
+#   1. run them under nix-ld — both binaries use the standard
+#      /lib64/ld-linux-x86-64.so.2 interpreter and only need glibc +
+#      libstdc++/libgcc_s from the system; the rest of their libraries are
+#      bundled and resolved via RPATH (/opt/fireeye/lib, /usr/local/qualys/...);
+#   2. extract the .deb payloads to their expected FHS paths and enroll them
+#      once, via the oec-install one-shot service (after network-online);
+#   3. run the daemons with the vendor's own unit semantics.
+#
+# The installer archive is referenced by a RUNTIME path (not a Nix store path)
+# so the credentials it contains never land in the world-readable Nix store.
+# Place it out-of-band at krg.oecQualysTrellix.installerArchive (default
+# /var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz).
 { config, lib, pkgs, ... }:
 with lib;
 let
   cfg = config.krg.oecQualysTrellix;
 
-  # FHS environment for running the proprietary installer script and the
-  # agent binaries. The installer.sh uses standard Linux paths (bash, coreutils,
-  # grep, curl, etc.) that NixOS doesn't expose globally.
-  fhsEnv = pkgs.buildFHSEnv {
-    name        = "oec-qualys-trellix-fhs";
-    runScript   = "bash";
-    targetPkgs  = p: with p; [
-      glibc
-      openssl
-      libgcc.lib
-      zlib
-      xz
-      curl
-      bash
-      coreutils
-      gnugrep
-      gawk
-      gnused
-      procps
-      util-linux
-      iproute2
-    ];
-    # Expose /etc/os-release with Ubuntu identity so the installer's OS check
-    # passes when called with the "ubuntu" argument
-    extraOutputsToInstall = [];
-    profile = ''
-      export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-    '';
-  };
+  # Loader environment for the unpatched vendor binaries (see header).
+  nixLdEnv = [
+    "NIX_LD=${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
+    "NIX_LD_LIBRARY_PATH=${makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.glibc ]}"
+  ];
 
-  # Wrapper script placed on PATH that lets operators re-run the installer
-  # manually: oec-install /path/to/oec-qualys-trellix.tar.gz
-  installScript = pkgs.writeShellScriptBin "oec-install" ''
+  # One-time installer: extract the .deb payloads to /opt/fireeye and
+  # /usr/local/qualys, drop the Trellix config, and enroll both agents.
+  # Qualys ActivationId/CustomerId are read FROM THE ARCHIVE (vendor script)
+  # so they never enter the Nix store.
+  oecInstall = pkgs.writeShellScriptBin "oec-install" ''
     set -euo pipefail
-    ARCHIVE="''${1:-}"
-    if [ -z "$ARCHIVE" ]; then
-      echo "Usage: oec-install <path-to-oec-qualys-trellix.tar.gz>" >&2
-      exit 1
+    export PATH=${makeBinPath [ pkgs.dpkg pkgs.gnutar pkgs.gzip pkgs.coreutils pkgs.gnugrep pkgs.bash ]}:$PATH
+
+    ARCHIVE="''${1:?usage: oec-install <path-to-oec-archive.tgz>}"
+    [ -r "$ARCHIVE" ] || { echo "oec-install: archive not readable: $ARCHIVE" >&2; exit 1; }
+
+    STAGE="$(mktemp -d)"
+    trap 'rm -rf "$STAGE"' EXIT
+    echo "oec-install: extracting $ARCHIVE"
+    tar -xzf "$ARCHIVE" -C "$STAGE"
+    SRC="$STAGE/trellixandqualys"
+    [ -d "$SRC" ] || { echo "oec-install: unexpected archive layout" >&2; exit 1; }
+
+    # ── Trellix xagt → /opt/fireeye ───────────────────────────────────────
+    echo "oec-install: installing Trellix xagt"
+    dpkg-deb -x "$SRC/xagt_36.21.0-1.ubuntu16_amd64.deb" "$STAGE/xagt"
+    mkdir -p /opt /var/lib/fireeye
+    cp -a "$STAGE/xagt/opt/fireeye" /opt/
+    cp -a "$STAGE/xagt/var/lib/fireeye/." /var/lib/fireeye/
+    install -m 0600 "$SRC/agent_config.json" /opt/fireeye/agent_config.json
+    echo "oec-install: enrolling Trellix (creates /var/lib/fireeye/xagt/main.db)"
+    /opt/fireeye/bin/xagt -i /opt/fireeye/agent_config.json
+
+    # ── Qualys Cloud Agent → /usr/local/qualys ────────────────────────────
+    echo "oec-install: installing Qualys Cloud Agent"
+    dpkg-deb -x "$SRC/qualys_cloud_agent.deb" "$STAGE/qualys"
+    mkdir -p /usr/local /etc/qualys /var/log/qualys /var/spool/qualys
+    cp -a "$STAGE/qualys/usr/local/qualys" /usr/local/
+    cp -a "$STAGE/qualys/etc/qualys/." /etc/qualys/
+    ACT="$(grep -oE 'ActivationId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
+    CID="$(grep -oE 'CustomerId=[0-9a-fA-F-]+' "$SRC/install_ubuntu.sh" | head -1 | cut -d= -f2 || true)"
+    if [ -n "$ACT" ] && [ -n "$CID" ]; then
+      echo "oec-install: activating Qualys"
+      bash /usr/local/qualys/cloud-agent/bin/qualys-cloud-agent.sh ActivationId="$ACT" CustomerId="$CID"
+    else
+      echo "oec-install: WARNING — Qualys ActivationId/CustomerId not found in archive; skipping activation" >&2
     fi
-    TMPDIR=$(mktemp -d)
-    trap "rm -rf $TMPDIR" EXIT
-    echo "Extracting $ARCHIVE..."
-    tar -xzf "$ARCHIVE" -C "$TMPDIR"
-    INSTALLER=$(find "$TMPDIR" -name "installer.sh" | head -1)
-    if [ -z "$INSTALLER" ]; then
-      echo "installer.sh not found in archive" >&2
-      exit 1
-    fi
-    chmod +x "$INSTALLER"
-    echo "Running installer in FHS environment..."
-    ${fhsEnv}/bin/oec-qualys-trellix-fhs "$INSTALLER" ubuntu
-    echo "Done. Restart qualys-cloud-agent and xagt services."
+    echo "oec-install: done"
   '';
 in {
   options.krg.oecQualysTrellix = {
-    enable = mkEnableOption "OEC Qualys Cloud Agent and Trellix (xagt) security monitoring";
+    enable = mkEnableOption "OEC Qualys Cloud Agent and Trellix HX (xagt) security agents";
 
-    # Path to the installer archive. If non-null, the activation script will
-    # run the installer automatically on first boot (when the binary is absent).
-    # Obtain the archive from the lab's internal storage; it is not in the repo.
+    # RUNTIME path to the installer archive (NOT a Nix store path — keeps the
+    # embedded credentials out of the store). Place the archive here out-of-band
+    # (scp / sops-nix later). If absent at boot, install is skipped and the
+    # agents stay dormant until it is provided and the host is rebuilt.
     installerArchive = mkOption {
-      type        = types.nullOr types.path;
-      default     = null;
-      description = "Path to oec-qualys-trellix.tar.gz; null = manual install only";
+      type    = types.str;
+      default = "/var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz";
+      description = "Runtime path to oec-qualystrellixinstallers-linux.tgz";
     };
 
-    # Installation paths used by the installer on Ubuntu; adjust if the lab's
-    # version installs elsewhere.
     qualysBin = mkOption {
       type    = types.str;
       default = "/usr/local/qualys/cloud-agent/bin/qualys-cloud-agent";
@@ -78,66 +92,78 @@ in {
 
     trellixBin = mkOption {
       type    = types.str;
-      default = "/opt/trellix/xagt/bin/xagt";
+      # The xagt .deb installs under /opt/fireeye (confirmed by the vendor
+      # install_ubuntu.sh and the package layout).
+      default = "/opt/fireeye/bin/xagt";
     };
 
     enableTrellix = mkOption {
       type    = types.bool;
       default = true;
+      description = "Run the Trellix xagt daemon (Qualys is always run when enabled)";
     };
   };
 
   config = mkIf cfg.enable {
-    # Make the FHS environment and helper script available on PATH
-    environment.systemPackages = [ fhsEnv installScript ];
+    # Make the unpatched vendor ELF binaries (and any helpers they exec) runnable.
+    programs.nix-ld.enable    = true;
+    programs.nix-ld.libraries = with pkgs; [ stdenv.cc.cc.lib glibc ];
 
-    # Automatically run the installer on first boot if the archive is provided
-    # and the binary is not yet installed.
-    system.activationScripts.oec-qualys-trellix = mkIf (cfg.installerArchive != null) {
-      text = ''
-        if [ ! -x "${cfg.qualysBin}" ]; then
-          echo "OEC: Installing Qualys + Trellix agents from ${cfg.installerArchive}..."
-          TMPDIR=$(mktemp -d)
-          tar -xzf ${cfg.installerArchive} -C "$TMPDIR"
-          INSTALLER=$(find "$TMPDIR" -name "installer.sh" | head -1)
-          chmod +x "$INSTALLER"
-          ${fhsEnv}/bin/oec-qualys-trellix-fhs "$INSTALLER" ubuntu || true
-          rm -rf "$TMPDIR"
-        fi
-      '';
-      deps = [ "specialfs" "users" ];
-    };
+    # Where the admin drops the installer archive.
+    systemd.tmpfiles.rules = [ "d /var/lib/krg/oec 0700 root root -" ];
 
-    systemd.services.qualys-cloud-agent = {
-      description = "Qualys Cloud Agent";
-      after       = [ "network-online.target" ];
-      wants       = [ "network-online.target" ];
-      wantedBy    = [ "multi-user.target" ];
-      # Only start if the binary was actually installed
-      unitConfig.ConditionPathExists = cfg.qualysBin;
+    # Manual re-run helper: `oec-install /path/to/archive.tgz`
+    environment.systemPackages = [ oecInstall ];
+
+    # One-time install + enrollment, after the network is up. Runs only when the
+    # archive is present and xagt isn't installed yet.
+    systemd.services.oec-install = {
+      description   = "Install and enroll Qualys + Trellix agents (one-time)";
+      after         = [ "network-online.target" ];
+      wants         = [ "network-online.target" ];
+      wantedBy      = [ "multi-user.target" ];
+      before        = [ "xagt.service" "qualys-cloud-agent.service" ];
+      unitConfig.ConditionPathExists = [ cfg.installerArchive "!${cfg.trellixBin}" ];
       serviceConfig = {
-        Type            = "forking";
-        ExecStart       = "${cfg.qualysBin} start";
-        ExecStop        = "${cfg.qualysBin} stop";
-        Restart         = "on-failure";
-        RestartSec      = "30s";
-        # Ensure the agent can find its own shared libraries
-        Environment     = "LD_LIBRARY_PATH=/usr/local/qualys/cloud-agent/lib";
+        Type            = "oneshot";
+        RemainAfterExit = true;
+        Environment     = nixLdEnv;
+        ExecStart       = "${oecInstall}/bin/oec-install ${cfg.installerArchive}";
       };
     };
 
-    systemd.services.xagt = mkIf cfg.enableTrellix {
-      description = "Trellix Agent (xagt)";
-      after       = [ "network-online.target" ];
-      wants       = [ "network-online.target" ];
-      wantedBy    = [ "multi-user.target" ];
-      unitConfig.ConditionPathExists = cfg.trellixBin;
+    # Qualys Cloud Agent daemon (vendor unit: simple, restart on-failure).
+    systemd.services.qualys-cloud-agent = {
+      description   = "Qualys Cloud Agent";
+      after         = [ "oec-install.service" "network-online.target" ];
+      wants         = [ "network-online.target" ];
+      wantedBy      = [ "multi-user.target" ];
+      unitConfig.ConditionPathExists = cfg.qualysBin;
       serviceConfig = {
-        Type       = "forking";
-        ExecStart  = "${cfg.trellixBin} start";
-        ExecStop   = "${cfg.trellixBin} stop";
-        Restart    = "on-failure";
-        RestartSec = "30s";
+        Type           = "simple";
+        Environment    = nixLdEnv;
+        ExecStart      = cfg.qualysBin;
+        Restart        = "on-failure";
+        RestartSec     = 60;
+        TimeoutStopSec = 90;
+      };
+    };
+
+    # Trellix Endpoint Security HX agent (vendor unit: xagt -M DAEMON, gated on
+    # the enrollment db so it only starts after oec-install has run).
+    systemd.services.xagt = mkIf cfg.enableTrellix {
+      description   = "Trellix Endpoint Security HX agent (xagt)";
+      after         = [ "oec-install.service" "network-online.target" ];
+      wants         = [ "network-online.target" ];
+      wantedBy      = [ "multi-user.target" ];
+      unitConfig.ConditionPathExists = "/var/lib/fireeye/xagt/main.db";
+      serviceConfig = {
+        Type        = "simple";
+        Environment = nixLdEnv;
+        ExecStart   = "${cfg.trellixBin} -M DAEMON";
+        KillMode    = "process";
+        Restart     = "always";
+        RestartSec  = 10;
       };
     };
   };
