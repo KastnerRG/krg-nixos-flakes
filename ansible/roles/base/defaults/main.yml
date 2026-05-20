@@ -9,6 +9,7 @@ base_packages:
   - tmux
   - polkitd
   - pkexec
+  - python3.13-venv        # PEP 668 / externally-managed: need venvs for pip tooling
   - unattended-upgrades
 base_packages_absent:
   - cups-browsed
