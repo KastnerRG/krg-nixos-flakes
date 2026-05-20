@@ -11,15 +11,14 @@
   krg.base = {
     enable      = true;
     autoUpgrade = true;
+    serviceHost = true;   # restrict in-guest SSH to trusted UCSD nets
   };
 
-  # Ingress ports for the directory role. These apply when the NixOS firewall
-  # is enabled (physical hosts); on VMs base.nix disables it (krg.base.isVM) and
-  # the equivalent rules must be opened in the Proxmox firewall instead.
-  # modules/samba-ad.nix contributes the Samba AD DC port set (53, 88, 135,
-  # 137-139, 389, 445, 464, 636, 3268-3269 + dynamic RPC, TCP and UDP); those
-  # declarations merge with the list below but are inert while the firewall is
-  # disabled — krg-ldap is a VM, so Proxmox owns the firewall.
+  # Ingress for the directory role. The in-guest firewall is ON (base.nix runs it
+  # on every host); modules/samba-ad.nix contributes the AD DC port set. SSH (22)
+  # is source-restricted to the trusted UCSD nets in-guest (serviceHost), and the
+  # Proxmox perimeter (ansible proxmox_firewall → 100.fw) source-restricts the AD
+  # ports from there.
   krg.firewall = {
     allowedTCPPorts = [ 22 ];
     # node exporter (enabled in base.nix)

@@ -34,6 +34,17 @@ in {
       default     = false;
       description = "Open port 3389 for XRDP (waiter compute nodes)";
     };
+
+    sshSources = mkOption {
+      type        = types.listOf types.str;
+      default     = [];
+      description = ''
+        If non-empty, SSH (port 22) is reachable ONLY from these CIDRs/IPs
+        in-guest, instead of being globally open. Service hosts set this (mirrors
+        the Proxmox perimeter); compute hosts leave it empty (public SSH,
+        protected by key-only auth + fail2ban). Usually set via krg.base.serviceHost.
+      '';
+    };
   };
 
   config = mkMerge [
@@ -48,13 +59,24 @@ in {
       networking.nftables.enable = true;
 
       networking.firewall = {
-        allowedTCPPorts = cfg.allowedTCPPorts ++ optional cfg.allowRDP 3389;
+        # When sshSources is set, SSH (22) is source-restricted via the rules
+        # below, so drop it from the globally-open port list.
+        allowedTCPPorts =
+          (if cfg.sshSources == []
+           then cfg.allowedTCPPorts
+           else filter (p: p != 22) cfg.allowedTCPPorts)
+          ++ optional cfg.allowRDP 3389;
         allowedUDPPorts = cfg.allowedUDPPorts;
 
-        # Equivalent of: ufw allow from 132.239.95.67 to any port <n>
-        extraInputRules = concatMapStringsSep "\n" (port: ''
-          ip saddr ${cfg.monitoringSourceIp} tcp dport ${toString port} accept
-        '') cfg.monitoringPorts;
+        # nftables rules: monitoring-port scraping (from monitoringSourceIp) and,
+        # on service hosts, source-restricted SSH (from sshSources).
+        extraInputRules =
+          concatMapStringsSep "\n" (port: ''
+            ip saddr ${cfg.monitoringSourceIp} tcp dport ${toString port} accept
+          '') cfg.monitoringPorts
+          + concatMapStringsSep "\n" (src: ''
+            ip saddr ${src} tcp dport 22 accept
+          '') cfg.sshSources;
       };
     })
   ];

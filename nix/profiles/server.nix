@@ -14,6 +14,7 @@
   krg.base = {
     enable      = true;
     autoUpgrade = true;
+    serviceHost = true;   # restrict in-guest SSH to trusted UCSD nets
   };
 
   krg.docker = {

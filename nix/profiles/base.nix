@@ -49,6 +49,16 @@ in {
         additive perimeter layer on top, it does not replace the guest firewall).
       '';
     };
+
+    serviceHost = mkOption {
+      type        = types.bool;
+      default     = false;
+      description = ''
+        Service host (vs compute): restrict in-guest SSH to the trusted UCSD nets
+        (mirrors the Proxmox perimeter). Compute hosts leave this false so lab
+        users can SSH from anywhere (protected by key-only auth + fail2ban).
+      '';
+    };
   };
 
   config = mkIf cfg.enable {
@@ -60,6 +70,9 @@ in {
     # and only ed25519 public keys are accepted — RSA/ECDSA are rejected.
     services.openssh = {
       enable = true;
+      # Service hosts source-restrict SSH via krg.firewall.sshSources, so don't
+      # let openssh open port 22 globally; compute hosts keep it open.
+      openFirewall = !cfg.serviceHost;
       settings = {
         PasswordAuthentication        = false;
         KbdInteractiveAuthentication  = false;
@@ -98,6 +111,10 @@ in {
     # Prometheus scrape source — sourced from the shared trusted-networks file
     # so the monitoring host isn't duplicated across nix / ansible / PVE.
     krg.firewall.monitoringSourceIp = mkDefault trusted.monitoring_host;
+
+    # Service hosts restrict in-guest SSH to the trusted nets (mirrors the Proxmox
+    # perimeter); compute hosts keep SSH open (key-only auth + fail2ban).
+    krg.firewall.sshSources = mkIf cfg.serviceHost (map (e: e.cidr) trusted.ipsets.ucsd);
 
     # QEMU guest agent on VMs (graceful shutdown + IP reporting to Proxmox).
     services.qemuGuest.enable = mkDefault cfg.isVM;
