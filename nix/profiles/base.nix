@@ -133,7 +133,17 @@ in {
 
     nix.settings = {
       experimental-features = [ "nix-command" "flakes" ];
-      auto-optimise-store   = true;
+      auto-optimise-store   = true;   # dedup store paths (hardlink) on every build
+    };
+
+    # Automatic garbage collection (NixOS wiki: Storage optimization → Automation).
+    # Weekly, keeping a 30-day rollback window. Matters here because the nightly
+    # autoUpgrade creates a new generation every day, so the store would otherwise
+    # grow without bound.
+    nix.gc = {
+      automatic = true;
+      dates     = "weekly";
+      options   = "--delete-older-than 30d";
     };
 
     nixpkgs.config.allowUnfree = true;
