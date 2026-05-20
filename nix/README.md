@@ -9,18 +9,19 @@ See [CLAUDE.md](CLAUDE.md) for the full architecture (modules, profiles, hosts).
 
 ## Hosts
 
-| Host        | Profile     | Role                                                    |
-|-------------|-------------|---------------------------------------------------------|
-| `fabricant` | `server`    | Production web services (Traefik, Authentik, Grafana…)  |
-| `waiter`    | `compute`   | GPU/FPGA research box (CUDA, Vivado, XRDP)              |
-| `krg-ldap`  | `directory` | Samba AD domain controller                              |
+| Host        | Profile     | Role                                                       |
+|-------------|-------------|------------------------------------------------------------|
+| `krg-prod`  | `server`    | KRG lab-wide production (Traefik, Authentik, Grafana, MLflow…) |
+| `e4e-prod`  | `server`    | E4E project-specific services (scaffold; FishSense etc.)   |
+| `waiter`    | `compute`   | GPU/FPGA research box (CUDA, Vivado, XRDP)                  |
+| `krg-ldap`  | `directory` | Samba AD domain controller                                 |
 
 ## Prerequisites
 
 - A NixOS host with flakes enabled (`experimental-features = nix-command flakes`).
-- Your **ed25519** SSH public key in the relevant admin account (`users/admin.nix`).
-  SSH is key-only and **ed25519-only** — RSA keys and passwords are rejected, and
-  root login is disabled.
+- Your **ed25519** SSH public key in `keys/admins.json` (the shared key file read
+  by `users/admin.nix` and the Ansible layer). SSH is key-only and **ed25519-only**
+  — RSA keys and passwords are rejected, and root login is disabled.
 
 ## Build & validate (no deploy)
 
@@ -48,8 +49,8 @@ nixos-rebuild switch --flake .#<host> \
 
 **On a freshly-cloned box:**
 ```bash
-git clone https://github.com/KastnerRG/krg-nixos-flakes.git
-cd krg-nixos-flakes
+git clone https://github.com/KastnerRG/krg-infra.git
+cd krg-infra/nix
 sudo nixos-rebuild switch --flake .#<host>
 ```
 

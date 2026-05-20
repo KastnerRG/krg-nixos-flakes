@@ -5,7 +5,7 @@ tool (not guest-vs-host — some NixOS machines are physical):
 
 | Layer | Path | Manages | Tool |
 |---|---|---|---|
-| NixOS machines | [`nix/`](nix/) | every NixOS machine — physical (waiter) **and** Proxmox VMs (fabricant, krg-ldap) | Nix flake |
+| NixOS machines | [`nix/`](nix/) | every NixOS machine — physical (waiter) **and** Proxmox VMs (krg-prod, e4e-prod, krg-ldap) | Nix flake |
 | Hypervisors | [`ansible/`](ansible/) | the Proxmox/Debian hosts those VMs run on | Ansible |
 
 - Building/deploying NixOS machines: [`nix/README.md`](nix/README.md)

@@ -43,7 +43,8 @@
     };
 
     nixosConfigurations = {
-      fabricant = mkSystem "fabricant";
+      krg-prod  = mkSystem "krg-prod";   # KRG lab-wide production (was "fabricant")
+      e4e-prod  = mkSystem "e4e-prod";   # E4E project-specific production
       waiter    = mkSystem "waiter";
       krg-ldap  = mkSystem "krg-ldap";
     };

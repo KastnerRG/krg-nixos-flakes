@@ -1,6 +1,6 @@
 # Replace this file with the output of:
 #   nixos-generate-config --show-hardware-config
-# Run on the fabricant host after booting the NixOS installer.
+# Run on the e4e-prod host after booting the NixOS installer.
 { modulesPath, ... }: {
   imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
 

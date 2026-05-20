@@ -1,4 +1,4 @@
-# Fabricant-style server profile: web services, monitoring, reverse proxy.
+# Server profile: web services, monitoring, reverse proxy (krg-prod, e4e-prod).
 # Import this in a host's default.nix, then add host-specific compose stacks.
 { ... }: {
   imports = [
@@ -32,9 +32,9 @@
   # enabled (physical hosts); on VMs base.nix disables it and the equivalent
   # rules must be opened in the Proxmox firewall instead.
   krg.firewall = {
-    # fabricant UFW: SSH + 80 + 443 + 8080 open globally
+    # Web ingress: SSH + 80 + 443 + 8080 open globally
     allowedTCPPorts = [ 22 80 443 8080 ];
-    # fabricant UFW: node-exporter (9100) and ads-exporter (9000) from monitoring host only
+    # node-exporter (9100) + service exporter (9000) from the monitoring host only
     monitoringPorts = [ 9100 9000 ];
   };
 }
