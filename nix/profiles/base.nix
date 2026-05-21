@@ -97,8 +97,12 @@ in {
     # sets krg.nodeExporter.enable = false to avoid a port clash.
     krg.nodeExporter.enable = mkDefault true;
 
-    # Fail2ban SSH brute-force protection on every machine.
+    # Fail2ban SSH brute-force protection on every machine. Allow-list loopback +
+    # the trusted sealab nets so an admin can't self-ban from a trusted network —
+    # mirrors the Ansible layer's fail2ban_ignoreip (same source: trusted.json).
     krg.fail2ban.enable = mkDefault true;
+    krg.fail2ban.ignoreIP = mkDefault
+      ([ "127.0.0.1/8" "::1" ] ++ map (e: e.cidr) trusted.ipsets.sealab);
 
     # In-guest firewall (krg.firewall → nftables) on EVERY host, VMs included.
     # Defense-in-depth: this owns *which ports* a service exposes and gives
@@ -120,6 +124,13 @@ in {
     krg.firewall.sshSources = mkIf cfg.serviceHost
       (map (e: e.cidr) (trusted.ipsets.ucsd ++ (trusted.ipsets.ops or [])));
 
+    # If a host opens RDP (krg.firewall.allowRDP — compute boxes with the XRDP
+    # desktop), restrict 3389 to the trusted UCSD nets in-guest. RDP isn't
+    # key-only and has no fail2ban jail, so it must never be globally open on a
+    # public-IP box. UCSD only (not ops/off-campus) — reach it over VPN/campus or
+    # the planned Guacamole. Inert until allowRDP = true; override per host if needed.
+    krg.firewall.rdpSources = mkDefault (map (e: e.cidr) trusted.ipsets.ucsd);
+
     # Every host is an Active Directory client: it joins KRG.LOCAL and humans log in
     # with their AD accounts (only the nix/users/admin.nix break-glass admin stays
     # local). Access defaults to Domain Admins — widen per host (e.g. compute opens
@@ -127,11 +138,18 @@ in {
     # hosts need a one-time domain join for their keytab; the DC (directory.nix sets
     # isDomainController) exports its own. CROSS-REFERENCE: ansible roles/ad_client
     # is the Debian/PVE counterpart, composed into the ansible base role.
+    # SPOF NOTE: a single DC is pinned today. When the planned second DC lands on
+    # another Proxmox host (CLAUDE.md pending items), let members fail over —
+    # either set server/serverIp to null for SRV autodiscovery, or extend the
+    # module to list both DCs (and pin both in /etc/hosts).
     krg.adClient = {
       enable        = mkDefault true;
       server        = mkDefault "krg-ldap.krg.local";
       serverIp      = mkDefault "137.110.161.109";   # krg-ldap (pin so members resolve the DC)
       allowedGroups = mkDefault [ "Domain Admins" ];
+      # Domain Admins get sudo (password-required) on every host; the local
+      # break-glass admin (users/admin.nix) keeps its own NOPASSWD rule.
+      sudoGroups    = mkDefault [ "Domain Admins" ];
       sshKeysFromAD = mkDefault true;
     };
 
@@ -141,12 +159,23 @@ in {
     # kernel.sysrq = 1 (from waiter sysctl.d/90-sysrq.conf)
     boot.kernel.sysctl."kernel.sysrq" = 1;
 
-    # Replaces APT unattended-upgrades; pulls the flake and rebuilds
+    # Replaces APT unattended-upgrades; pulls the flake and rebuilds.
+    #
+    # Deliberately builds from the COMMITTED flake.lock — no per-host nixpkgs
+    # re-resolution. The autoUpgrade module already appends `--refresh --flake
+    # <url>`, so each host fetches the latest `main` and builds the exact pinned
+    # nixpkgs everyone else builds. We do NOT pass `--update-input nixpkgs`
+    # (that made every host re-resolve nixpkgs independently → fleet drift, and
+    # silently ignored the lock) nor `--commit-lock-file` (a no-op against a
+    # read-only github: ref).
+    #
+    # FLEET-WIDE nixpkgs UPDATE = ONE step: in nix/, run `nix flake update nixpkgs`
+    # (or `nix flake update`), commit + push to main. CI builds it; the next 04:00
+    # tick rolls it out to every host from the new pinned lock.
     system.autoUpgrade = mkIf cfg.autoUpgrade {
       enable      = true;
       allowReboot = false;
       flake       = cfg.flakeUrl;
-      flags       = [ "--update-input" "nixpkgs" "--commit-lock-file" ];
       dates       = "04:00";
     };
 
