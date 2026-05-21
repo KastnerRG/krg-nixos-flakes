@@ -38,9 +38,12 @@
 # them. `zfs set mountpoint=...` later is non-destructive.
 {...}: let
   # GOTCHA — RAIDZ1 uses the SMALLEST member. All four NVMe zfs partitions are
-  # "100%" of an identical disk minus an identical 1G ESP, so they come out equal.
-  # That uniform ESP-on-every-disk is also why we put the ESP on all 4, not 2.
-  espSize = "1G";
+  # "100%" of an identical disk minus an identical 2G ESP, so they come out equal.
+  # An independent ESP on every disk is what makes GRUB mirroredBoots work: each
+  # disk is self-contained and bootable, so the box survives losing any one NVMe.
+  # 2G (not 1G) because GRUB copyKernels stores kernels+initrds (ZFS initrds are
+  # chunky) on the vfat ESP, and configurationLimit generations must all fit.
+  espSize = "2G";
 
   # Inherited-by-children pool root props. recordsize is intentionally left at the
   # ZFS default (128K) here and only overridden to 1M on the scratch datasets.
@@ -65,13 +68,18 @@ in {
             ESP = {
               size = espSize;
               # type EF00 (EFI System) so UEFI firmware enumerates it as bootable.
-              # With md metadata 1.0 the superblock sits at the END of the
-              # partition, so FAT32 at the start stays directly readable by
-              # firmware on each member independently.
+              # Independent vfat ESP per disk — NOT a RAID member. GRUB installs to
+              # all four via boot.loader.grub.mirroredBoots (hardware-configuration.nix)
+              # and writes the EFI fallback path (\EFI\BOOT\BOOTX64.EFI) on each, so
+              # firmware boots from whichever disk survives. Plain vfat (not the old
+              # md "boot" array) because systemd-boot/GRUB install onto a real GPT
+              # partition, never an md device.
               type = "EF00";
               content = {
-                type = "mdraid";
-                name = "boot"; # joins the `mdadm.boot` array below
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = [ "umask=0077" "nofail" ];
               };
             };
             zfs = {
@@ -90,12 +98,15 @@ in {
         content = {
           type = "gpt";
           partitions = {
+            # Mirror member 2 of the GRUB mirroredBoots set; see nvme0's ESP.
             ESP = {
               size = espSize;
               type = "EF00";
               content = {
-                type = "mdraid";
-                name = "boot";
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot-1";
+                mountOptions = [ "umask=0077" "nofail" ];
               };
             };
             zfs = {
@@ -114,12 +125,15 @@ in {
         content = {
           type = "gpt";
           partitions = {
+            # Mirror member 3 of the GRUB mirroredBoots set; see nvme0's ESP.
             ESP = {
               size = espSize;
               type = "EF00";
               content = {
-                type = "mdraid";
-                name = "boot";
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot-2";
+                mountOptions = [ "umask=0077" "nofail" ];
               };
             };
             zfs = {
@@ -138,12 +152,15 @@ in {
         content = {
           type = "gpt";
           partitions = {
+            # Mirror member 4 of the GRUB mirroredBoots set; see nvme0's ESP.
             ESP = {
               size = espSize;
               type = "EF00";
               content = {
-                type = "mdraid";
-                name = "boot";
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot-3";
+                mountOptions = [ "umask=0077" "nofail" ];
               };
             };
             zfs = {
@@ -192,20 +209,11 @@ in {
       };
     };
 
-    # ---- ESP mirror: 4-way RAID1, metadata 1.0 (firmware-readable members) ----
-    mdadm = {
-      boot = {
-        type = "mdadm";
-        level = 1; # RAID1 across all four ESP partitions
-        metadata = "1.0"; # REQUIRED here; "default"(=1.2) would hide FAT32 from firmware
-        content = {
-          type = "filesystem";
-          format = "vfat";
-          mountpoint = "/boot";
-          mountOptions = ["umask=0077"]; # keys/loader entries not world-readable
-        };
-      };
-    };
+    # NOTE — no mdadm. The ESP is deliberately NOT raided: each disk carries its
+    # own independent vfat ESP (above) and GRUB mirroredBoots installs to all four.
+    # A software-RAID ESP is a dead end here — neither systemd-boot nor GRUB will
+    # install onto an md device (they need a real GPT partition), and firmware can
+    # only read a plain FAT partition, not an md array.
 
     zpool = {
       # ===================== nvmepool (RAIDZ1, no encryption) =================

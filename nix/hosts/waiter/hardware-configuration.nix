@@ -1,6 +1,7 @@
 # waiter — hardware bits ONLY. Everything storage-related is owned elsewhere:
 #   - partitions / pools / datasets / fileSystems  -> disko-config.nix (disko
-#     generates config.fileSystems for /, /nix, /persist, /tools, /boot)
+#     generates config.fileSystems for /, /nix, /persist, /tools and the four
+#     mirrored ESP mounts /boot, /boot-1, /boot-2, /boot-3)
 #   - ZFS knobs (devNodes, supportedFilesystems, hostId-consuming bits) -> modules/zfs.nix
 #   - rollback + persistence                       -> modules/impermanence.nix
 #
@@ -19,19 +20,33 @@
 }: {
   imports = [(modulesPath + "/installer/scan/not-detected.nix")];
 
-  # ---- bootloader: systemd-boot on the mirrored ESP ----
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  # /boot is a RAID1 md device (see disko-config.nix). It is NOT needed in initrd
-  # (firmware reads it pre-Linux; Linux mounts it in stage 2), but the mdadm
-  # tooling/udev assembly must be present so the array comes up and systemd-boot
-  # can write loader entries to it.
-  boot.swraid.enable = true;
-  # mdmon (md array monitor) crashes if mdadm.conf has no mail/program target.
-  # Local root mail silences it; point MAILADDR at a real address once outbound
-  # mail is wired up, so a degraded /boot mirror actually pages someone.
-  boot.swraid.mdadmConf = "MAILADDR root";
+  # ---- bootloader: GRUB with a mirrored ESP across all four NVMe ----
+  # systemd-boot can't install onto a software-RAID ESP (bootctl needs a real GPT
+  # partition, not an md device — that was the "/dev/md127 is not located on a
+  # partitioned block device" failure). So the ESP is four independent vfat
+  # partitions (disko-config.nix) and GRUB is installed to every one.
+  # efiInstallAsRemovable writes the EFI fallback path (\EFI\BOOT\BOOTX64.EFI) on
+  # each ESP, so firmware boots from whichever disk survives WITHOUT depending on
+  # NVRAM boot entries — which is also why canTouchEfiVariables must be false.
+  # GRUB only ever reads the vfat /boot, never the ZFS pool, so there's no
+  # zpool-feature-flag fragility and we deliberately don't set grub.zfsSupport.
+  # copyKernels is required because /boot is vfat (can't symlink into the Nix
+  # store); configurationLimit bounds how many generations' kernels sit on the 2G ESP.
+  boot.loader.grub = {
+    enable                = true;
+    efiSupport            = true;
+    efiInstallAsRemovable = true;
+    copyKernels           = true;
+    configurationLimit    = 10;
+    mirroredBoots = [
+      { path = "/boot";   efiSysMountPoint = "/boot";   devices = [ "nodev" ]; }
+      { path = "/boot-1"; efiSysMountPoint = "/boot-1"; devices = [ "nodev" ]; }
+      { path = "/boot-2"; efiSysMountPoint = "/boot-2"; devices = [ "nodev" ]; }
+      { path = "/boot-3"; efiSysMountPoint = "/boot-3"; devices = [ "nodev" ]; }
+    ];
+  };
+  # Required with efiInstallAsRemovable (and we can't touch NVRAM on a mirrored ESP).
+  boot.loader.efi.canTouchEfiVariables = false;
 
   # ---- placeholders: replace with real `nixos-generate-config` output ----
   # These are reasonable defaults for an NVMe + SATA x86_64 server; the root pool
