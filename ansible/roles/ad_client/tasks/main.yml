@@ -100,6 +100,24 @@
     mode: "0644"
   notify: Validate and restart sshd
 
+# Sudo for AD admin groups (password required) — counterpart of nix
+# krg.adClient.sudoGroups. The break-glass krg-admin keeps its own NOPASSWD rule
+# (roles/krg_admin). Group names with spaces ("Domain Admins") are escaped for
+# sudoers; `validate` runs visudo so a malformed rule never lands.
+- name: Grant sudo to AD admin groups (password required)
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/krg-ad-sudo
+    content: |
+      # Managed by Ansible (krg-infra ad_client). AD groups granted sudo, password required.
+      {% for g in ad_sudo_groups %}
+      %{{ g | replace(' ', '\\ ') }} ALL=(ALL:ALL) ALL
+      {% endfor %}
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  when: ad_sudo_groups | length > 0
+
 # Only bring SSSD up once the host is actually joined; pre-join it would crash-loop
 # (single-domain SSSD exits when its AD backend can't initialise without a keytab).
 - name: Enable + start sssd (joined hosts only)

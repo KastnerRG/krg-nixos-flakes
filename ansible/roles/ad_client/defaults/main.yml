@@ -19,6 +19,8 @@ ad_hostname: "{{ ansible_hostname }}.{{ ad_domain }}"
 
 ad_allowed_groups:            # login restricted to members of these AD groups
   - Domain Admins
+ad_sudo_groups:               # AD groups granted sudo (password required); break-glass krg-admin keeps NOPASSWD
+  - Domain Admins
 ad_id_mapping: true           # auto uid/gid from SID; false = read RFC2307 attrs
 ad_ssh_keys_from_ad: true     # serve authorized keys from AD via sss_ssh_authorizedkeys
 ad_default_shell: /bin/bash   # exists on Debian (unlike NixOS)

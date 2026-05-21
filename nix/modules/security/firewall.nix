@@ -16,8 +16,8 @@ in {
       default = [];
     };
 
-    # Ports only reachable from the KRG Prometheus scraping host.
-    # Matches UFW rules: allow <port> from 132.239.95.67
+    # Ports only reachable from the KRG Prometheus scraping host
+    # (krg-prod; set via monitoringSourceIp below, sourced from trusted.json).
     monitoringPorts = mkOption {
       type        = types.listOf types.port;
       default     = [];
@@ -26,13 +26,27 @@ in {
 
     monitoringSourceIp = mkOption {
       type    = types.str;
-      default = "132.239.95.67";
+      # Fallback only — base.nix sets this on every host from trusted.json's
+      # monitoring_host (currently krg-prod). Kept in sync to avoid a stale value.
+      default = "137.110.161.106";
     };
 
     allowRDP = mkOption {
       type        = types.bool;
       default     = false;
       description = "Open port 3389 for XRDP (waiter compute nodes)";
+    };
+
+    rdpSources = mkOption {
+      type        = types.listOf types.str;
+      default     = [];
+      description = ''
+        When allowRDP is set: if non-empty, 3389 is reachable ONLY from these
+        CIDRs/IPs (source-restricted in-guest); if empty, 3389 is opened globally.
+        On a public-IP compute box you want this set — base.nix defaults it to the
+        trusted UCSD nets so RDP is never exposed to the whole internet (RDP is not
+        key-only and there's no xrdp fail2ban jail). Inert unless allowRDP = true.
+      '';
     };
 
     sshSources = mkOption {
@@ -61,22 +75,28 @@ in {
       networking.firewall = {
         # When sshSources is set, SSH (22) is source-restricted via the rules
         # below, so drop it from the globally-open port list.
+        # 3389 only joins the globally-open list when allowRDP is set AND no
+        # rdpSources are given; with rdpSources it's source-restricted below.
         allowedTCPPorts =
           (if cfg.sshSources == []
            then cfg.allowedTCPPorts
            else filter (p: p != 22) cfg.allowedTCPPorts)
-          ++ optional cfg.allowRDP 3389;
+          ++ optional (cfg.allowRDP && cfg.rdpSources == []) 3389;
         allowedUDPPorts = cfg.allowedUDPPorts;
 
-        # nftables rules: monitoring-port scraping (from monitoringSourceIp) and,
-        # on service hosts, source-restricted SSH (from sshSources).
+        # nftables rules: monitoring-port scraping (from monitoringSourceIp),
+        # source-restricted SSH (from sshSources, service hosts), and
+        # source-restricted RDP (from rdpSources when allowRDP).
         extraInputRules =
           concatMapStringsSep "\n" (port: ''
             ip saddr ${cfg.monitoringSourceIp} tcp dport ${toString port} accept
           '') cfg.monitoringPorts
           + concatMapStringsSep "\n" (src: ''
             ip saddr ${src} tcp dport 22 accept
-          '') cfg.sshSources;
+          '') cfg.sshSources
+          + optionalString cfg.allowRDP (concatMapStringsSep "\n" (src: ''
+            ip saddr ${src} tcp dport 3389 accept
+          '') cfg.rdpSources);
       };
     })
   ];
