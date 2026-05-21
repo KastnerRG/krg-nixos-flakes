@@ -1,0 +1,20 @@
+# NVIDIA DCGM GPU-metrics exporter (Prometheus, port 9400).
+# Declared by the nvidia module (krg.nvidia.dcgmExporter) so it's present on EVERY
+# host with the NVIDIA driver — not wired per-host. Vendor container; needs the
+# nvidia runtime (hardware.nvidia-container-toolkit) + SYS_ADMIN for DCP metrics.
+services:
+  dcgm_exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.4.2-4.7.1-distroless
+    container_name: dcgm_exporter
+    restart: always
+    ports:
+      - 9400:9400
+    cap_add:
+      - SYS_ADMIN
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

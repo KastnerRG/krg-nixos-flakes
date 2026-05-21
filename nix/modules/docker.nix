@@ -12,17 +12,6 @@ in {
       description = "Register nvidia-container-runtime in the Docker daemon (for GPU nodes)";
     };
 
-    enableLokiDriver = mkOption {
-      type        = types.bool;
-      default     = false;
-      description = "Set Loki as the default log driver. Requires manual plugin install on first boot.";
-    };
-
-    lokiUrl = mkOption {
-      type    = types.str;
-      default = "http://127.0.0.1:3100/loki/api/v1/push";
-    };
-
     metricsAddr = mkOption {
       type    = types.str;
       default = "0.0.0.0:9323";
@@ -49,32 +38,12 @@ in {
             args = [];
           };
         })
-        (mkIf cfg.enableLokiDriver {
-          "log-driver" = "loki";
-          "log-opts"   = { "loki-url" = cfg.lokiUrl; };
-        })
+        # TODO (planned, not yet): ship container logs to a central Loki FLEET-WIDE
+        # (every machine, probably from base.nix). The old approach here — Docker's
+        # loki log-driver via an on-first-boot `docker plugin install` — was removed
+        # for now: it's fragile (a dead Loki endpoint can hang docker) and isn't the
+        # path we want for the fleet roll-out.
       ];
-    };
-
-    # Install the Grafana Loki Docker log driver plugin on first boot.
-    # The daemon.json above references it by alias "loki"; this service
-    # ensures the plugin is installed before Docker tries to use it.
-    systemd.services.docker-loki-plugin = mkIf cfg.enableLokiDriver {
-      description = "Install Grafana Loki Docker log driver plugin";
-      after       = [ "docker.service" ];
-      requires    = [ "docker.service" ];
-      wantedBy    = [ "multi-user.target" ];
-      serviceConfig = {
-        Type             = "oneshot";
-        RemainAfterExit  = true;
-        ExecStart        = pkgs.writeShellScript "install-loki-plugin" ''
-          PLUGIN="grafana/loki-docker-driver:3.3.2-amd64"
-          if ! ${pkgs.docker}/bin/docker plugin ls --format '{{.Name}}' | grep -qF "$PLUGIN"; then
-            ${pkgs.docker}/bin/docker plugin install --alias loki "$PLUGIN" --grant-all-permissions
-          fi
-          ${pkgs.docker}/bin/docker plugin enable "$PLUGIN" 2>/dev/null || true
-        '';
-      };
     };
   };
 }

@@ -3,6 +3,8 @@ with lib;
 let
   cfg = config.krg.nvidia;
 in {
+  imports = [ ../services/compose-stack.nix ];
+
   options.krg.nvidia = {
     enable = mkEnableOption "NVIDIA CUDA + container toolkit (waiter compute nodes)";
 
@@ -14,6 +16,15 @@ in {
 
     # true = nvidia-driver-580-open equivalent (open kernel module)
     openDriver = mkOption {
+      type    = types.bool;
+      default = true;
+    };
+
+    # DCGM GPU-metrics exporter, coupled to the driver: no reason to run GPUs without
+    # GPU monitoring, so it's on whenever the driver is. Vendor container needing the
+    # nvidia runtime → runs as a Docker compose stack (repo rule: native systemd for
+    # what NixOS modules cover, Docker for the rest). Scraped on 9400 by Prometheus.
+    dcgmExporter.enable = mkOption {
       type    = types.bool;
       default = true;
     };
@@ -49,5 +60,15 @@ in {
     environment.systemPackages = with pkgs; [
       cudaPackages.cudatoolkit
     ];
+
+    # GPU-metrics exporter (Docker compose stack), coupled to the driver above.
+    krg.composeStacks.dcgm-exporter = mkIf cfg.dcgmExporter.enable {
+      description  = "NVIDIA DCGM GPU metrics exporter";
+      composeFiles = [ "${../../docker-compose/dcgm-exporter}/compose.yml" ];
+      networks     = [];
+    };
+
+    # Expose the exporter to the Prometheus scraping host (merges with profile ports).
+    krg.firewall.monitoringPorts = mkIf cfg.dcgmExporter.enable [ 9400 ];
   };
 }

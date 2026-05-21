@@ -1,6 +1,6 @@
 # Waiter-style compute profile: GPU/CUDA, FPGA tools, XRDP desktop, research users.
 # Import this in a host's default.nix, then add host-specific compose stacks and users.
-{ ... }: {
+{ config, lib, pkgs, ... }: {
   imports = [
     ./base.nix
     ../modules/docker.nix
@@ -39,28 +39,34 @@
     openDriver = true;
   };
 
-  krg.fpga.enable = true;
-  krg.xrdp.enable = true;
+  # FPGA/EDA tooling is OPT-IN, not a compute default: waiter does FPGA research,
+  # but kml-class ML boxes don't use it. A host that needs it sets enable = true.
+  krg.fpga.enable = lib.mkDefault false;
+  # The XRDP/XFCE desktop exists only to host the FPGA GUI tools (Vivado/Vitis/
+  # Questa), so it tracks FPGA: a headless compute box (FPGA off) gets no desktop.
+  krg.xrdp.enable = config.krg.fpga.enable;
 
   # Native IPMI exporter systemd service (from waiter monitoring.yaml)
   krg.ipmiExporter.enable = true;
 
-  # Override base.nix's default-on node exporter: waiter runs node_exporter in
-  # its Docker monitoring stack (network_mode: host, binds 9100), so the native
-  # systemd exporter would clash on the same port.
-  krg.nodeExporter.enable = false;
+  # node_exporter is native via base.nix (services.prometheus.exporters.node on 9100,
+  # systemd collector) — same as every other host. Deliberately NOT in waiter's Docker
+  # stack: the repo's rule is native systemd exporters, Docker only when needed.
 
   # Qualys + Trellix are enabled for all machines in base.nix.
   # The installer archive is wired up in hosts/waiter/default.nix.
 
-  krg.users.defaultGroups = [ "docker" "cuda" "rdp_users" ];
+  # rdp_users is intentionally NOT here — the xrdp module creates and adds it only
+  # when XRDP is enabled (which tracks FPGA), so it's not blindly applied everywhere.
+  krg.users.defaultGroups = [ "docker" "cuda" ];
 
   # waiter is physical, so base.nix keeps the NixOS firewall enabled.
   krg.firewall = {
     allowedTCPPorts = [ 22 ];
-    allowRDP        = true;
-    # waiter UFW: node-exporter (9100), docker metrics (9323), prometheus client (9000),
-    # IPMI exporter (9290) — 9290 was missing from original UFW but prometheus.yml scrapes it
+    allowRDP        = config.krg.fpga.enable;  # 3389 only when the XRDP desktop is up
+    # node-exporter (9100), docker metrics (9323), prometheus client (9000),
+    # IPMI exporter (9290). DCGM (9400) is contributed by the nvidia module
+    # (krg.nvidia.dcgmExporter), coupled to the driver — not listed here.
     monitoringPorts = [ 9100 9290 9323 9000 ];
   };
 
@@ -70,4 +76,7 @@
 
   # Enable Zsh system-wide (waiter playbook modified /etc/zsh/zshrc for Nix)
   programs.zsh.enable = true;
+
+  # CIFS/SMB mount tooling (e.g. e4e-nas shares) — mirrors kastner-ml's cifs-utils.
+  environment.systemPackages = [ pkgs.cifs-utils ];
 }
