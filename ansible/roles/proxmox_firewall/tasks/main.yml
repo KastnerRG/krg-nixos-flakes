@@ -44,3 +44,14 @@
     unsafe_writes: true        # /etc/pve is the pmxcfs FUSE filesystem
   when: proxmox_host_fw_rules | length > 0
   notify: restart pve firewall
+
+# Emptying proxmox_host_fw_rules must REVOKE the rules, not leave a stale host.fw
+# with live ACCEPTs behind. Remove the file when this node has no host-scoped rules
+# (the node then falls back to cluster.fw alone). Idempotent: no-op if absent.
+- name: Remove per-node host firewall when no rules
+  ansible.builtin.file:
+    path: "/etc/pve/nodes/{{ proxmox_node_name }}/host.fw"
+    state: absent
+    unsafe_writes: true        # /etc/pve is the pmxcfs FUSE filesystem
+  when: proxmox_host_fw_rules | length == 0
+  notify: restart pve firewall
