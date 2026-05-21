@@ -72,11 +72,15 @@
     hostName = "waiter";
     domain   = "ucsd.edu";
 
-    # Static IP on the UCSD-facing onboard NIC. Confirmed live name = eno1
-    # (MAC cc:28:aa:0a:58:fa); the old enp3s0f0 was wrong. eno* names come from
-    # SMBIOS, so NixOS should use eno1 too — verify with `ip -br link` post-install.
+    # Static IP on the UCSD-facing onboard NIC. VERIFIED on the installed system
+    # via `ip -br link`: name = eno1np0, MAC cc:28:aa:0a:58:fa. The `np0` suffix is
+    # the netdev/phys-port of this multi-port onboard NIC (predictable naming) —
+    # the earlier guesses enp3s0f0 and eno1 were BOTH wrong. Predictable names are
+    # stable per hardware+driver, so this won't drift across reboots/rebuilds; only
+    # a NIC swap or major driver change could rename it (then re-check, or pin by
+    # MAC with a systemd .link rename).
     useDHCP  = false;
-    interfaces.eno1 = {
+    interfaces.eno1np0 = {
       ipv4.addresses = [{ address = "137.110.161.67"; prefixLength = 24; }];
     };
     defaultGateway = "137.110.161.1";

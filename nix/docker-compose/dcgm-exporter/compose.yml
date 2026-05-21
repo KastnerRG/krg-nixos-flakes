@@ -1,7 +1,14 @@
 # NVIDIA DCGM GPU-metrics exporter (Prometheus, port 9400).
 # Declared by the nvidia module (krg.nvidia.dcgmExporter) so it's present on EVERY
-# host with the NVIDIA driver — not wired per-host. Vendor container; needs the
-# nvidia runtime (hardware.nvidia-container-toolkit) + SYS_ADMIN for DCP metrics.
+# host with the NVIDIA driver — not wired per-host. Vendor container; needs
+# hardware.nvidia-container-toolkit + SYS_ADMIN for DCP metrics.
+#
+# GPU access goes through CDI (`devices: nvidia.com/gpu=all`), NOT the legacy
+# `deploy.resources.reservations.devices: driver: nvidia` (== `docker run --gpus`).
+# On NixOS, hardware.nvidia-container-toolkit generates CDI specs but does NOT
+# register the legacy nvidia device driver, so the old syntax fails fast with
+# `could not select device driver "nvidia" with capabilities: [[gpu]]`. CDI device
+# names are served from the toolkit's generated spec (/etc/cdi or /run/cdi).
 services:
   dcgm_exporter:
     image: nvcr.io/nvidia/k8s/dcgm-exporter:4.4.2-4.7.1-distroless
@@ -11,10 +18,5 @@ services:
       - 9400:9400
     cap_add:
       - SYS_ADMIN
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    devices:
+      - nvidia.com/gpu=all
