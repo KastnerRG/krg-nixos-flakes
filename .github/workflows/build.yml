@@ -1,6 +1,16 @@
 name: Build NixOS configurations
 
+# Gate `main` and every PR: hosts auto-pull `main` nightly (system.autoUpgrade in
+# profiles/base.nix), so an unbuildable commit on main would propagate to the whole
+# fleet. Run on push to main and on PRs targeting it; keep manual dispatch too.
+# NOTE: this only *runs* the checks — enforcement (required status checks +
+# "require PR before merge") is a branch-protection setting on the GitHub repo,
+# configure that on KastnerRG/krg-infra so a red build actually blocks merge.
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
