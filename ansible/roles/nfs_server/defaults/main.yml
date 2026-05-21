@@ -1,0 +1,49 @@
+# nfs_server — NFS exports backed by ZFS, served from the Proxmox HOST.
+#
+# fabricant-ONLY: wired in playbooks/site.yml as a `hosts: fabricant` play, NOT in
+# group_vars/proxmox.yml. Other PVE hosts must not expose this NFS. Per-host
+# specifics (pool, shares, clients) live in inventory/host_vars/fabricant.yml.
+
+# REQUIRED. The EXISTING ZFS pool to carve NFS datasets from. No safe default — set
+# it in host_vars after confirming with `zpool list` on the box (the role asserts
+# it is non-empty before doing anything).
+nfs_pool: ""
+
+# Parent dataset that holds every share; children inherit its props + mountpoint
+# (so <parent>/home auto-mounts at <nfs_root>/home).
+nfs_parent_dataset: "{{ nfs_pool }}/nfs"
+nfs_root: "/srv/nfs"
+
+# Props applied to the parent dataset (children inherit unless they override in
+# their own dataset_props). Mirrors the waiter pool conventions (zstd / atime off /
+# xattr=sa / posixacl). Snapshots default OFF here; per-share datasets opt in.
+nfs_parent_props:
+  compression: zstd
+  atime: "off"
+  xattr: sa
+  acltype: posixacl
+  "com.sun:auto-snapshot": "false"
+
+# Guaranteed floor for the whole <pool>/nfs subtree (home + bulk + snapshots), via
+# a ZFS `reservation`. Empty = none. Use this to prioritize user data on a shared
+# pool: it sets aside space nothing else can take, so VMs/other datasets can't
+# starve NFS. MUST be <= currently-free pool space or `zfs set` is rejected.
+nfs_parent_reservation: ""
+
+# Hard cap on TOTAL NFS usage. Empty = no cap (user data free to grow into spare
+# space). Prefer bounding the *less-important* datasets (see the zfs_limits role)
+# over capping user data; set this only if you also need an upper bound on NFS.
+nfs_parent_quota: ""
+
+# NFSv4-only by default: a single tcp/2049 to firewall, no rpcbind/mountd/statd
+# port sprawl. Flip to false only if a legacy v3 client ever needs it.
+nfs_disable_v3: true
+
+# NFSv4 owner-string domain. Must MATCH on the clients (/etc/idmapd.conf) or v4
+# owners show up as `nobody`. Our AD realm short-name.
+nfs_idmap_domain: krg.local
+
+# The shares. Each entry -> one child dataset (<parent>/<name>, mounted at
+# <nfs_root>/<name>) + one /etc/exports.d line. Defined in host_vars; see the
+# example there for the schema (name / fsid / dataset_props / clients).
+nfs_exports: []

@@ -2,3 +2,14 @@
 # NOTE: a guest .fw only takes effect if that VM's NIC has the firewall option
 # enabled (qm set <vmid> --net0 ...,firewall=1 / the "Firewall" checkbox).
 proxmox_guests: []
+
+# Per-NODE (host-scoped) firewall rules -> /etc/pve/nodes/<node>/host.fw [RULES].
+# Defined in host_vars (e.g. fabricant's NFS tcp/2049). HOST-SCOPED ON PURPOSE:
+# rules here apply ONLY to this node, even after more nodes (incl. the rebuilt
+# breached host) join the cluster — cluster.fw is the datacenter-wide layer. Empty
+# -> no host.fw is written for this node. The cluster default-deny is a chain
+# POLICY (cluster.fw policy_in: DROP), so these ACCEPTs are honored before it.
+proxmox_host_fw_rules: []
+# PVE node name (the host.fw lives under /etc/pve/nodes/<this>/). Defaults to the
+# inventory hostname; override if the inventory name and PVE node name differ.
+proxmox_node_name: "{{ inventory_hostname }}"

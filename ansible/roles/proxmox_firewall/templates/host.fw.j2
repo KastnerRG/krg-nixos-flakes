@@ -1,0 +1,14 @@
+{# Managed by Ansible (krg-infra proxmox_firewall). Per-NODE rules — host-scoped on
+   purpose (NOT cluster.fw): these apply ONLY to this node, even after more nodes
+   (incl. the rebuilt breached host) join the cluster. Source: proxmox_host_fw_rules
+   in host_vars. The datacenter default-deny is a chain POLICY (cluster.fw
+   policy_in: DROP), so the ACCEPTs below are evaluated before it. #}
+[OPTIONS]
+
+enable: 1
+
+[RULES]
+
+{% for rule in proxmox_host_fw_rules %}
+{{ rule }}
+{% endfor %}

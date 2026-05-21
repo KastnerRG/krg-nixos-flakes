@@ -1,0 +1,11 @@
+# zfs_limits — apply quota / reservation to EXISTING ZFS datasets (idempotent prop
+# reconcile; never creates or destroys data). Used fabricant-only (a `hosts:
+# fabricant` play) to bound VM storage so user/NFS data wins pool contention —
+# "user data > VM data". The NFS dataset's OWN limits live in the nfs_server role
+# (nfs_parent_reservation / nfs_parent_quota), not here.
+#
+# Schema (set in host_vars). quota and reservation are each optional per entry:
+#   zfs_limits:
+#     - { name: "rpool/data", quota: "2T" }
+#     - { name: "rpool/foo",  reservation: "1T" }
+zfs_limits: []

@@ -24,7 +24,9 @@ ansible/
     group_vars/               # MUST live next to the inventory so ansible-playbook loads it
       all.yml                 # generic baseline vars (admin keys, timezone, fail2ban, trusted nets)
       proxmox.yml             # PVE-specific vars (firewall IPSets / VM map — with proxmox_firewall)
-  playbooks/site.yml          # applies the baseline to all hosts
+    host_vars/
+      fabricant.yml           # fabricant-ONLY vars (NFS shares, ZFS limits, host.fw rules)
+  playbooks/site.yml          # baseline (all) + proxmox firewall (proxmox) + storage (fabricant)
   roles/
     base/                     # THE baseline — OS basics (timezone, packages incl tmux,
                               #   unattended upgrades, sysctl) + composes the security +
@@ -34,7 +36,9 @@ ansible/
     fail2ban/                 # sshd brute-force jail
     monitoring/               # node + ipmi exporters (systemd) — on every host
     oec_qualys_trellix/       # campus-mandated Qualys + Trellix (set oec_installer)
-    proxmox_firewall/         # PVE cluster.fw + per-guest <vmid>.fw (proxmox group only)
+    proxmox_firewall/         # PVE cluster.fw + per-guest <vmid>.fw + per-node host.fw (proxmox group)
+    zfs_limits/               # quota/reservation on existing ZFS datasets (fabricant ONLY play)
+    nfs_server/               # NFSv4 exports on ZFS datasets (fabricant ONLY play)
 ```
 
 Every host gets the baseline by applying a single role, `base`, which composes
@@ -42,6 +46,16 @@ Every host gets the baseline by applying a single role, `base`, which composes
 in a deliberate order (see `roles/base/tasks/main.yml`). `proxmox_firewall` is the
 one perimeter concern that stays a separate, `proxmox`-group-only play in
 `site.yml` (it's a hypervisor concern, not an all-hosts default).
+
+`zfs_limits` + `nfs_server` are a **`fabricant`-only** play (not the `proxmox`
+group). `nfs_server` carves a `<pool>/nfs` ZFS dataset and exports `home` + `bulk`
+over **NFSv4** (single tcp/2049); `zfs_limits` caps the *other* datasets (e.g. the
+VM disks) so user/NFS data wins pool contention. Pool, shares, clients, and quotas
+live in `inventory/host_vars/fabricant.yml`. The NFS port is opened in fabricant's
+**per-node `host.fw`** (host-scoped, via `proxmox_host_fw_rules`) — NOT cluster.fw,
+so it stays fabricant-only as more nodes join. For host.fw ACCEPTs to be honored,
+`cluster.fw` uses `policy_in: DROP` (a chain policy, evaluated last) instead of a
+terminal `IN DROP` rule — same deny posture, but per-node allowances now work.
 
 Admin SSH keys are **shared** with the NixOS layer — edit `nix/keys/admins.json`
 (read by both); do not duplicate keys here.
@@ -79,5 +93,11 @@ validation, not new code:
 - `proxmox_firewall`: `cluster.fw` (IPSets `public`/`sealab`/`ucsd`) + per-guest
   `<vmid>.fw` (krg-ldap = 100). **Tightens SSH + the exporters off `+dc/public`**
   — services → `ucsd`/`sealab`, compute → public SSH, exporters → monitoring host.
+- `nfs_server` + `zfs_limits` (fabricant): pool (`rpool`), 20T reservation on
+  `rpool/nfs`, 2T cap on `rpool/data`, and the NFS tcp/2049 host.fw rule are all set
+  in `host_vars/fabricant.yml`. **Pending on-box validation:** run the play, confirm
+  the datasets/quotas, that `pve-firewall compile` shows the 2049 ACCEPT before the
+  default drop, and that a client can mount `fabricant:/srv/nfs/home`. Widen the
+  export + host.fw client lists (keep them in sync) as more hosts mount.
 - TOTP 2FA on the PVE realm; PVE web-UI fail2ban jail; PVE patching + persistence
   hunting (post-breach).

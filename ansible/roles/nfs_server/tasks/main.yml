@@ -1,0 +1,115 @@
+# krg-infra nfs_server — NFS exports backed by ZFS datasets, served from the
+# Proxmox HOST. fabricant-only (see the `hosts: fabricant` play in site.yml).
+#
+# WHY ON THE HOST: the ZFS pool lives on the hypervisor, so exporting from a guest
+# would mean passing the pool/zvols through. Scope is deliberately fabricant-only —
+# keep this OUT of group_vars/proxmox.yml so other PVE hosts never expose it.
+#
+# FIREWALL (Model 3: in-guest owns ports, Proxmox owns sources): this role opens
+# NOTHING. The perimeter (cluster.fw / per-node host.fw — proxmox_firewall role)
+# DROPs inbound by default, so tcp/2049 must be allowed to the NFS clients there
+# before this is reachable. See the firewall follow-up in the role's notes.
+#
+# ID MAPPING: clients map AD users to uid/gid algorithmically (deterministic from
+# the SID, identical on every host — nix krg.adClient / ansible ad_client), so a
+# plain sec=sys export lines up across hosts without idmapd doing the heavy lifting.
+
+- name: Assert a ZFS pool is configured
+  ansible.builtin.assert:
+    that:
+      - nfs_pool | length > 0
+    fail_msg: >-
+      nfs_pool is empty. Set it in inventory/host_vars/fabricant.yml to the pool
+      shown by `zpool list` on fabricant — do NOT guess, pool names differ per box.
+
+- name: Install NFS kernel server
+  ansible.builtin.apt:
+    name: nfs-kernel-server
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# --- ZFS datasets ----------------------------------------------------------
+# community.general.zfs is idempotent (creates if missing, reconciles props) —
+# unlike disko on the NixOS side, this is safe to re-run on a live pool.
+- name: Create parent ZFS dataset for NFS shares
+  community.general.zfs:
+    name: "{{ nfs_parent_dataset }}"
+    state: present
+    # mountpoint pins the subtree at nfs_root; reservation (if set) guarantees it a
+    # floor; quota (if set) caps it. On a shared pool we reserve (prioritize user
+    # data) and cap the VM dataset instead (zfs_limits role).
+    extra_zfs_properties: >-
+      {{ nfs_parent_props
+         | combine({'mountpoint': nfs_root})
+         | combine({'reservation': nfs_parent_reservation} if (nfs_parent_reservation | length > 0) else {})
+         | combine({'quota': nfs_parent_quota} if (nfs_parent_quota | length > 0) else {}) }}
+
+- name: Create per-share ZFS datasets
+  community.general.zfs:
+    name: "{{ nfs_parent_dataset }}/{{ item.name }}"
+    state: present
+    # Children inherit mountpoint (-> <nfs_root>/<name>) and the parent props;
+    # dataset_props only overrides (e.g. recordsize=1M, snapshot cadence).
+    extra_zfs_properties: "{{ item.dataset_props | default({}) }}"
+  loop: "{{ nfs_exports }}"
+  loop_control:
+    label: "{{ nfs_parent_dataset }}/{{ item.name }}"
+
+# --- NFS server config -----------------------------------------------------
+- name: Configure NFS protocol versions (v4-only by default)
+  ansible.builtin.template:
+    src: nfs.conf.j2
+    dest: /etc/nfs.conf.d/krg-nfs.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart nfs server
+
+- name: Set NFSv4 idmap domain
+  community.general.ini_file:
+    path: /etc/idmapd.conf
+    section: General
+    option: Domain
+    value: "{{ nfs_idmap_domain }}"
+    mode: "0644"
+  notify: restart nfs server
+
+- name: Ensure nfs-server systemd drop-in dir exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/nfs-server.service.d
+    state: directory
+    mode: "0755"
+
+- name: Order nfs-server after ZFS mounts
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/nfs-server.service.d/10-zfs.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by Ansible (krg-infra nfs_server). ZFS datasets are mounted by
+      # zfs-mount.service; nfsd must read /etc/exports.d AFTER they're mounted, or
+      # it would export the bare (empty) mountpoint instead of the dataset.
+      [Unit]
+      After=zfs-mount.service
+      Wants=zfs-mount.service
+  notify:
+    - reload systemd
+    - restart nfs server
+
+- name: Write NFS exports
+  ansible.builtin.template:
+    src: exports.j2
+    dest: /etc/exports.d/krg-nfs.exports
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reexport nfs
+
+- name: Enable + start nfs-server
+  ansible.builtin.systemd_service:
+    name: nfs-server
+    enabled: true
+    state: started
+    daemon_reload: true

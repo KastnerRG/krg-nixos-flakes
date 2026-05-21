@@ -1,0 +1,8 @@
+{# Managed by Ansible (krg-infra nfs_server). Source of truth: nfs_exports in
+   inventory/host_vars/fabricant.yml. Each line exports one ZFS dataset; the same
+   fsid is applied to every client of that export (required, must be unique). #}
+{% for exp in nfs_exports %}
+# {{ exp.name }} ({{ nfs_parent_dataset }}/{{ exp.name }})
+{{ nfs_root }}/{{ exp.name }}{% for c in exp.clients %} {{ c.host }}({{ c.options }},fsid={{ exp.fsid }}){% endfor %}
+
+{% endfor %}

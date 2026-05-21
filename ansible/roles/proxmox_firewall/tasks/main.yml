@@ -31,3 +31,16 @@
   loop_control:
     label: "{{ item.vmid }} ({{ item.name | default('') }})"
   notify: restart pve firewall
+
+# Per-NODE host firewall (host-scoped rules, e.g. fabricant's NFS tcp/2049). Only
+# written when this node has rules — keeps host.fw off nodes that don't need it.
+- name: Template per-node host firewall
+  ansible.builtin.template:
+    src: host.fw.j2
+    dest: "/etc/pve/nodes/{{ proxmox_node_name }}/host.fw"
+    owner: root
+    group: www-data
+    mode: "0640"
+    unsafe_writes: true        # /etc/pve is the pmxcfs FUSE filesystem
+  when: proxmox_host_fw_rules | length > 0
+  notify: restart pve firewall

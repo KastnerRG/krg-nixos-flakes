@@ -1,0 +1,19 @@
+# Apply ZFS quotas/reservations to existing datasets. quota/reservation are
+# non-destructive, fully reversible props (`zfs set quota=none <ds>`); `state:
+# present` only reconciles the named props — it does NOT touch the dataset's data,
+# children, or other properties. The named datasets must already exist (e.g.
+# rpool/data is created by Proxmox); a typo'd name would create an empty dataset.
+#
+# CROSS-REFERENCE: the NFS subtree's own reservation/quota lives in nfs_server
+# (nfs_parent_reservation / nfs_parent_quota). Keep VM/other-dataset caps here.
+- name: Apply ZFS quotas/reservations to existing datasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties: >-
+      {{ {}
+         | combine({'quota': item.quota} if (item.quota is defined) else {})
+         | combine({'reservation': item.reservation} if (item.reservation is defined) else {}) }}
+  loop: "{{ zfs_limits }}"
+  loop_control:
+    label: "{{ item.name }} (quota={{ item.quota | default('-') }} reservation={{ item.reservation | default('-') }})"

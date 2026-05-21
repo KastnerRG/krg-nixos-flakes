@@ -3,6 +3,13 @@
 [OPTIONS]
 
 enable: 1
+# Default-deny inbound via the chain POLICY rather than a terminal `IN DROP` rule.
+# A policy is always evaluated LAST, so ACCEPT rules at every level — including
+# per-node host.fw (e.g. fabricant's NFS tcp/2049) — get a chance before the deny.
+# Same deny posture as the old `IN DROP -log nolog`; log_level_in: nolog keeps the
+# default drops unlogged.
+policy_in: DROP
+log_level_in: nolog
 
 {% for name, entries in krg_trusted.ipsets.items() %}
 [IPSET {{ name }}]
@@ -23,4 +30,5 @@ IN ACCEPT -source {{ krg_trusted.monitoring_host }} -p tcp -dport 9290 -log nolo
 IN ACCEPT -source {{ krg_trusted.monitoring_host }} -p tcp -dport 9000 -log nolog # service exporter
 IN SSH(ACCEPT) -source +dc/ucsd -log nolog
 IN SSH(ACCEPT) -source +dc/ops  -log nolog
-IN DROP -log nolog
+# (default-deny is policy_in: DROP in [OPTIONS] above — no terminal IN DROP rule,
+#  so per-node host.fw ACCEPTs are honored before the policy.)
