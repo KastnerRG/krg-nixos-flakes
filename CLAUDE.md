@@ -71,6 +71,7 @@ krg-infra/
     networks/trusted.json          # SHARED trusted nets / Proxmox IPSets — read by nix + ansible + PVE cluster.fw
     modules/
       docker.nix  users.nix  snapper.nix
+      nfs-home.nix                 # mount /home from NFS (krg.nfsHome) — AD user homes off the local ZFS root (enables impermanence)
       samba-ad.nix                 # Samba AD domain controller (samba4Full daemon, krb5.conf, DNS/resolver, AD ports)
       security/{fail2ban,firewall,oec-qualys-trellix}.nix   # firewall is the single switch
       services/{compose-stack,node-exporter,ipmi-exporter}.nix
@@ -81,14 +82,15 @@ krg-infra/
       compute.nix                  # waiter role (physical; NVIDIA/FPGA/XRDP/ZFS)
       directory.nix                # krg-ldap role: Samba AD DC (realm KRG.LOCAL)
     hosts/{krg-prod,e4e-prod,waiter,krg-ldap}/{default,hardware-configuration}.nix
-    users/admin.nix                # local break-glass admin (krg-admin/e4e-admin); keys from keys/admins.json; human users come from Samba AD
+    users/admin.nix                # local break-glass admin (krg-admin/e4e-admin); home /var/lib/<account> (OFF /home, so an NFS /home mount can't shadow it); keys from keys/admins.json; human users come from Samba AD
     docker-compose/{krg-prod,waiter}/...   # compose stacks mounted by the flake
   ansible/                         # Proxmox hypervisor hosts (Debian/PVE)
     ansible.cfg  requirements.yml
     inventory/
       hosts.yml                    # the Proxmox hosts (group: proxmox) — currently one host, "fabricant"
       group_vars/{all,proxmox}.yml # next to the inventory (so ansible-playbook loads it): all.yml = generic baseline (keys/trusted nets via the shared files); proxmox.yml = PVE-specific
-    playbooks/site.yml             # all hosts → base; proxmox group → proxmox_firewall
+      host_vars/fabricant.yml      # fabricant-ONLY vars (NFS shares, ZFS limits, host.fw rules)
+    playbooks/site.yml             # all hosts → base; proxmox group → proxmox_firewall; fabricant → zfs_limits + nfs_server
     roles/
       base/                        # THE baseline: OS basics (timezone, packages incl tmux, unattended upgrades, sysctl) + composes the security/monitoring roles below (import_role, ordered: krg_admin → ssh_hardening → fail2ban → monitoring → oec)
       krg_admin/                   # key-only sudo krg-admin (mirrors nix/users/admin.nix)
@@ -96,7 +98,9 @@ krg-infra/
       fail2ban/                    # sshd brute-force jail
       monitoring/                  # node + ipmi exporters (systemd) — on every host via base
       oec_qualys_trellix/          # campus-mandated Qualys + Trellix (set oec_installer) — via base
-      proxmox_firewall/            # PVE cluster.fw + per-guest <vmid>.fw (proxmox group only, separate play)
+      proxmox_firewall/            # PVE cluster.fw + per-guest <vmid>.fw + per-node host.fw (host rules eval before cluster rules; proxmox group, separate play)
+      zfs_limits/                  # quota/reservation on EXISTING ZFS datasets — caps VM storage so user data wins (fabricant ONLY play)
+      nfs_server/                  # NFSv4 exports on ZFS datasets under <pool>/nfs (fabricant ONLY play; NFS tcp/2049 opened via fabricant host.fw)
 ```
 
 > **Naming note:** `fabricant` now refers only to the Proxmox **host** (hypervisor,
@@ -189,6 +193,6 @@ The grafana/prometheus/loki compose services mount config from the working direc
 - [ ] nix in-guest service-SSH restriction (read `ucsd`/`sealab` from `trusted.json` so service hosts restrict 22 in-guest too).
 - [ ] TOTP 2FA on the PVE realm; PVE web-UI fail2ban jail (needs `filter.d/proxmox.conf`); PVE patching + persistence hunting (post-breach).
 - [ ] Add Vault for secrets management (replacing manual `.secrets/` population).
-- [ ] **waiter NFS `/home` + restore impermanence.** `krg.impermanence.enable` is **off** on waiter (`hosts/waiter/default.nix`) because there's no `/home` dataset and SSSD's `fallback_homedir=/home/%u` would sit on the rolled-back root → user homes wiped each boot. Mount `/home` from NFS (identity from Samba AD; `nfs-utils` + autofs) or give it a dedicated non-rolled-back dataset, then flip impermanence back to `true` and verify the `@blank` rollback + `/persist` bind mounts on a test reboot. (Docker already has its own `nvmepool/docker` dataset, so it's durable regardless.)
+- [~] **waiter NFS `/home` + restore impermanence.** **Built (PR #4):** `/home` is served from fabricant (`rpool/nfs/home`, ansible `nfs_server`) and mounted on waiter via `krg.nfsHome` (`modules/nfs-home.nix` — systemd automount, NFSv4, pinned to fabricant's IP), moving user homes OFF the rolled-back root. The break-glass admin home was relocated to `/var/lib/<account>` (`users/admin.nix`) so the NFS mount can't shadow it. `krg.impermanence.enable` is still **off** on waiter (`hosts/waiter/default.nix`). **Remaining:** apply the fabricant play, deploy waiter, verify a login lands on NFS (`df /home/<aduser>`), THEN flip impermanence back to `true` and verify the `@blank` rollback + `/persist` bind mounts on a test reboot (consider persisting `/var/lib/krg-admin`). (Docker already has its own `nvmepool/docker` dataset, so it's durable regardless.)
 - [ ] **Second AD DC (remove the krg-ldap SPOF).** Today every host's login depends on the single `krg-ldap` VM on the `fabricant` hypervisor. Plan: stand up a second Samba AD DC on **another Proxmox host** before go-live. When it lands, let members fail over — either drop the pinned `krg.adClient.server`/`serverIp` so SSSD uses DNS SRV autodiscovery, or extend the module to list both DCs (and pin both in `/etc/hosts`). Until then, the SSSD offline cache (`cache_credentials=true`) + local break-glass `krg-admin` are the only continuity if krg-ldap is down.
 - [ ] **Autotier for waiter scratch datasets (not yet implemented).** `nvmepool/scratch-{krg,e4e}` and `hddpool/scratch-{krg,e4e}` are created `mountpoint=none` (quotas/reservations/`recordsize=1M` set) and mount **nowhere** — they're scaffolding for a planned NVMe→HDD autotier (hot data on `nvmepool`, cold on `hddpool`). Decide the tiering tool (e.g. `autotier` FUSE, or just present them as plain per-pool `/scratch/...` mounts and skip tiering), then wire the mounts. As-is they consume reservation but serve nothing.

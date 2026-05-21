@@ -102,15 +102,18 @@
 
 # Sudo for AD admin groups (password required) — counterpart of nix
 # krg.adClient.sudoGroups. The break-glass krg-admin keeps its own NOPASSWD rule
-# (roles/krg_admin). Group names with spaces ("Domain Admins") are escaped for
-# sudoers; `validate` runs visudo so a malformed rule never lands.
+# (roles/krg_admin). Group names with spaces ("Domain Admins") must be escaped for
+# sudoers with a SINGLE backslash (`%Domain\ Admins`). NOTE: inside this YAML
+# literal block (`content: |`) the templar does NOT unescape backslashes, so the
+# source uses one `\` — `\\` rendered TWO backslashes and tripped visudo. `validate`
+# runs visudo so a malformed rule never lands.
 - name: Grant sudo to AD admin groups (password required)
   ansible.builtin.copy:
     dest: /etc/sudoers.d/krg-ad-sudo
     content: |
       # Managed by Ansible (krg-infra ad_client). AD groups granted sudo, password required.
       {% for g in ad_sudo_groups %}
-      %{{ g | replace(' ', '\\ ') }} ALL=(ALL:ALL) ALL
+      %{{ g | replace(' ', '\ ') }} ALL=(ALL:ALL) ALL
       {% endfor %}
     owner: root
     group: root

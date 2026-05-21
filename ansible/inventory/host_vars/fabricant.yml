@@ -1,0 +1,70 @@
+# fabricant-only vars (NOT group_vars/proxmox.yml — other PVE hosts must not
+# inherit these). Covers fabricant's storage + host-scoped firewall, all wired as
+# fabricant-scoped plays in playbooks/site.yml:
+#   - nfs_server          NFSv4 exports on rpool/nfs
+#   - zfs_limits          pool capacity policy (cap VM storage)
+#   - proxmox_firewall    per-node host.fw (opens NFS tcp/2049)
+
+# ── ZFS pool ─────────────────────────────────────────────────────────────────
+# Confirmed via `zpool list` on fabricant: the only pool is `rpool` — a raidz1 over
+# 4x ~15TB drives, ~37 TiB usable (~26 TiB free). It backs EVERYTHING: the PVE OS
+# root (rpool/ROOT/pve-1 = /, currently holding a ~10.9 TiB backup of waiter data),
+# the VM disks (rpool/data), and var-lib-vz. NFS datasets land under rpool/nfs
+# (-> /srv/nfs).
+nfs_pool: "rpool"
+
+# ── Capacity policy: user data > VM data ─────────────────────────────────────
+# Guarantee user/NFS data a 20 TiB floor (settable now: 20T <= ~26T free) and let
+# it grow into spare space beyond that. No hard cap on NFS — the VMs are the
+# bounded party instead (zfs_limits below). Raise the reservation once the ~10.9T
+# waiter backup is dealt with and more space frees up.
+nfs_parent_reservation: "20T"
+nfs_parent_quota: ""        # no NFS cap; user data has priority
+
+# Quotas/reservations on PRE-EXISTING (non-NFS) datasets, applied by zfs_limits.
+# Cap the VM disk dataset so VMs (the less-important data) can't crowd user data or
+# fill the pool. Only ~9 GB of VM disks exist today, so 2T is generous headroom.
+zfs_limits:
+  - { name: "rpool/data", quota: "2T" }     # VM disks (zvols)
+  # - { name: "rpool/var-lib-vz", quota: "1T" }   # ISOs/templates/backups (uncomment to cap)
+
+# ── Host-scoped PVE firewall (proxmox_firewall -> /etc/pve/nodes/fabricant/host.fw) ──
+# Host-scoped ON PURPOSE (NOT cluster.fw): when the rebuilt breached host joins the
+# cluster, cluster.fw rules would apply to it too — NFS must stay fabricant-only.
+# Opens NFSv4 (tcp/2049) to the NFS clients. KEEP IN SYNC with the nfs_exports
+# client list below.
+proxmox_host_fw_rules:
+  - "IN ACCEPT -source 137.110.161.67 -p tcp -dport 2049 -log nolog # NFSv4 (waiter)"
+
+# ── NFS exports ──────────────────────────────────────────────────────────────
+nfs_exports:
+  # /home over NFS — gives AD users a home OFF a host's local root (the blocker for
+  # re-enabling impermanence on waiter; see CLAUDE.md). Clients mount this at /home,
+  # matching SSSD fallback_homedir=/home/%u.
+  #
+  # no_root_squash: pam_mkhomedir on the CLIENT runs as root and must create + chown
+  # each user's dir on this share; root_squash would map root -> `nobody` and first
+  # login would fail. It's scoped to the managed client IPs below. Prefer to keep
+  # root_squash? Then pre-create homes on the server and drop no_root_squash here.
+  - name: home
+    fsid: 11
+    dataset_props:
+      "com.sun:auto-snapshot": "true"
+    clients:
+      # The host(...) entries are EXPORT ACLs on this server only — they don't touch
+      # the clients' own configs. Add member hosts that mount /home here.
+      - { host: "137.110.161.67", options: "rw,sync,no_subtree_check,no_root_squash" }   # waiter
+      # - { host: "137.110.161.106", options: "rw,sync,no_subtree_check,no_root_squash" } # krg-prod
+
+  # General bulk/scratch — large-record dataset for shared project data. Normal
+  # root_squash. Tighten/loosen the client list (and rw/ro) as needed.
+  - name: bulk
+    fsid: 12
+    dataset_props:
+      recordsize: "1M"
+      "com.sun:auto-snapshot": "true"
+      "com.sun:auto-snapshot:frequent": "false"
+      "com.sun:auto-snapshot:hourly": "false"
+    clients:
+      - { host: "137.110.161.67", options: "rw,sync,no_subtree_check,root_squash" }   # waiter
+      # - { host: "132.239.10.0/24", options: "ro,sync,no_subtree_check,root_squash" } # sealab wifi (example)

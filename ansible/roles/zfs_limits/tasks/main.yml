@@ -1,0 +1,30 @@
+# Apply ZFS quotas/reservations to existing datasets. quota/reservation are
+# non-destructive, fully reversible props (`zfs set quota=none <ds>`); `state:
+# present` only reconciles the named props — it does NOT touch the dataset's data,
+# children, or other properties.
+#
+# GUARD: community.general.zfs with state=present would CREATE a missing dataset, so
+# a typo in item.name could silently make an empty dataset and cap the wrong place.
+# Pre-flight `zfs list` each target and fail fast if it doesn't already exist (these
+# are pre-existing datasets, e.g. rpool/data created by Proxmox — never ours to make).
+#
+# CROSS-REFERENCE: the NFS subtree's own reservation/quota lives in nfs_server
+# (nfs_parent_reservation / nfs_parent_quota). Keep VM/other-dataset caps here.
+- name: Assert target ZFS datasets already exist (a typo must not create one)
+  ansible.builtin.command: "zfs list -H -o name {{ item.name }}"
+  loop: "{{ zfs_limits }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false          # read-only; `zfs list` exits non-zero if missing -> fails here
+
+- name: Apply ZFS quotas/reservations
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties: >-
+      {{ {}
+         | combine({'quota': item.quota} if (item.quota is defined) else {})
+         | combine({'reservation': item.reservation} if (item.reservation is defined) else {}) }}
+  loop: "{{ zfs_limits }}"
+  loop_control:
+    label: "{{ item.name }} (quota={{ item.quota | default('-') }} reservation={{ item.reservation | default('-') }})"
