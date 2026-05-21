@@ -69,7 +69,6 @@
 - name: Remove per-node host firewall when no rules
   ansible.builtin.file:
     path: "/etc/pve/nodes/{{ proxmox_node_name }}/host.fw"
-    state: absent
-    unsafe_writes: true        # /etc/pve is the pmxcfs FUSE filesystem
+    state: absent              # plain unlink — no atomic temp-write, so no unsafe_writes needed
   when: proxmox_host_fw_rules | length == 0
   notify: restart pve firewall
