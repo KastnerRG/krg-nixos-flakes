@@ -24,6 +24,12 @@ in {
       groups         = [ "wheel" ];
       sudoNoPassword = true;
       authorizedKeys = adminKeys.${account};
+      # Home OFF /home: the break-glass admin must work when /home is a network
+      # mount (e.g. waiter mounts /home from NFS via krg.nfsHome). A /home/<admin>
+      # home would be shadowed by that mount and unavailable whenever the NFS
+      # server is down — defeating the break-glass guarantee. /var/lib/<account>
+      # is local and always present (persist it if a host runs impermanence).
+      home           = "/var/lib/${account}";
     };
   };
 }

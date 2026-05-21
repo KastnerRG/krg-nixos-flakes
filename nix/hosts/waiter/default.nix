@@ -7,6 +7,7 @@
     inputs.disko.nixosModules.disko
     ./disko-config.nix
     ../../modules/impermanence.nix
+    ../../modules/nfs-home.nix
   ];
 
   # Physical host — keep the NixOS firewall enabled (this is the default).
@@ -27,6 +28,17 @@
   # back to true and verify the @blank rollback + /persist bind mounts on a test
   # reboot. Tracked in CLAUDE.md pending items.
   krg.impermanence.enable = false;
+
+  # AD user homes come from NFS (fabricant: rpool/nfs/home -> /srv/nfs/home). This
+  # moves /home OFF waiter's local ZFS root — the prerequisite for flipping
+  # impermanence back on above. Break-glass krg-admin is unaffected (its home is
+  # /var/lib/krg-admin, set in users/admin.nix). Server pinned by IP so /home never
+  # waits on DNS. The mount is a systemd automount, so if fabricant is down the box
+  # still boots; /home just mounts on first access once the server is back.
+  krg.nfsHome = {
+    enable = true;
+    server = "137.110.161.98";   # fabricant (the hypervisor serving rpool/nfs)
+  };
 
   # hddpool's datasets are all mountpoint=none with no fileSystems entry, so nothing
   # else triggers its import at boot — list it explicitly. (nvmepool is imported
