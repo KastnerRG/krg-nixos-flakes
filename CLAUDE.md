@@ -22,7 +22,7 @@ radius) is being rebuilt clean as a new Samba AD forest on krg-ldap.
 
 **Target feature set (from the old Ansible repos):**
 - **fabricant-prod**: production services — Traefik, Authentik (SSO), Grafana/Prometheus/Loki, Blackbox, PostgreSQL, Outline, MLflow, Label Studio, node/IPMI exporters, firewall, unattended upgrades. (These are the lab-wide tools now on **krg-prod**; E4E project-specific services go on **e4e-prod**.)
-- **waiter**: research/compute at 137.110.161.67 — NVIDIA CUDA + Container Toolkit, FPGA tooling (Vivado, Vitis, Verilator), XRDP+XFCE desktop, Fail2ban, Prometheus (node/DCGM/blackbox via Docker), btrfs snapshots (snapper)
+- **waiter**: research/compute at 137.110.161.67 — NVIDIA CUDA + Container Toolkit, FPGA tooling (Vivado, Vitis, Verilator; opt-in), XRDP+XFCE desktop (opt-in, gated on FPGA), Fail2ban, native node/IPMI exporters + DCGM exporter (Docker) — blackbox now lives on krg-prod — and **ZFS-on-root** with ZFS auto-snapshots (replacing the old btrfs/snapper). The legacy Ubuntu setup used btrfs + Docker-based node/blackbox; the rebuild moved those to the patterns above.
 
 ## Common Commands
 

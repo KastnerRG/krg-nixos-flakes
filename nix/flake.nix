@@ -14,7 +14,12 @@
     };
 
     # "Erase your darlings" — bind-mounted /persist state over an ephemeral root.
-    impermanence.url = "github:nix-community/impermanence";
+    # Pin its nixpkgs to ours (same as disko) so it doesn't drag in a second
+    # nixpkgs at nixos-unstable — keeps the whole flake on the pinned stable tree.
+    impermanence = {
+      url = "github:nix-community/impermanence";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, ... }@inputs:
