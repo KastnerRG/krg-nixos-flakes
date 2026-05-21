@@ -5,6 +5,16 @@
     # Latest NixOS stable (release branch, not unstable): production rebuilds and
     # the nightly autoUpgrade then only pull backported fixes, not rolling churn.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+
+    # Declarative disk partitioning/formatting (waiter's ZFS layout). Pin its
+    # nixpkgs to ours so disko's lib matches the system being built.
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # "Erase your darlings" — bind-mounted /persist state over an ephemeral root.
+    impermanence.url = "github:nix-community/impermanence";
   };
 
   outputs = { self, nixpkgs, ... }@inputs:
@@ -26,6 +36,7 @@
       users         = import ./modules/users.nix;
       zfs           = import ./modules/zfs.nix;
       nix-ld        = import ./modules/nix-ld.nix;
+      impermanence  = import ./modules/impermanence.nix;
 
       compose-stack  = import ./modules/services/compose-stack.nix;
       node-exporter  = import ./modules/services/node-exporter.nix;
