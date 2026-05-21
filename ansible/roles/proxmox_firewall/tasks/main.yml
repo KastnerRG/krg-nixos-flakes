@@ -34,15 +34,33 @@
 
 # Per-NODE host firewall (host-scoped rules, e.g. fabricant's NFS tcp/2049). Only
 # written when this node has rules — keeps host.fw off nodes that don't need it.
-- name: Template per-node host firewall
+#
+# GOTCHA — pmxcfs (/etc/pve, a FUSE fs) only permits a FIXED whitelist of filenames
+# under /etc/pve/nodes/<node>/. Ansible's template/copy writes atomically via a
+# RANDOM temp file in the dest dir, which pmxcfs rejects there ("Operation not
+# permitted") even as root — unlike /etc/pve/firewall/, which accepts any *.fw
+# (so cluster.fw / <vmid>.fw work fine). So stage host.fw on a normal fs and `cp`
+# it straight onto the whitelisted final name (no temp file in the node dir).
+# pmxcfs forces the file to root:www-data, so we set no owner/group/mode.
+- name: Stage per-node host firewall (off pmxcfs)
   ansible.builtin.template:
     src: host.fw.j2
-    dest: "/etc/pve/nodes/{{ proxmox_node_name }}/host.fw"
-    owner: root
-    group: www-data
+    dest: /run/krg-host.fw
     mode: "0640"
-    unsafe_writes: true        # /etc/pve is the pmxcfs FUSE filesystem
   when: proxmox_host_fw_rules | length > 0
+
+- name: Compare staged host.fw against the live one
+  ansible.builtin.command: "cmp -s /run/krg-host.fw /etc/pve/nodes/{{ proxmox_node_name }}/host.fw"
+  register: _krg_hostfw_cmp
+  failed_when: false           # rc 0=identical, 1=differ, 2=missing — all expected
+  changed_when: false
+  when: proxmox_host_fw_rules | length > 0
+
+- name: Install host.fw into pmxcfs (direct write to the whitelisted filename)
+  ansible.builtin.command: "cp -f /run/krg-host.fw /etc/pve/nodes/{{ proxmox_node_name }}/host.fw"
+  when:
+    - proxmox_host_fw_rules | length > 0
+    - _krg_hostfw_cmp.rc != 0
   notify: restart pve firewall
 
 # Emptying proxmox_host_fw_rules must REVOKE the rules, not leave a stale host.fw
