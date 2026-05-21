@@ -98,7 +98,7 @@ krg-infra/
       fail2ban/                    # sshd brute-force jail
       monitoring/                  # node + ipmi exporters (systemd) — on every host via base
       oec_qualys_trellix/          # campus-mandated Qualys + Trellix (set oec_installer) — via base
-      proxmox_firewall/            # PVE cluster.fw (policy_in: DROP) + per-guest <vmid>.fw + per-node host.fw (proxmox group, separate play)
+      proxmox_firewall/            # PVE cluster.fw + per-guest <vmid>.fw + per-node host.fw (host rules eval before cluster rules; proxmox group, separate play)
       zfs_limits/                  # quota/reservation on EXISTING ZFS datasets — caps VM storage so user data wins (fabricant ONLY play)
       nfs_server/                  # NFSv4 exports on ZFS datasets under <pool>/nfs (fabricant ONLY play; NFS tcp/2049 opened via fabricant host.fw)
 ```

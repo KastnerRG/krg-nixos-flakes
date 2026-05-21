@@ -7,8 +7,8 @@ proxmox_guests: []
 # Defined in host_vars (e.g. fabricant's NFS tcp/2049). HOST-SCOPED ON PURPOSE:
 # rules here apply ONLY to this node, even after more nodes (incl. the rebuilt
 # breached host) join the cluster — cluster.fw is the datacenter-wide layer. Empty
-# -> no host.fw is written for this node. The cluster default-deny is a chain
-# POLICY (cluster.fw policy_in: DROP), so these ACCEPTs are honored before it.
+# -> no host.fw is written for this node. PVE evaluates host.fw rules BEFORE the
+# cluster.fw rules, so cluster.fw's terminal `IN DROP` doesn't shadow these ACCEPTs.
 proxmox_host_fw_rules: []
 # PVE node name (the host.fw lives under /etc/pve/nodes/<this>/). Defaults to the
 # inventory hostname; override if the inventory name and PVE node name differ.

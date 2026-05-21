@@ -53,9 +53,10 @@ over **NFSv4** (single tcp/2049); `zfs_limits` caps the *other* datasets (e.g. t
 VM disks) so user/NFS data wins pool contention. Pool, shares, clients, and quotas
 live in `inventory/host_vars/fabricant.yml`. The NFS port is opened in fabricant's
 **per-node `host.fw`** (host-scoped, via `proxmox_host_fw_rules`) — NOT cluster.fw,
-so it stays fabricant-only as more nodes join. For host.fw ACCEPTs to be honored,
-`cluster.fw` uses `policy_in: DROP` (a chain policy, evaluated last) instead of a
-terminal `IN DROP` rule — same deny posture, but per-node allowances now work.
+so it stays fabricant-only as more nodes join. PVE compiles host.fw rules into the
+host chain *before* the cluster.fw rules, so cluster.fw's terminal `IN DROP` doesn't
+shadow them. (`policy_in`/`log_level_in` are host/VM-level options, invalid in
+datacenter `[OPTIONS]` — PVE warns and ignores them — so the deny stays a rule.)
 
 Admin SSH keys are **shared** with the NixOS layer — edit `nix/keys/admins.json`
 (read by both); do not duplicate keys here.
