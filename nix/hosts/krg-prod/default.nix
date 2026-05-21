@@ -37,11 +37,11 @@ in {
 
     # Docker Compose include: resolves relative to the project directory (not the
     # compose file's store path), so symlink sub-stacks into the working dir.
-    "L /var/lib/krg/krg-prod/compose.authentik.yml    - - - - ${composeDir}/compose.authentik.yml"
-    "L /var/lib/krg/krg-prod/compose.grafana.yml      - - - - ${composeDir}/compose.grafana.yml"
-    "L /var/lib/krg/krg-prod/compose.label-studio.yml - - - - ${composeDir}/compose.label-studio.yml"
-    "L /var/lib/krg/krg-prod/compose.outline.yml      - - - - ${composeDir}/compose.outline.yml"
-    "L /var/lib/krg/krg-prod/compose.mlflow.yml       - - - - ${composeDir}/compose.mlflow.yml"
+    "L+ /var/lib/krg/krg-prod/compose.authentik.yml    - - - - ${composeDir}/compose.authentik.yml"
+    "L+ /var/lib/krg/krg-prod/compose.grafana.yml      - - - - ${composeDir}/compose.grafana.yml"
+    "L+ /var/lib/krg/krg-prod/compose.label-studio.yml - - - - ${composeDir}/compose.label-studio.yml"
+    "L+ /var/lib/krg/krg-prod/compose.outline.yml      - - - - ${composeDir}/compose.outline.yml"
+    "L+ /var/lib/krg/krg-prod/compose.mlflow.yml       - - - - ${composeDir}/compose.mlflow.yml"
 
     # Read-only config dirs: symlink from working dir → Nix store.
     # Docker bind-mount follows symlinks so ./prometheus resolves to the store path.
