@@ -1,44 +1,65 @@
-# Replace this file with the output of:
+# waiter — hardware bits ONLY. Everything storage-related is owned elsewhere:
+#   - partitions / pools / datasets / fileSystems  -> disko-config.nix (disko
+#     generates config.fileSystems for /, /nix, /persist, /tools, /boot)
+#   - ZFS knobs (devNodes, supportedFilesystems, hostId-consuming bits) -> modules/zfs.nix
+#   - rollback + persistence                       -> modules/impermanence.nix
+#
+# GOTCHA — regenerating this file. When you run
 #   nixos-generate-config --show-hardware-config
-# Run on the waiter host after booting the NixOS installer.
-#
-# waiter is a physical machine with:
-#   - Intel NIC: enp3s0f0 (static IP 132.239.95.67/24)
-#   - NVIDIA GPUs (4x, /dev/nvidia0-3)
-#   - ZFS root pool (replacing the btrfs layout from the Ubuntu install)
-#
-# IMPORTANT: ZFS requires a unique hostId. Generate one and set it in default.nix:
-#   python3 -c "import uuid; print(str(uuid.uuid4())[:8])"
-{ modulesPath, ... }: {
-  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
+# on the real waiter, copy in ONLY the hardware lines (boot.initrd.*KernelModules,
+# microcode, max-jobs). Do NOT paste the `fileSystems.*`, `swapDevices`, or
+# `boot.loader.*` it emits: disko already declares the filesystems, swap is zram
+# (see hosts/waiter/default.nix), and the bootloader is set below. Pasting them
+# produces duplicate-definition conflicts.
+{
+  config,
+  lib,
+  modulesPath,
+  ...
+}: {
+  imports = [(modulesPath + "/installer/scan/not-detected.nix")];
 
-  boot.loader.systemd-boot.enable      = true;
+  # ---- bootloader: systemd-boot on the mirrored ESP ----
+  boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # ZFS pool layout — adjust pool name (rpool) and dataset names to match actual setup
-  boot.zfs.requestEncryptionCredentials = true;
+  # /boot is a RAID1 md device (see disko-config.nix). It is NOT needed in initrd
+  # (firmware reads it pre-Linux; Linux mounts it in stage 2), but the mdadm
+  # tooling/udev assembly must be present so the array comes up and systemd-boot
+  # can write loader entries to it.
+  boot.swraid.enable = true;
+  # mdmon (md array monitor) crashes if mdadm.conf has no mail/program target.
+  # Local root mail silences it; point MAILADDR at a real address once outbound
+  # mail is wired up, so a degraded /boot mirror actually pages someone.
+  boot.swraid.mdadmConf = "MAILADDR root";
 
-  fileSystems."/" = {
-    device  = "rpool/root";
-    fsType  = "zfs";
-  };
+  # ---- placeholders: replace with real `nixos-generate-config` output ----
+  # These are reasonable defaults for an NVMe + SATA x86_64 server; the root pool
+  # only needs `nvme` (+ zfs, pulled in by modules/zfs.nix) in initrd.
+  boot.initrd.availableKernelModules = [
+    "xhci_pci"
+    "ahci"
+    "nvme"
+    "usbhid"
+    "usb_storage"
+    "sd_mod"
+  ];
+  boot.initrd.kernelModules = [];
+  boot.kernelModules = ["kvm-amd"]; # AMD Ryzen Threadripper PRO 7985WX (64C/128T)
+  boot.extraModulePackages = [];
 
-  fileSystems."/home" = {
-    device  = "rpool/home";
-    fsType  = "zfs";
-  };
+  # Microcode (generate-config sets this; harmless default until then).
+  hardware.enableRedistributableFirmware = true;
+  hardware.cpu.amd.updateMicrocode =
+    lib.mkDefault config.hardware.enableRedistributableFirmware;
 
-  fileSystems."/var/lib/docker/volumes" = {
-    device  = "rpool/docker";
-    fsType  = "zfs";
-  };
-
-  fileSystems."/boot" = {
-    device  = "/dev/disk/by-label/boot"; # adjust
-    fsType  = "vfat";
-  };
-
+  # No disk swap — swap is zram (hosts/waiter/default.nix). Kept explicit so a
+  # stray generate-config swapDevices paste stands out as a conflict.
   swapDevices = [];
 
-  nix.settings.max-jobs = 16;
+  # 64C/128T box — raised for build throughput. `cores` stays at the default
+  # (0 = a single build may use all threads), so big local builds run full-speed.
+  # This is a multi-user compute host: if a nightly autoUpgrade rebuild ever
+  # starves running jobs, bound per-build width with `nix.settings.cores`.
+  nix.settings.max-jobs = 32;
 }
