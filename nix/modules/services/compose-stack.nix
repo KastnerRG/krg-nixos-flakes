@@ -96,6 +96,11 @@ in {
       # One service per compose stack
       (mapAttrs (name: stack: {
         description = stack.description;
+        # `after` orders us behind network-online.target; `wants` is what actually
+        # pulls that target into the boot transaction. Without the wants, systemd
+        # warns ("ordered after network-online.target but doesn't depend on it")
+        # and the ordering is a no-op — the target may never activate.
+        wants       = [ "network-online.target" ];
         after       = [ "docker.service" "network-online.target" ]
           ++ map (n: "docker-network-${n}.service") stack.networks
           ++ stack.after;
