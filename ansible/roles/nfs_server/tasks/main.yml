@@ -98,6 +98,16 @@
     - reload systemd
     - restart nfs server
 
+# /etc/exports.d isn't always shipped by the package (this PVE host had it absent),
+# and `template` won't create a missing parent — make sure it exists first.
+- name: Ensure /etc/exports.d exists
+  ansible.builtin.file:
+    path: /etc/exports.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Write NFS exports
   ansible.builtin.template:
     src: exports.j2
