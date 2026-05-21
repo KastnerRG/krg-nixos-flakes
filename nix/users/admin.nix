@@ -12,19 +12,19 @@ let
   # flake (here) and Ansible (ansible/group_vars) read that same file.
   adminKeys = builtins.fromJSON (builtins.readFile ../keys/admins.json);
 
-  # Break-glass CONSOLE password (SHA-512 crypt hash), committed DELIBERATELY.
-  # WHY committed: SSH is key-only (the breach fix in base.nix), so without a
-  # console password NOBODY can authenticate at the physical console when SSH /
-  # network / AD is down — which is exactly when the local break-glass admin is
-  # the only way in. A hash in the repo is still offline-crackable, so the
-  # password MUST be a strong passphrase. Rotate / set with:
-  #   nix-shell -p mkpasswd --run 'mkpasswd -m sha-512'
-  # and paste the resulting "$6$...$..." string below. Accounts not listed here
-  # stay password-less (console-locked, key-only SSH) until a hash is added.
-  adminHashedPasswords = {
-    krg-admin = "$6$xN2bY970ga7B435W$1jEkD8f/EKPKqxKMhjekzBKTrDKPPM9WdWLQagkgAOMDokADfvDMvc9n5gzI0H2XBY2rvXVRAaaSYAV2SoGyZ1";
-    # e4e-admin = "$6$...";   # add when e4e-prod needs console break-glass
-  };
+  # Break-glass CONSOLE password hashes (SHA-512 crypt), keyed by account.
+  # SHARED with the Ansible layer: single source of truth in
+  # nix/keys/admin-passwords.json (read here AND by ansible group_vars ->
+  # roles/krg_admin), so the SAME break-glass password works on every host,
+  # NixOS and Debian/PVE alike — mirrors the admins.json key-sharing pattern.
+  # Committed DELIBERATELY: SSH is key-only (the breach fix in base.nix), so
+  # without a console password NOBODY can log in at the physical console when
+  # SSH / network / AD is down — exactly when the break-glass admin is the only
+  # way in. A hash in the repo is offline-crackable, so use a STRONG passphrase.
+  # Rotate with: nix-shell -p mkpasswd --run 'mkpasswd -m sha-512', then replace
+  # the value in admin-passwords.json. Accounts absent from that file stay
+  # password-less (console-locked, key-only SSH).
+  adminHashedPasswords = builtins.fromJSON (builtins.readFile ../keys/admin-passwords.json);
 in {
   options.krg.adminAccount = mkOption {
     type        = types.enum [ "krg-admin" "e4e-admin" ];

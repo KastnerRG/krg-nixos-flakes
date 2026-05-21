@@ -11,7 +11,7 @@
       krg_admin_ssh_keys is empty. {{ krg_admin_user }} would have no way to log
       in (the account is key-only). Set the keys in nix/keys/admins.json.
 
-- name: Ensure {{ krg_admin_user }} exists (sudo, key-only, locked password)
+- name: Ensure {{ krg_admin_user }} exists (sudo; break-glass console password, else key-only)
   ansible.builtin.user:
     name: "{{ krg_admin_user }}"
     comment: "{{ krg_admin_comment }}"
@@ -19,7 +19,11 @@
     groups: "{{ ['sudo'] + krg_admin_extra_groups }}"
     append: true
     create_home: true
-    password_lock: true        # no password login; SSH key only
+    # Break-glass CONSOLE password from the shared hash (parity with NixOS
+    # users/admin.nix). SSH stays key-only; this is only for the physical console
+    # when SSH/network is down. No hash set -> omit it and keep the password locked.
+    password: "{{ krg_admin_password_hash if (krg_admin_password_hash | length > 0) else omit }}"
+    password_lock: "{{ (krg_admin_password_hash | length) == 0 }}"
     state: present
 
 - name: Authorize {{ krg_admin_user }} SSH keys
