@@ -8,6 +8,8 @@ services:
     restart: unless-stopped
     shm_size: 128 mb
     environment:
+      POSTGRES_USER: authentik
+      POSTGRES_DB: authentik_db
       POSTGRES_PASSWORD_FILE: /run/secrets/authentik_postgres_admin_password
     volumes:
       - ./authentik/postgres/data/:/var/lib/postgresql/data/:rw
