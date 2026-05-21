@@ -1,0 +1,38 @@
+# SSSD Active Directory client enrollment for Debian/PVE hosts.
+#
+# CROSS-REFERENCE: this is the Proxmox/Debian counterpart of the NixOS module
+# nix/modules/sssd-ad-client.nix (krg.adClient). Same decisions: algorithmic ID
+# mapping (auto uid/gid from the SID, no per-user POSIX attrs), key-only SSH with
+# keys served from AD (sss_ssh_authorizedkeys), access restricted to AD groups,
+# home dirs created on first login. The per-user steps are in docs/creating-a-user.md.
+# Member-host differences from the DC module: /bin/bash exists here, and we let
+# SSSD rotate the machine-account password normally (the DC could not).
+
+ad_realm: KRG.LOCAL            # Kerberos realm (uppercase)
+ad_domain: krg.local          # AD DNS domain (lowercase)
+ad_dc_host: krg-ldap.krg.local
+ad_dc_ip: "137.110.161.109"   # krg-ldap; pinned in /etc/hosts so a hypervisor never
+                              # depends on a guest it hosts for its own DNS.
+# This host's AD name. Pinned so the machine SPN (host/<fqdn>) and SSSD's keytab
+# lookup agree regardless of the box's resolv.conf domain.
+ad_hostname: "{{ ansible_hostname }}.{{ ad_domain }}"
+
+ad_allowed_groups:            # login restricted to members of these AD groups
+  - Domain Admins
+ad_id_mapping: true           # auto uid/gid from SID; false = read RFC2307 attrs
+ad_ssh_keys_from_ad: true     # serve authorized keys from AD via sss_ssh_authorizedkeys
+ad_default_shell: /bin/bash   # exists on Debian (unlike NixOS)
+
+# Initial domain join. Needs Domain Admin creds — provide the password at runtime,
+# it is never stored: ansible-playbook ... -e ad_join_password='...'
+ad_join_user: Administrator
+ad_join_password: ""
+
+ad_packages:
+  - sssd
+  - sssd-ad
+  - sssd-tools
+  - adcli
+  - krb5-user
+  - libnss-sss
+  - libpam-sss

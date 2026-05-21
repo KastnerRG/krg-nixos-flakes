@@ -1,0 +1,10 @@
+{% if ad_ssh_keys_from_ad %}
+# Managed by Ansible (krg-infra ad_client). Loads after 10-krg-hardening.conf.
+# Serve SSH authorized keys from AD via SSSD (sss_ssh_authorizedkeys) so domain
+# users' keys live in the directory, not in per-host ~/.ssh. Mirrors the NixOS
+# services.openssh.authorizedKeysCommand wiring. SSH stays key-only (hardening
+# drop-in keeps PasswordAuthentication off); access is enforced by the SSSD
+# ad_access_filter, not AllowGroups (AD group names contain spaces).
+AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys
+AuthorizedKeysCommandUser nobody
+{% endif %}

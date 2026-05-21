@@ -3,7 +3,8 @@
 #   1. OS baseline       — timezone, packages (incl tmux), unattended security
 #                          upgrades, sysctl.
 #   2. Security + monitoring baseline — composes krg_admin, ssh_hardening,
-#                          fail2ban, monitoring, and oec_qualys_trellix (below).
+#                          fail2ban, monitoring, oec_qualys_trellix, and ad_client
+#                          (AD enrollment — every host joins KRG.LOCAL) (below).
 #
 # CROSS-REFERENCE: this is the Proxmox/Debian counterpart of the NixOS baseline
 # profile nix/profiles/base.nix, which likewise bundles SSH hardening + fail2ban +
@@ -78,3 +79,11 @@
 - name: Endpoint security (campus-mandated Qualys + Trellix)
   ansible.builtin.import_role:
     name: oec_qualys_trellix
+
+# AD enrollment runs LAST: krg_admin/ssh_hardening have already guaranteed a local
+# key-only break-glass admin, so even a misconfigured access filter can't lock you
+# out (local users bypass SSSD). The one-time join needs `-e ad_join_password=...`;
+# without it on an un-joined host the role stages config + warns (never fails).
+- name: Active Directory client (SSSD) — every host joins the AD
+  ansible.builtin.import_role:
+    name: ad_client

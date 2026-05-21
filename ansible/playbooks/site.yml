@@ -12,8 +12,9 @@
   roles:
     # The full baseline lives in the `base` role: OS basics (timezone, packages,
     # unattended upgrades, sysctl) PLUS the security + monitoring stack it composes
-    # in order — krg_admin, ssh_hardening, fail2ban, monitoring, oec_qualys_trellix.
-    # See roles/base/tasks/main.yml. Set `oec_installer` to enroll Qualys/Trellix.
+    # in order — krg_admin, ssh_hardening, fail2ban, monitoring, oec_qualys_trellix,
+    # ad_client. See roles/base/tasks/main.yml. Set `oec_installer` to enroll
+    # Qualys/Trellix; pass `-e ad_join_password=...` the first time to join the AD.
     - base
 
 # Proxmox/PVE perimeter firewall (source restriction; pairs with the in-guest

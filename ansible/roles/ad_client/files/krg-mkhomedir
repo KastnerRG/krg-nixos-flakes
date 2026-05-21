@@ -1,0 +1,6 @@
+Name: Create home directory on first login (krg)
+Default: yes
+Priority: 0
+Session-Type: Additional
+Session:
+	optional			pam_mkhomedir.so umask=0077 skel=/etc/skel

@@ -1,0 +1,110 @@
+# SSSD Active Directory enrollment — composed into the `base` role so EVERY managed
+# host is an AD client (humans log in with their KRG.LOCAL accounts). Counterpart of
+# nix/modules/sssd-ad-client.nix. Per-user steps live in docs/creating-a-user.md.
+#
+# The one-time domain join needs Domain Admin credentials; pass them at runtime and
+# they are never stored:  ansible-playbook playbooks/site.yml -e ad_join_password='...'
+# Once joined, routine runs need no password. A run with no password on a host that
+# isn't joined yet STAGES the config and warns, rather than failing the play — so the
+# baseline stays runnable everywhere.
+
+- name: Install AD client packages
+  ansible.builtin.apt:
+    name: "{{ ad_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Pin the domain controller in /etc/hosts (no dependence on AD DNS)
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^\S+\s+{{ ad_dc_host | regex_escape }}\b'
+    line: "{{ ad_dc_ip }} {{ ad_dc_host }} {{ ad_dc_host.split('.')[0] }}"
+    state: present
+
+- name: Install krb5.conf (realm + pinned KDC)
+  ansible.builtin.template:
+    src: krb5.conf.j2
+    dest: /etc/krb5.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Check current domain membership
+  ansible.builtin.command: adcli testjoin
+  register: ad_testjoin
+  changed_when: false
+  failed_when: false
+
+- name: Warn when not joined and no credentials were supplied
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }} is not joined to {{ ad_realm }} and no ad_join_password
+      was given — staging config and skipping the join. Re-run with
+      '-e ad_join_password=<Domain Admin password>' to enroll this host.
+  when:
+    - ad_testjoin.rc != 0
+    - ad_join_password | length == 0
+
+- name: Join the AD domain (adcli)
+  ansible.builtin.command:
+    cmd: >-
+      adcli join --domain {{ ad_domain }} --domain-controller {{ ad_dc_host }}
+      --login-user {{ ad_join_user }} --host-fqdn {{ ad_hostname }} --stdin-password
+    stdin: "{{ ad_join_password }}"
+  no_log: true
+  register: ad_join
+  changed_when: ad_join.rc == 0
+  when:
+    - ad_testjoin.rc != 0
+    - ad_join_password | length > 0
+
+- name: Record effective membership
+  ansible.builtin.set_fact:
+    ad_joined: "{{ ad_testjoin.rc == 0 or (ad_join is defined and ad_join is changed) }}"
+
+- name: Install sssd.conf
+  ansible.builtin.template:
+    src: sssd.conf.j2
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart sssd
+
+- name: Register the mkhomedir PAM profile (home dir on first login)
+  ansible.builtin.copy:
+    src: krg-mkhomedir
+    dest: /usr/share/pam-configs/krg-mkhomedir
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply pam-auth-update
+
+- name: Add sss to NSS for passwd/group/shadow
+  ansible.builtin.replace:
+    path: /etc/nsswitch.conf
+    regexp: '^({{ item }}:(?!.*\bsss\b).*)$'
+    replace: '\1 sss'
+  loop:
+    - passwd
+    - group
+    - shadow
+
+- name: Serve SSH authorized keys from AD (sshd drop-in)
+  ansible.builtin.template:
+    src: 20-krg-ad-ssh.conf.j2
+    dest: /etc/ssh/sshd_config.d/20-krg-ad-ssh.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Validate and restart sshd
+
+# Only bring SSSD up once the host is actually joined; pre-join it would crash-loop
+# (single-domain SSSD exits when its AD backend can't initialise without a keytab).
+- name: Enable + start sssd (joined hosts only)
+  ansible.builtin.systemd:
+    name: sssd
+    enabled: true
+    state: started
+  when: ad_joined | bool

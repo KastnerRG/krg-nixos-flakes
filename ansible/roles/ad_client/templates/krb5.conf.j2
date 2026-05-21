@@ -1,0 +1,19 @@
+# Managed by Ansible (krg-infra ad_client). Mirrors the krb5.conf rendered by the
+# NixOS DC module (nix/modules/samba-ad.nix). KDC is pinned explicitly (resolved via
+# the /etc/hosts entry this role adds) so enrollment never depends on campus DNS
+# knowing the internal {{ ad_domain }} zone.
+[libdefaults]
+    default_realm = {{ ad_realm }}
+    dns_lookup_realm = false
+    dns_lookup_kdc = true
+    rdns = false
+
+[realms]
+    {{ ad_realm }} = {
+        kdc = {{ ad_dc_host }}
+        admin_server = {{ ad_dc_host }}
+    }
+
+[domain_realm]
+    .{{ ad_domain }} = {{ ad_realm }}
+    {{ ad_domain }} = {{ ad_realm }}

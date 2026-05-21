@@ -1,0 +1,21 @@
+# Restart SSSD only once joined — a single-domain SSSD exits if its AD backend
+# can't initialise (no keytab), so restarting pre-join would just crash-loop.
+- name: Restart sssd
+  ansible.builtin.systemd:
+    name: sssd
+    state: restarted
+  when: ad_joined | default(false) | bool
+
+# Apply the mkhomedir PAM profile (and re-assert pam_sss, added by libpam-sss).
+- name: Apply pam-auth-update
+  ansible.builtin.command: pam-auth-update --package
+  changed_when: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+# Validate the merged sshd config before restarting so a bad drop-in can't lock
+# you out (mirrors the ssh_hardening handler).
+- name: Validate and restart sshd
+  ansible.builtin.shell:
+    cmd: /usr/sbin/sshd -t && /usr/bin/systemctl restart ssh
+  changed_when: true
