@@ -68,7 +68,13 @@ in {
       networks     = [];
     };
 
-    # Expose the exporter to the Prometheus scraping host (merges with profile ports).
+    # Intent: expose the exporter to the Prometheus scraping host only (merges with
+    # profile ports). CAVEAT: dcgm is a Docker container publish, and Docker DNATs
+    # published ports past krg.firewall's nftables INPUT rules — so this line does
+    # NOT actually source-restrict 9400. The dcgm compose binds 0.0.0.0:9400, which
+    # on a public-IP box (waiter) is reachable from anywhere. Real enforcement needs
+    # a DOCKER-USER/nftables FORWARD rule (CLAUDE.md pending). Kept here so the intent
+    # is recorded and so it works if dcgm ever moves to a native (non-Docker) exporter.
     krg.firewall.monitoringPorts = mkIf cfg.dcgmExporter.enable [ 9400 ];
   };
 }

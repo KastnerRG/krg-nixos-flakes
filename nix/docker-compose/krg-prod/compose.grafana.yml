@@ -17,6 +17,9 @@ services:
       - default
     labels:
       - "traefik.enable=true"
+      # TODO(dns): stale host — this is krg-prod's lab-wide Grafana, not waiter's.
+      # Update to the chosen krg-prod scheme (e.g. grafana.krg.ucsd.edu) once the
+      # DNS migration is decided (CLAUDE.md pending: DNS/URL migration for krg-prod).
       - "traefik.http.routers.grafana.rule=Host(`dashboard.waiter.ucsd.edu`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
@@ -41,7 +44,9 @@ services:
     user: '1000'
     volumes:
       - /var/log:/var/log:ro
-      - ./ansible.log:/tmp/ansible_deploy.log:ro
+      # Dropped: ./ansible.log mount (leftover from the Ansible-deployed host; the
+      # source doesn't exist under NixOS, so Docker would materialise it as a
+      # root-owned dir). promtail-config.yaml should target the journal / /var/log.
       - ./loki/promtail-config.yaml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
     restart: unless-stopped

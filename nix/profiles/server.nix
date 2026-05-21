@@ -39,10 +39,15 @@
   # (base.nix); serviceHost = true (set in krg.base above) source-restricts SSH
   # to the trusted UCSD nets in-guest, and the Proxmox perimeter restricts the rest.
   krg.firewall = {
-    # 80/443/8080 open globally; SSH (22) is source-restricted (serviceHost), so
-    # the firewall module moves it from the open list to a per-source rule.
-    allowedTCPPorts = [ 22 80 443 8080 ];
-    # node-exporter (9100) + service exporter (9000) from the monitoring host only
-    monitoringPorts = [ 9100 9000 ];
+    # 80/443 open globally (Traefik ingress); SSH (22) is source-restricted
+    # (serviceHost), so the firewall module moves it from the open list to a
+    # per-source rule. Traefik's 8080 (API/metrics) is intentionally NOT published
+    # to the host (docker-compose/krg-prod/compose.yml). Docker publishes ports past
+    # these nftables INPUT rules anyway, so the publish was the only real control —
+    # Prometheus now scrapes traefik:8080 over the docker network instead.
+    allowedTCPPorts = [ 22 80 443 ];
+    # Native node-exporter (9100), scraped from the monitoring host only. (The old
+    # 9000 "service exporter" was the Ansible deploy-monitor, gone under autoUpgrade.)
+    monitoringPorts = [ 9100 ];
   };
 }

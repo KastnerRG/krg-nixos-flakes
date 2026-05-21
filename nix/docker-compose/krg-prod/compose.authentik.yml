@@ -24,10 +24,13 @@ services:
       - authentik_postgres_admin_password
     command: --config_file=/etc/postgresql/postgres.conf
     ports:
-      - 5434:5432
+      # Loopback only — Postgres must not be reachable off-host. Docker publishes
+      # ports past the nftables INPUT rules, so a bare "5434:5432" would expose it
+      # on the VM's external interface. Containers reach it by service name anyway.
+      - 127.0.0.1:5434:5432
     networks:
       - authentik
-    user: "${USER_ID}:${GROUP_ID}"
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
 
   authentik_server:
     image: *authentik-image
@@ -45,7 +48,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - .secrets/authentik_admin_password.env
-    user: "${USER_ID}:${GROUP_ID}"
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
     networks:
       - authentik
       - traefik_proxy
