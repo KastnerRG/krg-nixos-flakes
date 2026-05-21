@@ -13,21 +13,22 @@
   # Physical host — keep the NixOS firewall enabled (this is the default).
   krg.base.isVM = false;
 
-  # Impermanent ZFS root: / would be rolled back to nvmepool/root@blank every boot;
-  # durable state lives on /persist (modules/impermanence.nix). Enabling this also
-  # flips the host to systemd initrd (the rollback runs as a stage-1 unit).
+  # Impermanent ZFS root: / is rolled back to nvmepool/root@blank every boot; durable
+  # state lives on /persist (modules/impermanence.nix). Enabling this also flips the
+  # host to systemd initrd (the rollback runs as a stage-1 unit).
   #
-  # DISABLED until NFS /home lands. waiter is multi-user and there is no /home
-  # dataset yet — SSSD's fallback_homedir is /home/%u, which would sit on the
-  # rolled-back root, so enabling impermanence now would WIPE every user's home
-  # on each reboot. The disko layout already keeps /nix, /persist, /tools and the
-  # dedicated /var/lib/docker dataset off the root, so with this off the box still
-  # boots from a normal persistent root (no data loss) — we just don't get the
-  # erase-your-darlings clean root yet.
-  # RESTORE: once /home is on NFS (or its own non-rolled-back dataset), flip this
-  # back to true and verify the @blank rollback + /persist bind mounts on a test
-  # reboot. Tracked in CLAUDE.md pending items.
-  krg.impermanence.enable = false;
+  # ENABLED now that user homes live on NFS (krg.nfsHome below), not the rolled-back
+  # root — that was the blocker. What survives a reboot: the dedicated datasets off
+  # root (/nix, /persist, /tools, /var/lib/docker); the /persist bind list in
+  # modules/impermanence.nix (SSH host keys, machine-id, the AD keytab, SSSD cache,
+  # /var/lib/krg, the break-glass admin home); and /home itself (an NFS network
+  # mount, not on root). Everything else on / is erased each boot by design — if you
+  # add a stateful service, add its path to the persist list.
+  #
+  # FIRST REBOOT IS THE TEST: confirm nvmepool/root@blank exists before rebooting,
+  # keep IPMI/console access open, and be ready to boot the previous generation if
+  # the initrd rollback misbehaves.
+  krg.impermanence.enable = true;
 
   # AD user homes come from NFS (fabricant: rpool/nfs/home -> /srv/nfs/home). This
   # moves /home OFF waiter's local ZFS root — the prerequisite for flipping

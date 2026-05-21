@@ -95,6 +95,10 @@ in {
         "/root" # root's shell history / state (sudo target; no root SSH).
         "/etc/nixos" # for local/break-glass `nixos-rebuild` (autoUpgrade pulls
         # from GitHub, but keep on-box edits durable).
+        "/var/lib/${config.krg.adminAccount}" # break-glass admin home (moved OFF
+        # /home in users/admin.nix so the NFS mount can't shadow it). Login works
+        # without this — keys + console password are declarative — but persist it so
+        # the admin's shell history / on-box recovery state survives the rollback.
 
         # --- AD client (krg.adClient, on via base.nix) ---
         "/var/lib/sss" # SSSD cache: offline creds (cache_credentials=true) +
