@@ -8,8 +8,10 @@
   # Baseline admin account for this machine (krg-admin is the default).
   krg.adminAccount = "krg-admin";
 
-  # Proxmox VM — the hypervisor owns the firewall, so base.nix leaves the
-  # NixOS firewall disabled.
+  # Proxmox VM. The in-guest NixOS firewall stays ON (base.nix runs it on every
+  # host) — isVM just enables the QEMU guest agent. Defense-in-depth: the AD DC
+  # ports are restricted in-guest (samba-ad module) AND at the Proxmox perimeter
+  # (ansible 100.fw); the hypervisor layer is additive, not a replacement.
   krg.base.isVM = true;
 
   # Proxmox/QEMU VM — bootloader carried over from the installer config.

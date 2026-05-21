@@ -22,7 +22,7 @@ radius) is being rebuilt clean as a new Samba AD forest on krg-ldap.
 
 **Target feature set (from the old Ansible repos):**
 - **fabricant-prod**: production services — Traefik, Authentik (SSO), Grafana/Prometheus/Loki, Blackbox, PostgreSQL, Outline, MLflow, Label Studio, node/IPMI exporters, firewall, unattended upgrades. (These are the lab-wide tools now on **krg-prod**; E4E project-specific services go on **e4e-prod**.)
-- **waiter**: research/compute at 132.239.95.67 — NVIDIA CUDA + Container Toolkit, FPGA tooling (Vivado, Vitis, Verilator), XRDP+XFCE desktop, Fail2ban, Prometheus (node/DCGM/blackbox via Docker), btrfs snapshots (snapper)
+- **waiter**: research/compute at 137.110.161.67 — NVIDIA CUDA + Container Toolkit, FPGA tooling (Vivado, Vitis, Verilator), XRDP+XFCE desktop, Fail2ban, Prometheus (node/DCGM/blackbox via Docker), btrfs snapshots (snapper)
 
 ## Common Commands
 
@@ -45,7 +45,7 @@ sudo nixos-rebuild switch --flake ./nix#krg-prod
 
 # Deploy remotely (new nixos-rebuild: --sudo, not --use-remote-sudo)
 nixos-rebuild switch --flake ./nix#krg-prod --target-host krg-admin@krg-prod.ucsd.edu --sudo --ask-sudo-password
-nixos-rebuild switch --flake ./nix#waiter   --target-host waiter-admin@132.239.95.67 --sudo --ask-sudo-password
+nixos-rebuild switch --flake ./nix#waiter   --target-host waiter-admin@137.110.161.67 --sudo --ask-sudo-password
 
 # Update flake inputs (run inside nix/)
 cd nix && nix flake update          # or: nix flake update nixpkgs
@@ -166,9 +166,6 @@ Secrets are **not** managed by Nix yet (future: HashiCorp Vault — Bitwarden is
 - `outline_secrets.env`
 - `mlflow.env` (`POSTGRES_PASSWORD`, `OIDC_*` variables)
 
-**waiter** secrets in `/var/lib/krg/waiter/.secrets/`:
-- `gf_admin_password.txt`
-
 The `.secrets/` directories are in `.gitignore`.
 
 ## Runtime Config Directories
@@ -192,3 +189,6 @@ The grafana/prometheus/loki compose services mount config from the working direc
 - [ ] nix in-guest service-SSH restriction (read `ucsd`/`sealab` from `trusted.json` so service hosts restrict 22 in-guest too).
 - [ ] TOTP 2FA on the PVE realm; PVE web-UI fail2ban jail (needs `filter.d/proxmox.conf`); PVE patching + persistence hunting (post-breach).
 - [ ] Add Vault for secrets management (replacing manual `.secrets/` population).
+- [ ] **waiter NFS `/home` + restore impermanence.** `krg.impermanence.enable` is **off** on waiter (`hosts/waiter/default.nix`) because there's no `/home` dataset and SSSD's `fallback_homedir=/home/%u` would sit on the rolled-back root → user homes wiped each boot. Mount `/home` from NFS (identity from Samba AD; `nfs-utils` + autofs) or give it a dedicated non-rolled-back dataset, then flip impermanence back to `true` and verify the `@blank` rollback + `/persist` bind mounts on a test reboot. (Docker already has its own `nvmepool/docker` dataset, so it's durable regardless.)
+- [ ] **Second AD DC (remove the krg-ldap SPOF).** Today every host's login depends on the single `krg-ldap` VM on the `fabricant` hypervisor. Plan: stand up a second Samba AD DC on **another Proxmox host** before go-live. When it lands, let members fail over — either drop the pinned `krg.adClient.server`/`serverIp` so SSSD uses DNS SRV autodiscovery, or extend the module to list both DCs (and pin both in `/etc/hosts`). Until then, the SSSD offline cache (`cache_credentials=true`) + local break-glass `krg-admin` are the only continuity if krg-ldap is down.
+- [ ] **Autotier for waiter scratch datasets (not yet implemented).** `nvmepool/scratch-{krg,e4e}` and `hddpool/scratch-{krg,e4e}` are created `mountpoint=none` (quotas/reservations/`recordsize=1M` set) and mount **nowhere** — they're scaffolding for a planned NVMe→HDD autotier (hot data on `nvmepool`, cold on `hddpool`). Decide the tiering tool (e.g. `autotier` FUSE, or just present them as plain per-pool `/scratch/...` mounts and skip tiering), then wire the mounts. As-is they consume reservation but serve nothing.
