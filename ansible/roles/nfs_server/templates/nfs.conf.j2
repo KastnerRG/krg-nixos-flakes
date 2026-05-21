@@ -1,0 +1,8 @@
+{# Managed by Ansible (krg-infra nfs_server). Edit defaults/host_vars, not here. #}
+# NFSv4-only keeps the server to a single tcp/2049 (trivial to firewall); v2/v3
+# drag in rpcbind + mountd/statd ports. nfs_disable_v3 toggles v3.
+[nfsd]
+vers3 = {{ 'n' if nfs_disable_v3 else 'y' }}
+vers4 = y
+vers4.1 = y
+vers4.2 = y

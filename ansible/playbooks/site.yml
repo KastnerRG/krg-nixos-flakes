@@ -24,3 +24,16 @@
   become: true
   roles:
     - proxmox_firewall      # cluster.fw + per-guest <vmid>.fw
+
+# Storage — exports backed by a ZFS dataset on the hypervisor's pool, plus the pool
+# capacity policy (cap VM storage so user data wins contention). Deliberately
+# host-scoped to `fabricant` (NOT the `proxmox` group): other PVE hosts must not
+# expose this NFS. Pool/shares/clients/quotas live in host_vars/fabricant.yml. The
+# NFS port (tcp/2049) is opened in fabricant's per-node host.fw via the
+# proxmox_firewall play above (proxmox_host_fw_rules in host_vars).
+- name: Storage — ZFS limits + NFS server (fabricant only)
+  hosts: fabricant
+  become: true
+  roles:
+    - zfs_limits      # cap VM disk storage (rpool/data) so user/NFS data wins
+    - nfs_server      # NFSv4 exports on rpool/nfs (home + bulk)

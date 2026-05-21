@@ -10,6 +10,17 @@ let
         default = null;
       };
 
+      home = mkOption {
+        type    = types.nullOr types.str;
+        default = null;
+        description = ''
+          Home directory. null = NixOS default (/home/<name>). Set this to keep an
+          account OFF a shared/network /home — e.g. the break-glass admin, which
+          must work when the NFS /home server is down (see users/admin.nix and
+          modules/nfs-home.nix).
+        '';
+      };
+
       description = mkOption {
         type    = types.str;
         default = "";
@@ -78,7 +89,8 @@ in {
       shell        = pkgs.${u.shell} or pkgs.bash;
       openssh.authorizedKeys.keys = u.authorizedKeys;
       hashedPassword = u.hashedPassword;
-    } // optionalAttrs (u.uid != null) { uid = u.uid; }) cfg.users;
+    } // optionalAttrs (u.uid != null) { uid = u.uid; }
+      // optionalAttrs (u.home != null) { inherit (u) home; createHome = true; }) cfg.users;
 
     security.sudo.extraRules =
       flatten (mapAttrsToList (name: u:
