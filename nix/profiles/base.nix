@@ -15,6 +15,7 @@ in {
     ../modules/security/fail2ban.nix
     ../modules/security/firewall.nix
     ../modules/services/node-exporter.nix
+    ../modules/sssd-ad-client.nix
   ];
 
   options.krg.base = {
@@ -118,6 +119,21 @@ in {
     # so remote admin IPs aren't silently folded into the campus set.
     krg.firewall.sshSources = mkIf cfg.serviceHost
       (map (e: e.cidr) (trusted.ipsets.ucsd ++ (trusted.ipsets.ops or [])));
+
+    # Every host is an Active Directory client: it joins KRG.LOCAL and humans log in
+    # with their AD accounts (only the nix/users/admin.nix break-glass admin stays
+    # local). Access defaults to Domain Admins — widen per host (e.g. compute opens
+    # to a lab-users group). SSH stays key-only; keys are served from AD. Member
+    # hosts need a one-time domain join for their keytab; the DC (directory.nix sets
+    # isDomainController) exports its own. CROSS-REFERENCE: ansible roles/ad_client
+    # is the Debian/PVE counterpart, composed into the ansible base role.
+    krg.adClient = {
+      enable        = mkDefault true;
+      server        = mkDefault "krg-ldap.krg.local";
+      serverIp      = mkDefault "137.110.161.109";   # krg-ldap (pin so members resolve the DC)
+      allowedGroups = mkDefault [ "Domain Admins" ];
+      sshKeysFromAD = mkDefault true;
+    };
 
     # QEMU guest agent on VMs (graceful shutdown + IP reporting to Proxmox).
     services.qemuGuest.enable = mkDefault cfg.isVM;

@@ -5,7 +5,6 @@
     ./base.nix
     ../modules/users.nix
     ../modules/samba-ad.nix
-    ../modules/sssd-ad-client.nix
     ../users/admin.nix
   ];
 
@@ -34,19 +33,9 @@
     workgroup = "KRG";
   };
 
-  # Log into this host with AD accounts (SSSD). It's the directory server, so
-  # restrict SSH to Domain Admins — lab users get AD login on member hosts, not
-  # the DC. SSH stays key-only (base.nix); see the runtime prerequisites at the
-  # top of modules/sssd-ad-client.nix (keytab export, POSIX attrs, key planting).
-  krg.adClient = {
-    enable        = true;
-    realm         = "KRG.LOCAL";
-    domain        = "krg.local";
-    server        = "krg-ldap.krg.local";   # the DC is this host itself
-    allowedGroups = [ "Domain Admins" ];
-    # Pull SSH keys from AD (sss_ssh_authorizedkeys) instead of ~/.ssh. Needs the
-    # one-time OpenSSH-LPK schema extension (sshPublicKey attribute) on the DC and
-    # the key stored on each user object — see modules/sssd-ad-client.nix.
-    sshKeysFromAD = true;
-  };
+  # base.nix already makes every host an AD client (Domain Admins, keys-from-AD).
+  # This host IS the DC, so flag it: SSSD must not rotate the DC's own machine
+  # account or push DNS, and the samba-ad module owns /etc/krb5.conf here. The DC
+  # gets its keytab from `samba-tool domain exportkeytab`, not a join.
+  krg.adClient.isDomainController = true;
 }

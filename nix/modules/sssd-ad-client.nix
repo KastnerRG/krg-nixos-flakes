@@ -62,6 +62,28 @@ in {
       description = "Pin a specific DC as ad_server. Null = DNS SRV autodiscovery.";
     };
 
+    serverIp = mkOption {
+      type        = types.nullOr types.str;
+      default     = null;
+      example      = "137.110.161.109";
+      description = ''
+        IP of `server`, pinned in /etc/hosts so a member host can resolve the DC
+        without depending on it for DNS. Also lets this module render a usable
+        krb5.conf on hosts that aren't the DC. Null = rely on existing DNS.
+      '';
+    };
+
+    isDomainController = mkOption {
+      type        = types.bool;
+      default     = false;
+      description = ''
+        This host IS the DC (shares the box with samba-ad). Disables SSSD machine-
+        account password rotation + dynamic DNS updates (the DC must not rotate its
+        own account), and yields krb5.conf to the samba-ad module. Members leave
+        this false so their machine password rotates normally.
+      '';
+    };
+
     allowedGroups = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
@@ -136,10 +158,11 @@ in {
         krb5_store_password_if_offline = true
         fallback_homedir = /home/%u
         default_shell = ${pkgs.bashInteractive}/bin/bash
-        # This host is (or shares the box with) the DC — never let SSSD rotate the
-        # machine-account password or push DNS updates.
-        ad_maximum_machine_account_password_age = 0
-        dyndns_update = false
+        ${optionalString cfg.isDomainController ''
+          # This host IS the DC — never let SSSD rotate its machine-account
+          # password or push DNS updates.
+          ad_maximum_machine_account_password_age = 0
+          dyndns_update = false''}
         ${optionalString cfg.sshKeysFromAD "ldap_user_ssh_public_key = sshPublicKey"}
         ${optionalString (effectiveFilter != "") "ad_access_filter = ${effectiveFilter}"}
       '';
@@ -154,8 +177,33 @@ in {
     security.pam.services.sshd.makeHomeDir  = true;
     security.pam.services.login.makeHomeDir = true;
 
-    # kinit/klist for domain users. On the DC, /etc/krb5.conf is already rendered
-    # by modules/samba-ad.nix; member hosts must provide one (e.g. security.krb5).
+    # kinit/klist for domain users.
     environment.systemPackages = [ pkgs.krb5 ];
+
+    # Resolve the DC without depending on it for DNS (member hosts). On the DC this
+    # is its own name→IP, harmless. mkDefault so a host can override.
+    networking.hosts = mkIf (cfg.server != null && cfg.serverIp != null)
+      { ${cfg.serverIp} = mkDefault [ cfg.server ]; };
+
+    # krb5.conf for member hosts (the DC's samba-ad module renders its own at normal
+    # priority, so mkDefault here yields on the DC and applies on members). KDC is
+    # pinned to `server`, resolved via the /etc/hosts entry above.
+    environment.etc."krb5.conf".text = mkDefault ''
+      [libdefaults]
+          default_realm = ${cfg.realm}
+          dns_lookup_realm = false
+          dns_lookup_kdc = ${if cfg.server != null then "false" else "true"}
+          rdns = false
+      ${optionalString (cfg.server != null) ''
+        [realms]
+            ${cfg.realm} = {
+                kdc = ${cfg.server}
+                admin_server = ${cfg.server}
+            }
+
+        [domain_realm]
+            .${cfg.domain} = ${cfg.realm}
+            ${cfg.domain} = ${cfg.realm}''}
+    '';
   };
 }
