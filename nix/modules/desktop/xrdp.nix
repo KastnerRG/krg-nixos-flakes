@@ -3,6 +3,8 @@ with lib;
 let
   cfg = config.krg.xrdp;
 in {
+  imports = [ ../users.nix ];
+
   options.krg.xrdp = {
     enable = mkEnableOption "XRDP remote desktop with XFCE (waiter compute nodes)";
 
@@ -31,5 +33,12 @@ in {
       xfce.xfce4-panel
       firefox
     ];
+
+    # RDP access group: created AND assigned only when XRDP is enabled, so it's not
+    # a blanket default group (see profiles/compute.nix). The local break-glass admin
+    # (a krg.users account) picks it up via defaultGroups; AD users' RDP membership
+    # comes from AD. This also means the group always exists when something references it.
+    users.groups.rdp_users = {};
+    krg.users.defaultGroups = [ "rdp_users" ];
   };
 }

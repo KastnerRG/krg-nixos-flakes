@@ -1,6 +1,6 @@
 # Server profile: web services, monitoring, reverse proxy (krg-prod, e4e-prod).
 # Import this in a host's default.nix, then add host-specific compose stacks.
-{ ... }: {
+{ config, lib, ... }: {
   imports = [
     ./base.nix
     ../modules/docker.nix
@@ -18,12 +18,18 @@
   };
 
   krg.docker = {
-    enable           = true;
-    enableLokiDriver = true;
+    enable = true;
   };
 
   # krg.nodeExporter.enable is set by base.nix (true on every host).
-  krg.ipmiExporter.enable = true;
+  #
+  # IPMI exporter only on PHYSICAL hosts. The current server hosts (krg-prod,
+  # e4e-prod) are Proxmox VMs with no BMC, so the exporter would just error with
+  # nothing to read — and 9290 isn't opened to the scraper here anyway. RESTORE:
+  # this auto-enables if a physical server-profile host is ever added (then also
+  # add 9290 to monitoringPorts below). The hypervisors' real BMCs are monitored
+  # by the Ansible `monitoring` role, not from inside a guest.
+  krg.ipmiExporter.enable = lib.mkDefault (!config.krg.base.isVM);
 
   # Qualys + Trellix are enabled for all machines in base.nix.
   # Provide the installer archive in the host config:

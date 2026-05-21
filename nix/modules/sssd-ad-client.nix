@@ -102,6 +102,19 @@ in {
       description = "Raw ad_access_filter; overrides allowedGroups when set.";
     };
 
+    sudoGroups = mkOption {
+      type        = types.listOf types.str;
+      default     = [ ];
+      example     = [ "Domain Admins" ];
+      description = ''
+        AD groups whose members get sudo (PASSWORD required — AD users have a
+        password, unlike the key-only break-glass admin which is NOPASSWD). Separate
+        from allowedGroups: allowedGroups gates who may log IN, sudoGroups gates who
+        may escalate. Empty = no AD group gets sudo (only the local break-glass admin).
+        Names with spaces (e.g. "Domain Admins") are escaped for sudoers automatically.
+      '';
+    };
+
     idMapping = mkOption {
       type        = types.bool;
       default     = true;
@@ -191,6 +204,17 @@ in {
     # SSSD supplies identity, not the home directory — create it on first login.
     security.pam.services.sshd.makeHomeDir  = true;
     security.pam.services.login.makeHomeDir = true;
+
+    # Sudo for AD admin groups (PASSWORD required — distinct from the key-only
+    # break-glass admin's NOPASSWD rule in users/admin.nix). Group names with spaces
+    # like "Domain Admins" must be escaped for sudoers (%Domain\ Admins); NixOS's
+    # security.sudo.extraRules would NOT escape them, so build the lines here.
+    security.sudo.extraConfig = mkIf (cfg.sudoGroups != [ ]) ''
+      # krg.adClient.sudoGroups — AD groups granted sudo (password required).
+      ${concatMapStringsSep "\n"
+        (g: "%${builtins.replaceStrings [ " " ] [ "\\ " ] g} ALL=(ALL:ALL) ALL")
+        cfg.sudoGroups}
+    '';
 
     # kinit/klist for domain users.
     environment.systemPackages = [ pkgs.krb5 ];

@@ -1,5 +1,13 @@
 # Proxmox/PVE-specific vars. Generic baseline vars live in group_vars/all.yml.
 
+# SSH into the hypervisors is ADMINS ONLY: restrict AD login to Domain Admins (the
+# SSSD access filter). This matches the ad_client default — pinned here to make the
+# intent explicit and guard against the baseline being widened (e.g. lab users on
+# other hosts). Do NOT widen for proxmox; these are infrastructure boxes. The
+# break-glass krg-admin (local, key-only) remains the offline fallback.
+ad_allowed_groups:
+  - Domain Admins
+
 # Guests with a per-VM firewall file: the proxmox_firewall role copies
 # roles/proxmox_firewall/files/<fw_file> to /etc/pve/firewall/<vmid>.fw. The
 # IPSets these reference are defined in cluster.fw (templated from
