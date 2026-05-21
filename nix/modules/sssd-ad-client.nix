@@ -123,6 +123,18 @@ in {
         that attribute first. When false, keys come from ~/.ssh/authorized_keys.
       '';
     };
+
+    gpoAccessControl = mkOption {
+      type        = types.enum [ "disabled" "permissive" "enforcing" ];
+      default     = "disabled";
+      description = ''
+        SSSD ad_gpo_access_control. SSSD's default (enforcing) fetches Group Policy
+        from sysvol every login; against a Samba AD DC that errors and an error
+        under enforcing becomes a denial ("Access denied … System error"). We gate
+        access with the memberOf filter (allowedGroups), not GPOs, so default to
+        disabled. Use permissive (log only) or enforcing if you adopt GPOs.
+      '';
+    };
   };
 
   config = mkIf cfg.enable {
@@ -148,6 +160,9 @@ in {
         auth_provider = ad
         access_provider = ad
         chpass_provider = ad
+        # Gate access via the memberOf filter below, not GPOs (GPO fetch errors
+        # against Samba AD and would deny everyone with a "System error").
+        ad_gpo_access_control = ${cfg.gpoAccessControl}
         ad_domain = ${cfg.domain}
         ${optionalString (cfg.server != null) "ad_server = ${cfg.server}"}
         krb5_realm = ${cfg.realm}

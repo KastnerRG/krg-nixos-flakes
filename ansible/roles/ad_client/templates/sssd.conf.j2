@@ -22,6 +22,9 @@ id_provider = ad
 auth_provider = ad
 access_provider = ad
 chpass_provider = ad
+# Gate access via the memberOf filter below, not GPOs (GPO fetch errors against
+# Samba AD and would deny everyone with a "System error").
+ad_gpo_access_control = {{ ad_gpo_access_control }}
 ad_domain = {{ ad_domain }}
 ad_server = {{ ad_dc_host }}
 ad_hostname = {{ ad_hostname }}
