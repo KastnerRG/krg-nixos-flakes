@@ -3,15 +3,22 @@
 #
 # CROSS-REFERENCE: mirrors nix/users/admin.nix (the NixOS break-glass admin);
 # both consume the shared key file nix/keys/admins.json. Keep them aligned.
+# SSH keys stay MANDATORY (we deliberately do NOT relax this to "keys OR a
+# console password hash"): SSH is the only practical REMOTE access path —
+# password auth is off (ssh_hardening), so the break-glass console password
+# only works at the physical/IPMI console. A host with keys empty but a console
+# password set would have no remote access at all, which defeats the guard.
 - name: Refuse to run without krg-admin SSH keys (anti-lockout guard)
   ansible.builtin.assert:
     that:
       - krg_admin_ssh_keys | length > 0
     fail_msg: >-
-      krg_admin_ssh_keys is empty. {{ krg_admin_user }} would have no way to log
-      in (the account is key-only). Set the keys in nix/keys/admins.json.
+      krg_admin_ssh_keys is empty. {{ krg_admin_user }} would have no SSH access
+      (SSH is key-only — password auth is off; the console password hash is
+      break-glass for the physical/IPMI console only, not SSH). Set the keys in
+      nix/keys/admins.json.
 
-- name: Ensure {{ krg_admin_user }} exists (sudo, key-only, locked password)
+- name: Ensure {{ krg_admin_user }} exists (sudo; break-glass console password, else key-only)
   ansible.builtin.user:
     name: "{{ krg_admin_user }}"
     comment: "{{ krg_admin_comment }}"
@@ -19,7 +26,11 @@
     groups: "{{ ['sudo'] + krg_admin_extra_groups }}"
     append: true
     create_home: true
-    password_lock: true        # no password login; SSH key only
+    # Break-glass CONSOLE password from the shared hash (parity with NixOS
+    # users/admin.nix). SSH stays key-only; this is only for the physical console
+    # when SSH/network is down. No hash set -> omit it and keep the password locked.
+    password: "{{ krg_admin_password_hash if (krg_admin_password_hash | length > 0) else omit }}"
+    password_lock: "{{ (krg_admin_password_hash | length) == 0 }}"
     state: present
 
 - name: Authorize {{ krg_admin_user }} SSH keys

@@ -10,6 +10,14 @@
 krg_keys_file: "{{ (inventory_dir | dirname) | dirname }}/nix/keys/admins.json"
 admin_ssh_keys: "{{ (lookup('file', krg_keys_file) | from_json)['krg-admin'] }}"
 
+# Break-glass CONSOLE password hash — SHARED with the NixOS layer. Edit
+# nix/keys/admin-passwords.json (single source of truth, also read by
+# nix/users/admin.nix), NOT here. The same SHA-512 crypt hash works in
+# /etc/shadow on Debian and NixOS alike. Empty/absent -> krg-admin stays
+# key-only with a locked password. Same inventory_dir anchor as krg_keys_file.
+krg_admin_passwords_file: "{{ (inventory_dir | dirname) | dirname }}/nix/keys/admin-passwords.json"
+admin_password_hash: "{{ (lookup('file', krg_admin_passwords_file) | from_json).get('krg-admin', '') }}"
+
 # base role
 base_timezone: "America/Los_Angeles"
 
