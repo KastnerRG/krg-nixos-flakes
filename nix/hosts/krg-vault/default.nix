@@ -31,8 +31,31 @@
   krg.adClient.enable = false;
 
   krg.firewall = {
-    allowedTCPPorts = [ 22 8200 ];  # 8200 = OpenBao API; Proxmox .fw restricts external access
+    # 80: public, ACME HTTP-01 challenge only (nginx handles it)
+    # 8200: sealab-only OpenBao API (TLS); Proxmox .fw restricts external access
+    allowedTCPPorts = [ 22 80 8200 ];
     monitoringPorts = [ 9100 ];
+  };
+
+  # Let's Encrypt cert for krg-vault.ucsd.edu.
+  # nginx serves the HTTP-01 ACME challenge on port 80; OpenBao reads the
+  # resulting cert files. On renewal, openbao gets a SIGHUP to reload the cert.
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "shperry@ucsd.edu";
+    certs."krg-vault.ucsd.edu" = {
+      group   = "openbao";
+      postRun = "systemctl reload openbao.service || true";
+    };
+  };
+
+  services.nginx = {
+    enable = true;
+    # Minimal vhost — serves only the ACME challenge, no other content.
+    virtualHosts."krg-vault.ucsd.edu" = {
+      enableACME = true;
+      forceSSL   = false;
+    };
   };
 
   services.openbao = {
@@ -41,9 +64,10 @@
       ui = true;
 
       listener.default = {
-        type        = "tcp";
-        address     = "0.0.0.0:8200";
-        tls_disable = true;  # TODO: enable TLS once DNS/cert is stable
+        type          = "tcp";
+        address       = "0.0.0.0:8200";
+        tls_cert_file = "/var/lib/acme/krg-vault.ucsd.edu/cert.pem";
+        tls_key_file  = "/var/lib/acme/krg-vault.ucsd.edu/key.pem";
       };
 
       storage.raft = {
@@ -51,8 +75,8 @@
         node_id = "krg-vault-1";
       };
 
-      api_addr     = "http://krg-vault.ucsd.edu:8200";
-      cluster_addr = "http://krg-vault.ucsd.edu:8201";
+      api_addr     = "https://krg-vault.ucsd.edu:8200";
+      cluster_addr = "https://krg-vault.ucsd.edu:8201";
     };
   };
 
