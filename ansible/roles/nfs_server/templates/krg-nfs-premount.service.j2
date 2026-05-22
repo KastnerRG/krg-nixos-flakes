@@ -1,7 +1,8 @@
 {# Managed by Ansible (krg-infra nfs_server). Edit the role, not here. #}
-# Mount the ZFS datasets backing the NFS exports BEFORE nfsd reads /etc/exports.d,
-# and verify they really mounted. Without this, a reboot can leave them unmounted and
-# nfsd exports the bare (empty) mountpoint instead of the dataset.
+# Mount the ZFS datasets backing the NFS exports BEFORE nfs-server's `exportfs` reads
+# /etc/exports.d (and loads the kernel export table), and verify they really mounted.
+# Without this, a reboot can leave them unmounted and exportfs registers the bare
+# (empty) mountpoint instead of the dataset.
 #
 # WHY: Proxmox/Debian mount ZFS at boot via the zfs-mount-generator reading
 # /etc/zfs/zfs-list.cache/<pool>. Datasets created after that cache was last refreshed
@@ -12,11 +13,11 @@
 # FAIL CLOSED: the leading `-` on `zfs mount -a` tolerates an UNRELATED dataset failing
 # to mount, but the per-export `mountpoint -q` checks have NO `-`, so the unit FAILS if
 # any export is not actually mounted. nfs-server `Requires=` this unit (see the
-# 10-zfs.conf drop-in), so that failure BLOCKS nfsd rather than letting it serve empty
+# 10-zfs.conf drop-in), so that failure BLOCKS nfs-server rather than letting it serve empty
 # exports — the exact failure mode this role exists to prevent. (That `Requires=` is
 # also the single thing that pulls this unit in — no [Install]/enable needed.)
 [Unit]
-Description=Mount + verify ZFS datasets backing krg NFS exports (before nfsd exports them)
+Description=Mount + verify ZFS datasets backing krg NFS exports (before nfs-server exports them)
 After=zfs-mount.service zfs.target
 Wants=zfs-mount.service
 
