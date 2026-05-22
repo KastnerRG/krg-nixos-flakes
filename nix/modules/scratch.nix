@@ -23,6 +23,9 @@
 # hardware. allow_other,default_permissions makes the kernel enforce those modes
 # through the FUSE layer. The NFS tier is exported no_root_squash so autotier
 # (root) preserves each file's owner/group when it demotes onto the cold tier.
+# With `perUser.enable`, each lab member also gets a private <mountPoint>/<user>
+# auto-created on login (a pam_exec session hook, the scratch analogue of
+# pam_mkhomedir) — autotier still tiers the whole lab pool underneath.
 #
 # IMPERMANENCE: the two LOCAL tiers are their own ZFS datasets (off nvmepool/root),
 # so they survive the boot rollback untouched. autotier's RocksDB metadata defaults
@@ -110,6 +113,34 @@ let
       exit 0
     '';
 
+  # --- per-user dir creation (pam_exec session hook) --------------------------
+  # Runs at session open, as root (before the session drops to the user). Creates
+  # <mountPoint>/<PAM_USER> for lab members. GUARDED two ways: (1) only if the
+  # scratch mount is active — never create on the bare/ephemeral root when autotier
+  # is down (fail-closed cold tier); (2) only for members of ownerGroup, compared by
+  # NUMERIC gid since the group name may contain spaces ("Kastner Research Group").
+  mkPerUserScript = projName: proj:
+    pkgs.writeShellScript "krg-scratch-mkuser-${projName}" ''
+      set -u
+      [ -n "''${PAM_USER:-}" ] || exit 0
+      mp=${escapeShellArg proj.mountPoint}
+      ${pkgs.util-linux}/bin/mountpoint -q -- "$mp" || exit 0
+      ${optionalString (proj.ownerGroup != null) ''
+        gid=$(${pkgs.getent}/bin/getent group ${escapeShellArg proj.ownerGroup} | ${pkgs.coreutils}/bin/cut -d: -f3)
+        [ -n "$gid" ] || exit 0
+        case " $(${pkgs.coreutils}/bin/id -G "$PAM_USER" 2>/dev/null) " in
+          *" $gid "*) : ;;
+          *) exit 0 ;;
+        esac
+      ''}
+      d="$mp/$PAM_USER"
+      [ -e "$d" ] && exit 0
+      ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
+      ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
+      ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
+      exit 0
+    '';
+
   tierType = types.submodule ({ ... }: {
     options = {
       id = mkOption {
@@ -180,6 +211,32 @@ let
         default = 1;
         description = "autotier log level (0 none, 1 normal, 2 debug).";
       };
+      perUser = mkOption {
+        default = { };
+        description = ''
+          Auto-create a private per-user directory <mountPoint>/<user> on login — a
+          pam_exec session hook, the scratch analogue of pam_mkhomedir. Created only
+          for members of `ownerGroup`, and only while the scratch mount is actually
+          active (never on the bare/ephemeral root). Non-blocking: a failure here
+          never denies login (scratch is not critical). autotier still tiers the whole
+          lab pool underneath — these dirs just give each user their own namespace.
+        '';
+        type = types.submodule {
+          options = {
+            enable = mkEnableOption "per-user directories under this lab's scratch";
+            mode = mkOption {
+              type = types.str;
+              default = "0700";
+              description = "Mode for each per-user dir. 0700 = private to the user; 2770 = shared within the lab (setgid).";
+            };
+            loginServices = mkOption {
+              type = types.listOf types.str;
+              default = [ "sshd" "login" ];
+              description = "PAM services the per-user-dir session hook is added to (mirror krg.nfsHome.loginServices; add xrdp etc. as needed).";
+            };
+          };
+        };
+      };
       tiers = mkOption {
         type = types.listOf tierType;
         description = "Tiers fastest-first. At least two required.";
@@ -247,10 +304,29 @@ in {
     let
       projectList = mapAttrsToList (name: proj: { inherit name proj; }) cfg.projects;
     in {
-      assertions = mapAttrsToList (name: proj: {
-        assertion = length proj.tiers >= 2;
-        message = "krg.scratch.projects.${name}: autotier needs at least two tiers.";
-      }) cfg.projects;
+      assertions = concatLists (mapAttrsToList (name: proj:
+        let
+          ids = map (t: t.id) proj.tiers;
+          labels = map (t: t.label) proj.tiers;
+        in [
+          {
+            assertion = length proj.tiers >= 2;
+            message = "krg.scratch.projects.${name}: autotier needs at least two tiers.";
+          }
+          {
+            # Duplicate ids -> colliding backing mountpoints (<tierMountBase>/<id>/<lab>)
+            # -> the generated fileSystems entries clash. `unique` preserves order, so
+            # equality holds iff there were no dupes.
+            assertion = ids == unique ids;
+            message = "krg.scratch.projects.${name}: tier `id`s must be unique (they form the backing mountpoints): ${toString ids}";
+          }
+          {
+            # Duplicate labels -> two autotier [section] headers with the same name.
+            assertion = labels == unique labels;
+            message = "krg.scratch.projects.${name}: tier `label`s must be unique (autotier section headers): ${toString labels}";
+          }
+        ]
+      ) cfg.projects);
 
       # allow_other requires user_allow_other in /etc/fuse.conf (even though
       # autotierfs runs as root, libfuse checks it).
@@ -302,14 +378,28 @@ in {
           serviceConfig = {
             Type = "forking"; # autotierfs daemonizes via fuse_main() (see header)
             ExecStartPre = mkPermsScript name proj;
-            ExecStart = ''
-              ${cfg.package}/bin/autotierfs -c ${mkConfig name proj} ${proj.mountPoint} -o ${concatStringsSep "," cfg.fuseOptions}
-            '';
+            # Single-line on purpose: systemd unit values are one line, and an
+            # indented Nix '' string would leave a trailing newline in ExecStart=.
+            ExecStart = "${cfg.package}/bin/autotierfs -c ${mkConfig name proj} ${proj.mountPoint} -o ${concatStringsSep "," cfg.fuseOptions}";
             ExecStop = "${pkgs.fuse3}/bin/fusermount3 -u ${proj.mountPoint}";
             Restart = "on-failure";
             RestartSec = "30s"; # don't hot-loop while a tier (e.g. NFS) is down
           };
         }
+      ) projectList);
+
+      # Per-user dir auto-creation: a session pam_exec hook on the configured login
+      # services, for each lab that opts into perUser. `optional` so it can never
+      # block a login. Different rule name per lab so multiple labs don't collide.
+      security.pam.services = mkMerge (concatMap ({ name, proj }:
+        optionals proj.perUser.enable (map (svc: {
+          ${svc}.rules.session."krgScratchMkdir_${name}" = {
+            control = "optional";
+            modulePath = "${pkgs.pam}/lib/security/pam_exec.so";
+            args = [ "${mkPerUserScript name proj}" ]; # coerce derivation -> store-path string
+            order = 13000; # session open, after pam_mkhomedir
+          };
+        }) proj.perUser.loginServices)
       ) projectList);
     }
   );

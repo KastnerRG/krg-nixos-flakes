@@ -87,6 +87,10 @@
     enable = true;
     projects.krg = {
       ownerGroup = "Kastner Research Group";
+      # Each krg lab member gets a private /scratch/krg/<user>, auto-created on login
+      # (created only for Kastner-Research-Group members, only while /scratch/krg is
+      # mounted). autotier still tiers the whole lab pool underneath.
+      perUser.enable = true;
       tiers = [
         { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85 %"; }
         { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90 %"; }
