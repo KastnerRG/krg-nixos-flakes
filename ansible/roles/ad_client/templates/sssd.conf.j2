@@ -10,6 +10,13 @@ domains = {{ ad_realm }}
 [nss]
 fallback_homedir = /home/%u
 default_shell = {{ ad_default_shell }}
+{% if ad_allowed_shells | length > 0 %}
+# Per-user AD loginShell, fail-safe: honoured where it's in /etc/shells, else
+# replaced by shell_fallback instead of nologin (so a value that's valid on a
+# NixOS member but not here lands on bash, not a lockout). docs/creating-a-user.md.
+allowed_shells = {{ ad_allowed_shells | join(', ') }}
+shell_fallback = {{ ad_shell_fallback }}
+{% endif %}
 
 [pam]
 {% if ad_ssh_keys_from_ad %}
