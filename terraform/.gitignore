@@ -1,0 +1,14 @@
+# OpenTofu / Terraform working files — never commit state (holds DSM secrets)
+# or real tfvars.
+.terraform/
+.terraform.lock.hcl  # remove this line if you decide to commit the lock (recommended once stable)
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

@@ -6,14 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `krg-infra` is the KastnerRG infrastructure monorepo, replacing the old Ansible
 infrastructure at [fabricant-prod](https://github.com/KastnerRG/fabricant-prod)
-and [waiter](https://github.com/KastnerRG/waiter). It has **two coequal layers**,
-split by configuration tool (not by guest/host role — some NixOS machines are
-physical):
+and [waiter](https://github.com/KastnerRG/waiter). Layers are split by
+configuration tool (not by guest/host role — some NixOS machines are physical):
 
 - **`nix/`** — every machine configured by **NixOS** (the flake): physical hosts
   (waiter) *and* Proxmox VMs (krg-prod, e4e-prod, krg-ldap). Machines are composed
   from profile modules — no per-host playbooks.
 - **`ansible/`** — the **Proxmox/Debian hypervisor hosts** those VMs run on.
+- **`terraform/`** — the **OpenTofu layer**: things driven through a Terraform/
+  Web-API provider rather than NixOS or Ansible. **One root module (own state +
+  creds) per target** — not one combined config (separate blast radius). Targets:
+  `e4e-nas/` (Synology DSM, built), `authentik/` (SSO config, planned),
+  `vault/` (secrets-engine structure, planned). `authentik/` + `vault/` manage the
+  *config of* services deployed elsewhere (Authentik = compose on krg-prod; Vault =
+  future), not their deployment. e4e-nas is a *hybrid*: the `synology` provider only
+  covers Container Manager / packages / tasks / files / VMs; identity (AD join),
+  shares/ACLs, firewall, SSH, snapshots and DSM updates have no API and live in the
+  runbook `docs/e4e-nas-dsm.md` (DSM is a proprietary appliance — SSH-level edits
+  don't survive DSM updates, so prefer UI settings).
 
 This whole rebuild is incident-response driven: a Proxmox host's root SSH was
 dictionary-attacked. The hypervisors had no config management — `ansible/` closes
@@ -103,6 +113,14 @@ krg-infra/
       proxmox_firewall/            # PVE cluster.fw + per-guest <vmid>.fw + per-node host.fw (host rules eval before cluster rules; proxmox group, separate play)
       zfs_limits/                  # quota/reservation on EXISTING ZFS datasets — caps VM storage so user data wins (fabricant ONLY play)
       nfs_server/                  # NFSv4 exports on ZFS datasets under <pool>/nfs (fabricant ONLY play; NFS tcp/2049 opened via fabricant host.fw)
+  terraform/                       # OpenTofu layer — one root module (own state+creds) per target
+    README.md  .gitignore          # layer conventions; .gitignore is top-level (covers all targets: *.tfstate*, *.tfvars)
+    e4e-nas/                       # Synology DSM (synology-community/synology): versions/providers/variables.tf + containers/packages/scheduler.tf (templates, commented)
+    authentik/                     # PLANNED (goauthentik/authentik): Authentik SSO objects — apps/providers/flows/groups (README stub)
+    vault/                         # PLANNED (hashicorp/vault): auth methods/policies/secret engines — structure not values (README stub)
+  docs/
+    creating-a-user.md             # AD user-creation runbook
+    e4e-nas-dsm.md                 # DSM runbook: the NAS settings with no API (AD join, shares/ACLs, firewall, SSH, snapshots, updates)
 ```
 
 > **Naming note:** `fabricant` now refers only to the Proxmox **host** (hypervisor,
@@ -200,3 +218,14 @@ The grafana/prometheus/loki compose services mount config from the working direc
 - [ ] **Second AD DC (remove the krg-ldap SPOF).** Today every host's login depends on the single `krg-ldap` VM on the `fabricant` hypervisor. Plan: stand up a second Samba AD DC on **another Proxmox host** before go-live. When it lands, let members fail over — either drop the pinned `krg.adClient.server`/`serverIp` so SSSD uses DNS SRV autodiscovery, or extend the module to list both DCs (and pin both in `/etc/hosts`). Until then, the SSSD offline cache (`cache_credentials=true`) + local break-glass `krg-admin` are the only continuity if krg-ldap is down.
 - [~] **autotier tiered `/scratch` (built, PR #14, pending on-box).** Tiering tool chosen: **autotier** (FUSE), via new `krg.scratch` (`nix/modules/scratch.nix`) — one merged `/scratch/<lab>` per lab, tiers fastest-first (hot data promoted, cold demoted on a daily pass). On **waiter, krg lab only** (e4e is an independent lab with no users yet): `/scratch/krg` = `nvmepool/scratch-krg` (NVMe, hot) → `hddpool/scratch-krg` (HDD, warm) → fabricant NFS `rpool/nfs/scratch-krg` (cold). Disko flips the krg scratch datasets `mountpoint=none → legacy` (e4e left as scaffolding; the module owns their `fileSystems`). **Lab isolation:** `/scratch` tree owned by the `Kastner Research Group` AD group, mode `2770` + `allow_other,default_permissions` (enforced through FUSE); the cold NFS tier is `no_root_squash` so autotier-as-root preserves ownership on demotion. **Fail-closed:** `RequiresMountsFor` all tiers, so if fabricant NFS is down autotier won't start (never demotes onto the impermanent root); local tiers are durable datasets. autotierfs daemonizes (`fuse_main`) → `Type=forking`; RocksDB metadata at `/var/lib/autotier/<lab>`, persisted in `impermanence.nix`. **Per-user dirs:** `projects.<lab>.perUser.enable` (on for waiter krg) auto-creates a private `/scratch/<lab>/<user>` on login via a `pam_exec` session hook — only for `ownerGroup` members, only while the mount is active (same fail-closed guard as the `/home` gate). ansible `nfs_server` replaces the unused `bulk` export with per-lab `scratch-krg` (`no_root_squash`, waiter). **Pending:** create the `Kastner Research Group` AD group (until then the perms step leaves tier roots root-owned/admin-only + warns; scratch still mounts); run the play on fabricant; deploy waiter with `nixos-rebuild boot`; validate tiers/mount/demotion/isolation on-box; then verify `/srv/nfs/bulk` empty and `zfs destroy rpool/nfs/bulk`. **e4e later:** add a `projects.e4e` with e4e-nas as its cold tier (+ e4e-nas NFS homes).
 - [~] **node-local `/local/<user>` fast cache (built, pending on-box).** The counterpart to scratch: `krg.localCache` (`nix/modules/local-cache.nix`) moves regenerable, hot, NODE-local per-user state OFF the NFS `/home` onto a plain durable NVMe dataset (`nvmepool/local` → `/local`, legacy mount, off the `@blank` rollback — so NO `/persist` bind needed, like `/var/lib/docker`). Two kinds move: (1) **IDE remote servers** `~/.vscode-server` + `~/.cursor-server` via a login-time **symlink** into `/local/<user>/`; (2) the **cache class** — `XDG_CACHE_HOME`, `HF_HOME`, `TORCH_HOME`, `CONDA_PKGS_DIRS`, `npm_config_cache` — via `environment.shellInit` exports computed with `id -un` (only when `/local/<user>` exists). Only **caches** move; conda **envs**/real data stay in `/home`. **Why not `/home`:** small-file/watch-heavy IDE + cache I/O is exactly NFS's worst case (inotify doesn't cross NFS → polling watchers), and it's regenerable so it doesn't deserve durable network home space. **Why not `/scratch`:** autotier is FUSE + DEMOTES cold files to the NFS tier (opposite of a dev cache) and fails closed on NFS — `/local` is the deliberately boring pure-NVMe path. **Per-user dir** auto-created by a `pam_exec` session hook (order 13500, `optional` so it never blocks login), guarded on `/local` being mounted; the **symlink is never created over an existing real path** (so an existing `~/.vscode-server` on NFS is untouched). On **waiter** (`krg.localCache.enable + perUser.enable`). **MIGRATION:** existing users opt in once with `rm -rf ~/.vscode-server` (then next login symlinks it). **Pending:** on-box `zfs create -o mountpoint=legacy -o quota=1T -o com.sun:auto-snapshot=false nvmepool/local` (disko isn't re-run live), deploy waiter with `nixos-rebuild boot`, then validate the mount + per-user dir + symlink + `echo $HF_HOME`.
+- [~] **e4e-nas (Synology DSM) under management.** **Scaffolded:** the
+  `terraform/` OpenTofu layer + its `e4e-nas/` target (community `synology`
+  provider, local state for now → migrate to a backend later) + `docs/e4e-nas-dsm.md`
+  runbook. (Sibling targets `terraform/authentik/` + `terraform/vault/` are planned
+  README stubs — see [ ] Add Vault, below.) **Remaining:** fill `dsm_user`/
+  secrets + real resources (Container Manager stacks etc.); then work the runbook
+  on-box — disable built-in `admin`, key-only SSH, **join `KRG.LOCAL`** (mind the
+  winbind-RID vs SSSD-algorithmic uid/gid mismatch — SMB is SID-based so fine, NFS
+  is not), firewall to `ucsd`/`sealab`, shares→AD groups, snapshot/Hyper Backup
+  schedules, config-backup export (don't commit the `.dss`). DSM web is assumed on
+  `:6021` (per the prometheus probe) — confirm.
