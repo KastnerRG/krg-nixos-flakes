@@ -18,11 +18,15 @@
 #     Tier 3  fabricant NFS          -> /srv/scratch-tiers/nfs/krg    (cold, network)
 #
 # LAB ISOLATION (krg and e4e are INDEPENDENT labs sharing this box): each lab's
-# /scratch and tier roots are chmod 2770, group = that lab's AD group (krg ->
+# /scratch and tier roots are chmod 2771, group = that lab's AD group (krg ->
 # "Kastner Research Group"), so one lab cannot read another's data even on shared
 # hardware. allow_other,default_permissions makes the kernel enforce those modes
-# through the FUSE layer. The NFS tier is exported no_root_squash so autotier
-# (root) preserves each file's owner/group when it demotes onto the cold tier.
+# through the FUSE layer. (The tier roots are 2771, not 2770: the `o+x` is REQUIRED
+# for autotier's file-create to work at all — see mkPermsScript for the full why.
+# It only grants TRAVERSE, not read [no o+r] — non-members can't enumerate the tree,
+# and the per-user dirs are 0700, so no data is exposed cross-lab.) The NFS tier is
+# exported no_root_squash so autotier (root) preserves each file's owner/group when
+# it demotes onto the cold tier.
 # With `perUser.enable`, each lab member also gets a private <mountPoint>/<user>
 # auto-created on login (a pam_exec session hook, the scratch analogue of
 # pam_mkhomedir) — autotier still tiers the whole lab pool underneath.
@@ -95,18 +99,34 @@ let
 
   # --- ownership / isolation step (ExecStartPre) ------------------------------
   # Runs AFTER the tier mounts are active (RequiresMountsFor) and after sssd, so
-  # the AD lab group resolves. Always chmod 2770 the tier roots; chgrp to the lab
+  # the AD lab group resolves. Always chmod 2771 the tier roots; chgrp to the lab
   # group only if it resolves — TOLERANT so /scratch still comes up (root-owned,
   # admin-only) before the AD join / group creation lands, then tightens on the
   # next start. The group name has spaces ("Kastner Research Group"), so every
   # path is chgrp'd individually with the group quoted.
+  #
+  # WHY 2771 (other-execute) and not 2770, given the lab-isolation goal: autotier
+  # 1.2.0's FUSE *create* path impersonates the caller with only uid + PRIMARY gid
+  # and DROPS supplementary groups, then opens the file on the chosen tier. The
+  # only route to a user's files runs through this tier root; with 2770 root:<lab>
+  # the impersonated create can't traverse it (the user reaches it only via the
+  # supplementary lab group, which autotier discarded) -> EACCES on every file
+  # create, for every lab member. (ls/cd/reads work because the kernel's
+  # default_permissions check uses the caller's FULL group set; autotier *mkdir*
+  # works because it creates as root then chowns — which is also why subdirs come
+  # out group `domain users`, not the setgid lab group.) `o+x` lets the
+  # impersonated create TRAVERSE the tier root without the group; isolation still
+  # holds because there is no `o+r` (non-members can't enumerate the tree) and the
+  # per-user dirs are 0700 (no data is readable cross-user/cross-lab). Confirmed
+  # on-box 2026-05-22, autotier 1.2.0. (The "correct" alternative — patch autotier
+  # to initgroups() in create/open — was declined as too heavy for a dormant tool.)
   mkPermsScript = projName: proj:
     pkgs.writeShellScript "krg-scratch-perms-${projName}" ''
       set -u
       roots="${concatMapStringsSep " " (tier: tierPath projName tier) proj.tiers}"
       for d in $roots; do
-        ${pkgs.coreutils}/bin/chmod 2770 "$d" || \
-          echo "krg.scratch[${projName}]: chmod 2770 $d failed" >&2
+        ${pkgs.coreutils}/bin/chmod 2771 "$d" || \
+          echo "krg.scratch[${projName}]: chmod 2771 $d failed" >&2
       done
       ${optionalString (proj.ownerGroup != null) ''
         if ${pkgs.getent}/bin/getent group ${escapeShellArg proj.ownerGroup} >/dev/null 2>&1; then
@@ -205,9 +225,10 @@ let
         default = null;
         example = "Kastner Research Group";
         description = ''
-          Lab group that owns this scratch tree (mode 2770, setgid) so other labs
-          are denied. An AD/SSSD group (may contain spaces). null = leave root-owned
-          (admin-only). When set, the unit orders after sssd so the group resolves.
+          Lab group that owns this scratch tree (mode 2771, setgid) so other labs
+          are denied (o+x grants traverse only, not read; see mkPermsScript). An
+          AD/SSSD group (may contain spaces). null = leave root-owned (admin-only).
+          When set, the unit orders after sssd so the group resolves.
         '';
       };
       tierPeriod = mkOption {
@@ -289,7 +310,7 @@ in {
       default = [ "allow_other" "default_permissions" ];
       description = ''
         FUSE mount options. default_permissions makes the kernel enforce the
-        underlying 2770/file modes (the lab-isolation gate); allow_other lets users
+        underlying 2771/file modes (the lab-isolation gate); allow_other lets users
         other than the mounting root (i.e. everyone, gated by those modes) access it.
         allow_other needs programs.fuse.userAllowOther (set below).
       '';
@@ -370,7 +391,7 @@ in {
 
       # Ensure the merged FUSE mountpoints exist (no .mount unit creates them, unlike
       # the tier backings). 0755 here is just the bare mountpoint; once autotier is
-      # mounted the root's perms come from tier 1 (2770, set by the perms step).
+      # mounted the root's perms come from tier 1 (2771, set by the perms step).
       systemd.tmpfiles.rules =
         [ "d /scratch 0755 root root -" ]
         ++ map ({ name, proj }: "d ${proj.mountPoint} 0755 root root -") projectList;
