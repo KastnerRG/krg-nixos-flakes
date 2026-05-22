@@ -162,7 +162,18 @@
       ipv4.addresses = [{ address = "137.110.161.67"; prefixLength = 24; }];
     };
     defaultGateway = "137.110.161.1";
-    nameservers    = [ "132.239.0.252" "8.8.8.8" "1.1.1.1" ];
+    # DNS: the AD DC (krg-ldap) MUST come first so waiter can resolve the internal
+    # krg.local zone. SSSD's own (c-ares) resolver queries these servers directly and
+    # does NOT consult the /etc/hosts pin base.nix writes for the DC — so without the
+    # DC listed here it cannot resolve krg-ldap.krg.local and flaps offline, which
+    # breaks AD logins for any not-yet-cached (i.e. brand-new) user with a bare
+    # "Permission denied (publickey)". krg-ldap runs SAMBA_INTERNAL DNS and forwards
+    # non-AD queries upstream (samba-ad.nix dnsForwarder), so it answers everything;
+    # the UCSD/public servers stay as fallback for when the DC is unreachable. This is
+    # the canonical AD-member setup — the prior external-DNS-only list relied on that
+    # /etc/hosts pin, which getent honours but SSSD ignores (the half-fix that caused
+    # the offline flapping).
+    nameservers    = [ "137.110.161.109" "132.239.0.252" "8.8.8.8" "1.1.1.1" ];
 
     # ZFS requires a unique hostId — generate with:
     #   python3 -c "import uuid; print(str(uuid.uuid4())[:8])"
