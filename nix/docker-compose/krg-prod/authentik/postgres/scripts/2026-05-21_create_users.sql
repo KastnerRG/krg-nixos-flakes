@@ -1,0 +1,12 @@
+CREATE DATABASE authentik_db;
+
+CREATE ROLE authentik WITH
+    LOGIN
+    NOSUPERUSER
+    NOCREATEDB
+    NOCREATEROLE
+    ENCRYPTED PASSWORD 'SCRAM-SHA-256$4096:x1WNeg9nUndVvvMEqe7HvA==$8yWdpMmkQjZi5iwjgCCM30Y/+GRN/lJQFR9qWEloEdw=:4ExvkLSJXtY8ydVyC/xRc9HRcXY17mv6YZ+uPRNSalw=';
+
+GRANT ALL PRIVILEGES ON DATABASE authentik_db TO authentik;
+\c authentik_db postgres
+GRANT ALL ON SCHEMA public TO authentik;

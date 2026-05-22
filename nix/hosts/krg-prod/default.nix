@@ -24,10 +24,10 @@ in {
     domain   = "ucsd.edu";
     useDHCP  = false;
     interfaces.ens18.ipv4.addresses = [{
-      address      = "132.239.95.106";
+      address      = "137.110.161.106";
       prefixLength = 24;
     }];
-    defaultGateway = "132.239.95.1";
+    defaultGateway = "137.110.161.1";
     nameservers    = [ "132.239.0.252" "8.8.8.8" "1.1.1.1" ];
   };
 
