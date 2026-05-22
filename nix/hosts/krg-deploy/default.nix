@@ -53,9 +53,12 @@
       Type            = "oneshot";
       User            = "krg-admin";
       WorkingDirectory = "/home/krg-admin/krg-infra/ansible";
-      ExecStart = "${pkgs.bash}/bin/bash -c '\
-        ${pkgs.git}/bin/git -C /home/krg-admin/krg-infra pull --ff-only && \
-        ${pkgs.ansible}/bin/ansible-playbook playbooks/site.yml'";
+      ExecStart = pkgs.writeShellScript "ansible-apply" ''
+        ${pkgs.git}/bin/git -C /home/krg-admin/krg-infra pull --ff-only
+        ${pkgs.ansible}/bin/ansible-playbook \
+          --inventory /home/krg-admin/krg-infra/ansible/inventory \
+          /home/krg-admin/krg-infra/ansible/playbooks/site.yml
+      '';
     };
   };
 
