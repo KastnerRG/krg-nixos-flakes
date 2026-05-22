@@ -49,10 +49,13 @@
     acceptTerms = true;
     defaults.email = "shperry@ucsd.edu";
     certs."krg-vault.ucsd.edu" = {
-      group   = "openbao";
+      group   = "nginx";   # nginx reads it for ACME; openbao added below
       postRun = "systemctl reload openbao.service || true";
     };
   };
+
+  # Give openbao read access to the cert files (group nginx owns them).
+  systemd.services.openbao.serviceConfig.SupplementaryGroups = [ "nginx" ];
 
   services.nginx = {
     enable = true;
