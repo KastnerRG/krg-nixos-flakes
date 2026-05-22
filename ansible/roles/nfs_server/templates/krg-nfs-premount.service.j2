@@ -1,0 +1,27 @@
+{# Managed by Ansible (krg-infra nfs_server). Edit the role, not here. #}
+# Guarantee the ZFS datasets backing the NFS exports are mounted BEFORE nfsd reads
+# /etc/exports.d. Without this, a reboot can leave them unmounted and nfsd exports
+# the bare (empty) mountpoint instead of the dataset.
+#
+# WHY this is needed (the durable fix): Proxmox/Debian mount ZFS at boot via the
+# zfs-mount-generator reading /etc/zfs/zfs-list.cache/<pool>. Datasets created after
+# that cache was last refreshed (exactly our <pool>/nfs/* shares) get no generated
+# .mount unit and stay unmounted on the next boot. `zfs mount -a` is mechanism-
+# independent — it mounts every canmount=on dataset regardless of the cache — and is
+# idempotent (silently skips already-mounted ones). The leading `-` keeps an
+# unrelated dataset's mount failure from blocking NFS.
+#
+# Ordered Before=nfs-server.service so it runs ahead of nfsd's own `exportfs -r`.
+[Unit]
+Description=Mount ZFS datasets backing krg NFS exports (before nfsd exports them)
+After=zfs-mount.service zfs.target
+Wants=zfs-mount.service
+Before=nfs-server.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=-/usr/sbin/zfs mount -a
+
+[Install]
+WantedBy=nfs-server.service

@@ -75,25 +75,49 @@
     mode: "0644"
   notify: restart nfs server
 
+# Durable boot-mount guarantee. The export datasets MUST be mounted before nfsd
+# reads /etc/exports.d, else nfsd exports the bare (empty) mountpoint. Proxmox/Debian
+# mount ZFS at boot from /etc/zfs/zfs-list.cache/<pool> via zfs-mount-generator;
+# datasets created after that cache was last refreshed (our <pool>/nfs/* shares) get
+# no generated .mount unit and silently stay unmounted on reboot. This oneshot
+# (`zfs mount -a`) re-establishes them mechanism-independently, ordered ahead of nfsd.
+- name: Install the krg-nfs premount unit (mount export datasets before nfsd)
+  ansible.builtin.template:
+    src: krg-nfs-premount.service.j2
+    dest: /etc/systemd/system/krg-nfs-premount.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart nfs server
+
+- name: Enable krg-nfs-premount (WantedBy nfs-server.service pulls it in at boot)
+  ansible.builtin.systemd_service:
+    name: krg-nfs-premount.service
+    enabled: true
+    daemon_reload: true
+
 - name: Ensure nfs-server systemd drop-in dir exists
   ansible.builtin.file:
     path: /etc/systemd/system/nfs-server.service.d
     state: directory
     mode: "0755"
 
-- name: Order nfs-server after ZFS mounts
+- name: Order nfs-server after the export-dataset mounts
   ansible.builtin.copy:
     dest: /etc/systemd/system/nfs-server.service.d/10-zfs.conf
     owner: root
     group: root
     mode: "0644"
     content: |
-      # Managed by Ansible (krg-infra nfs_server). ZFS datasets are mounted by
-      # zfs-mount.service; nfsd must read /etc/exports.d AFTER they're mounted, or
-      # it would export the bare (empty) mountpoint instead of the dataset.
+      # Managed by Ansible (krg-infra nfs_server). nfsd must read /etc/exports.d
+      # AFTER the export datasets are mounted, or it exports the bare (empty)
+      # mountpoint. krg-nfs-premount.service guarantees the mounts (zfs mount -a);
+      # zfs-mount.service is the normal boot path. Order after both.
       [Unit]
-      After=zfs-mount.service
-      Wants=zfs-mount.service
+      After=zfs-mount.service krg-nfs-premount.service
+      Wants=zfs-mount.service krg-nfs-premount.service
   notify:
     - reload systemd
     - restart nfs server
