@@ -32,8 +32,8 @@ let
   homeMountGuard = pkgs.writeShellScript "krg-nfs-home-login-gate" ''
     home="$(${pkgs.getent}/bin/getent passwd "$PAM_USER" 2>/dev/null | ${pkgs.coreutils}/bin/head -n1 | ${pkgs.coreutils}/bin/cut -d: -f6)"
     case "$home" in
-      ${cfg.mountPoint}|${cfg.mountPoint}/*)
-        if ! ${pkgs.util-linux}/bin/mountpoint -q ${cfg.mountPoint}; then
+      "${cfg.mountPoint}" | "${cfg.mountPoint}/"*)
+        if ! ${pkgs.util-linux}/bin/mountpoint -q -- "${cfg.mountPoint}"; then
           echo "Login refused: ${cfg.mountPoint} (network home) is not mounted, so a home created now would be lost on the next reboot. The NFS server may be down — contact an admin."
           exit 1
         fi
