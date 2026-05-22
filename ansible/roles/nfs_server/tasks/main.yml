@@ -75,25 +75,48 @@
     mode: "0644"
   notify: restart nfs server
 
+# Durable boot-mount guarantee. The export datasets MUST be mounted before
+# nfs-server's `exportfs` reads /etc/exports.d (loading the kernel export table), else
+# it exports the bare (empty) mountpoint. Proxmox/Debian mount ZFS at boot from
+# /etc/zfs/zfs-list.cache/<pool> via zfs-mount-generator; datasets created after that
+# cache was last refreshed (our <pool>/nfs/* shares) get no generated .mount unit and
+# silently stay unmounted on reboot. This oneshot re-mounts them mechanism-independently
+# AND verifies each export is really mounted, failing if not; nfs-server Requires= it
+# (below), so a failed mount blocks nfs-server instead of exporting empty dirs. That
+# Requires= is the sole pull-in (no enable).
+- name: Install the krg-nfs premount unit (mount + verify export datasets before nfs-server)
+  ansible.builtin.template:
+    src: krg-nfs-premount.service.j2
+    dest: /etc/systemd/system/krg-nfs-premount.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart nfs server
+
 - name: Ensure nfs-server systemd drop-in dir exists
   ansible.builtin.file:
     path: /etc/systemd/system/nfs-server.service.d
     state: directory
     mode: "0755"
 
-- name: Order nfs-server after ZFS mounts
+- name: Require + order nfs-server after the export-dataset premount
   ansible.builtin.copy:
     dest: /etc/systemd/system/nfs-server.service.d/10-zfs.conf
     owner: root
     group: root
     mode: "0644"
     content: |
-      # Managed by Ansible (krg-infra nfs_server). ZFS datasets are mounted by
-      # zfs-mount.service; nfsd must read /etc/exports.d AFTER they're mounted, or
-      # it would export the bare (empty) mountpoint instead of the dataset.
+      # Managed by Ansible (krg-infra nfs_server). nfs-server's `exportfs` must read
+      # /etc/exports.d only AFTER the export datasets are mounted, or it exports the
+      # bare (empty) mountpoint. krg-nfs-premount.service mounts them and verifies each
+      # export is a real mountpoint, failing if not. Requires= makes that failure BLOCK
+      # nfs-server (fail closed) instead of exporting empty dirs, and is the single
+      # thing that pulls the premount unit in (it has no [Install]).
       [Unit]
-      After=zfs-mount.service
-      Wants=zfs-mount.service
+      Requires=krg-nfs-premount.service
+      After=krg-nfs-premount.service
   notify:
     - reload systemd
     - restart nfs server

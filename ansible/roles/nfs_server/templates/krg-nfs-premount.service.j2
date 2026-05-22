@@ -1,0 +1,36 @@
+{# Managed by Ansible (krg-infra nfs_server). Edit the role, not here. #}
+# Mount the ZFS datasets backing the NFS exports BEFORE nfs-server's `exportfs` reads
+# /etc/exports.d (and loads the kernel export table), and verify they really mounted.
+# Without this, a reboot can leave them unmounted and exportfs registers the bare
+# (empty) mountpoint instead of the dataset.
+#
+# WHY: Proxmox/Debian mount ZFS at boot via the zfs-mount-generator reading
+# /etc/zfs/zfs-list.cache/<pool>. Datasets created after that cache was last refreshed
+# (exactly our <pool>/nfs/* shares) get no generated .mount unit and stay unmounted on
+# the next boot. `zfs mount -a` is mechanism-independent (mounts every canmount=on
+# dataset regardless of the cache) and idempotent (skips already-mounted ones).
+#
+# FAIL CLOSED: the leading `-` on `zfs mount -a` tolerates an UNRELATED dataset failing
+# to mount, but the per-export `mountpoint -q` checks have NO `-`, so the unit FAILS if
+# any export is not actually mounted. nfs-server `Requires=` this unit (see the
+# 10-zfs.conf drop-in), so that failure BLOCKS nfs-server rather than letting it serve empty
+# exports — the exact failure mode this role exists to prevent. (That `Requires=` is
+# also the single thing that pulls this unit in — no [Install]/enable needed.)
+[Unit]
+Description=Mount + verify ZFS datasets backing krg NFS exports (before nfs-server exports them)
+After=zfs-mount.service zfs.target
+Wants=zfs-mount.service
+
+[Service]
+Type=oneshot
+# Deliberately NOT RemainAfterExit: a oneshot that exits successfully still satisfies
+# nfs-server's Requires=, but leaving it inactive means systemd RE-RUNS this (mount +
+# verify) on every nfs-server start/restart — not just at boot. So an Ansible/admin
+# `systemctl restart nfs-server` re-checks the mounts, and nfsd can't come back up
+# against an export that was unmounted after boot.
+# Mount everything (tolerant: an unrelated dataset's failure must not take NFS down)...
+ExecStart=-/usr/sbin/zfs mount -a
+# ...then REQUIRE that each export's mountpoint is really a mount (strict: no `-`).
+{% for exp in nfs_exports %}
+ExecStart=/usr/bin/mountpoint -q {{ nfs_root }}/{{ exp.name }}
+{% endfor %}
