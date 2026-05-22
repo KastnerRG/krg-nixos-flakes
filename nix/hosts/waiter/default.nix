@@ -92,8 +92,8 @@
       # mounted). autotier still tiers the whole lab pool underneath.
       perUser.enable = true;
       tiers = [
-        { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85 %"; }
-        { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90 %"; }
+        { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85%"; }
+        { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90%"; }
         # Overflow / cold tier (Quota defaults to 100 %). fabricant hypervisor IP,
         # same server as krg.nfsHome — pinned by IP so it never waits on DNS.
         { id = "nfs";  label = "NFS (fabricant)"; fsType = "nfs"; device = "137.110.161.98:/srv/nfs/scratch-krg"; }
