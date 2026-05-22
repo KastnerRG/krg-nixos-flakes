@@ -37,6 +37,11 @@
     monitoringPorts = [ 9100 ];
   };
 
+  # Declare openbao group statically so the ACME ownership assertion can
+  # verify cert access at build time (services.openbao uses DynamicUser so
+  # the group isn't visible to the build-time check otherwise).
+  users.groups.openbao = {};
+
   # Let's Encrypt cert for krg-vault.ucsd.edu.
   # nginx serves the HTTP-01 ACME challenge on port 80; OpenBao reads the
   # resulting cert files. On renewal, openbao gets a SIGHUP to reload the cert.
