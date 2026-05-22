@@ -62,17 +62,32 @@ in {
     fileSystems.${cfg.mountPoint} = {
       device = "${cfg.server}:${cfg.export}";
       fsType = "nfs";
-      # automount: mount on first access, so a down server NEVER blocks boot (a
-      # plain entry would hang the whole box waiting on /home). hard: no silent
-      # data loss if the server blips. nconnect: parallel TCP for throughput.
+      # NON-BLOCKING BOOT, the hard way learned (waiter, 2026-05-21). We do NOT use
+      # x-systemd.automount here. Autofs at /home looks lazy, but it WEDGES boot: any
+      # early-boot service with ProtectHome= (timesyncd, oomd, resolved, …) and
+      # systemd-tmpfiles touch /home while building their mount namespaces, which
+      # TRIGGERS the autofs mount before the network is up. With `hard` that mount
+      # syscall blocks forever and the whole box hangs at "Create System Files and
+      # Directories". Do not "optimise" this back to x-systemd.automount.
+      #
+      # Instead: a plain mount that boot does not wait on.
+      #   _netdev                -> ordered After=network-online.target (no pre-net attempt)
+      #   nofail                 -> a down/slow server is skipped, never fails/blocks boot
+      #   x-systemd.mount-timeout -> bounds the one attempt so a hung server can't stall boot
+      #   hard                   -> once mounted, no silent data loss if the server blips
+      #   nconnect               -> parallel TCP for throughput
+      # Trade-off vs the old automount: if fabricant is down at boot, /home is simply
+      # not mounted (AD logins would land on an empty local dir) until it is remounted
+      # or the box reboots, rather than mounting on first access. For a foundational
+      # home mount that predictable behaviour beats the autofs boot-wedge risk.
       options = [
         "nfsvers=${cfg.nfsVersion}"
         "hard"
         "noatime"
         "nconnect=4"
         "_netdev"
-        "x-systemd.automount"
-        "x-systemd.mount-timeout=20s"
+        "nofail"
+        "x-systemd.mount-timeout=30s"
       ] ++ cfg.extraOptions;
     };
   };
