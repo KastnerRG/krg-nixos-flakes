@@ -1,0 +1,13 @@
+[OPTIONS]
+
+enable: 1
+
+[RULES]
+
+# krg-deploy — Ansible control node + OpenTofu. No public web services;
+# SSH restricted to UCSD + off-campus admin only.
+
+IN SSH(ACCEPT)           -source +dc/ucsd -log nolog
+IN SSH(ACCEPT)           -source +dc/ops  -log nolog
+
+IN DROP -log nolog
