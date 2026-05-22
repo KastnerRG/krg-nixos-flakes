@@ -17,6 +17,9 @@ proxmox_guests:
   - vmid: 100
     name: krg-ldap        # Samba AD DC (service)
     fw_file: krg-ldap.fw
+  - vmid: 102
+    name: krg-deploy      # Ansible control node + OpenTofu
+    fw_file: krg-deploy.fw
   - vmid: 103
     name: krg-prod        # Lab-wide production stack (Traefik + Authentik + services)
     fw_file: krg-prod.fw
