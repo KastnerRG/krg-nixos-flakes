@@ -120,12 +120,10 @@ in {
         "/var/lib/fail2ban" # ban DB — bans should outlive reboots (this rebuild
         # is post-breach; losing the jail state every boot defeats it).
         "/root" # root's shell history / state (sudo target; no root SSH).
-        "/var/lib/${config.krg.adminAccount}" # break-glass admin home. users/admin.nix
-        # pins it OFF /home (so it works when the NFS /home is down) — but that puts it
-        # on the rolled-back root, so it MUST be persisted here or the admin's home is
-        # wiped every boot. adminAccount = krg-admin / e4e-admin per host.
         "/etc/nixos" # for local/break-glass `nixos-rebuild` (autoUpgrade pulls
         # from GitHub, but keep on-box edits durable).
+        # (break-glass admin home /var/lib/<account> is appended after this list,
+        # guarded — see below.)
 
         # --- AD client (krg.adClient, on via base.nix) ---
         "/var/lib/sss" # SSSD cache: offline creds (cache_credentials=true) +
@@ -142,7 +140,13 @@ in {
         "/var/lib/krg" # compose-stack working dir: .secrets/ AND Grafana/
         # Prometheus/Loki data + the OEC installer archive. Wiped = monitoring
         # data loss + secrets gone every boot.
-      ];
+      ]
+      # Break-glass admin home: users/admin.nix pins it to /var/lib/<account> (OFF
+      # /home, so it works when the NFS /home is down) — but that puts it on the
+      # rolled-back root, so persist it or it is wiped each boot. Guarded with `?`
+      # so this module still evaluates on a host that enables impermanence WITHOUT
+      # importing users/admin.nix (which declares krg.adminAccount).
+      ++ optional (config.krg ? adminAccount) "/var/lib/${config.krg.adminAccount}";
 
       files = [
         "/etc/machine-id" # GOTCHA: stable host identity. Without it, journald +
