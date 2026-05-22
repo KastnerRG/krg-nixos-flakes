@@ -49,6 +49,7 @@
   # Pulls main and runs site.yml nightly; drift gets corrected automatically.
   systemd.services.ansible-apply = {
     description = "Apply Ansible playbooks to managed infrastructure";
+    path = [ pkgs.openssh pkgs.git pkgs.ansible pkgs.python3 ];
     serviceConfig = {
       Type            = "oneshot";
       User            = "krg-admin";
