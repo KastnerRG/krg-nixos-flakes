@@ -72,6 +72,33 @@ in {
       script = "zfs rollback -r ${cfg.rootSnapshot}";
     };
 
+    # GOTCHA — systemd 258's PID1 hard-checks that /usr is populated and FREEZES if
+    # not ("Refusing to run in unsupported environment where /usr/ is not populated").
+    # On NixOS /usr/bin/env is the only thing in /usr, and it's created by
+    # systemd-tmpfiles — which runs AFTER PID1. So the rolled-back-to-@blank root
+    # (empty, see disko-config.nix) has no /usr and PID1 freezes before tmpfiles can
+    # fix it: the box hangs at switch-root with that message. (Confirmed on waiter,
+    # 2026-05-21 — and it bricks EVERY generation, because the rollback blanks the
+    # shared root dataset.) Recreate /usr/bin/env in the rolled-back root here, after
+    # it's mounted at /sysroot and before switch-root, so PID1's check passes; stage-2
+    # tmpfiles then replaces this with the canonical link. This is what lets @blank
+    # stay genuinely EMPTY (true erase-your-darlings) and still boot.
+    boot.initrd.systemd.services.populate-usr-bin-env = {
+      description = "Seed /usr/bin/env in the rolled-back root (systemd 258 /usr check)";
+      wantedBy = ["initrd.target"];
+      after = ["sysroot.mount"]; # the rolled-back root is now mounted at /sysroot
+      before = ["initrd-switch-root.target"];
+      unitConfig.DefaultDependencies = "no";
+      serviceConfig.Type = "oneshot";
+      path = [pkgs.coreutils]; # mkdir/ln in the initrd
+      # Absolute target resolves post-pivot (/nix is mounted before switch-root); even
+      # a dangling link would satisfy the "is /usr non-empty" check, but this one is real.
+      script = ''
+        mkdir -p /sysroot/usr/bin
+        ln -sfn ${pkgs.coreutils}/bin/env /sysroot/usr/bin/env
+      '';
+    };
+
     # The persist dataset must be mounted in stage-1, BEFORE the bind mounts that
     # pull state out of it are established — impermanence asserts this. disko's
     # generated fileSystems entry doesn't set it, so merge it in here.

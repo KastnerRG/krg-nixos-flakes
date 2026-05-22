@@ -234,11 +234,17 @@ in {
             mountpoint = "/";
             options.mountpoint = "legacy";
             options."com.sun:auto-snapshot" = "false"; # rolled back, never snapshotted
-            # GOTCHA — @blank must capture an EMPTY root. disko runs this hook
-            # immediately after `zfs create`, before nixos-install writes anything,
-            # so the snapshot is of a pristine dataset. The impermanence module
-            # rolls back to exactly this in initrd on every boot. The `zfs list`
-            # guard keeps re-runs (e.g. --mode mount) from erroring.
+            # @blank is captured EMPTY here (disko runs this hook right after `zfs
+            # create`, before nixos-install), and the impermanence module rolls back
+            # to it in initrd on every boot. CAVEAT (learned the hard way on waiter,
+            # systemd 258): an empty root has no /usr, and systemd 258's PID1 FREEZES
+            # with "Refusing to run in unsupported environment where /usr/ is not
+            # populated" before tmpfiles can create /usr/bin/env. modules/impermanence.nix
+            # therefore reseeds /usr/bin/env in the rolled-back root (initrd, after
+            # sysroot.mount, before switch-root) so an empty @blank still boots. If that
+            # service is ever removed, @blank must instead be snapshotted AFTER
+            # nixos-install (so it already carries /usr/bin/env) — do NOT just leave it
+            # empty. The `zfs list` guard keeps re-runs (e.g. --mode mount) from erroring.
             postCreateHook = ''
               zfs list -t snapshot -H -o name | grep -qx 'nvmepool/root@blank' \
                 || zfs snapshot nvmepool/root@blank
