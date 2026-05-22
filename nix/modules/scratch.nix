@@ -65,6 +65,14 @@ let
   # Per-lab RocksDB metadata dir (must differ per instance, see header).
   metadataPath = projName: "${cfg.metadataBase}/${projName}";
 
+  # GOTCHA — this autotier/lib45d build MISPARSES a percent quota written with a
+  # space before "%": `85 %` is read as 8500% (≈85× the tier, so the demotion
+  # watermark never trips), while `85%` parses correctly as 85%. (autotier's own
+  # man page / template use the broken `70 %` form.) Normalize by stripping the
+  # space before "%"; absolute byte quotas (e.g. "5.3 TiB") have no "%" and pass
+  # through untouched. Confirmed on-box 2026-05-22 against autotier 1.2.0.
+  normQuota = q: replaceStrings [ " %" ] [ "%" ] q;
+
   # --- one autotier config file per lab ---------------------------------------
   # autotier.conf: [Global] + one [<label>] section per tier (order = priority,
   # fastest first). Quota is the fullness high-water mark that triggers demotion
@@ -82,7 +90,7 @@ let
 
       [${tier.label}]
       Path = ${tierPath projName tier}
-      Quota = ${tier.quota}
+      Quota = ${normQuota tier.quota}
     '') proj.tiers);
 
   # --- ownership / isolation step (ExecStartPre) ------------------------------
@@ -164,9 +172,15 @@ let
       };
       quota = mkOption {
         type = types.str;
-        default = "100 %";
-        example = "85 %";
-        description = "autotier tier fullness cap (`N %` or `N [prefix]B`). Demotion to the next tier keeps usage under this. Give the last (overflow) tier `100 %`.";
+        default = "100%";
+        example = "85%";
+        description = ''
+          autotier tier fullness cap that triggers demotion to the next tier; give the
+          last (overflow) tier `100%`. Percent (`85%` or `0.85`) or absolute (`5.3 TiB`).
+          NOTE: write percentages WITHOUT a space (`85%`, not `85 %`) — this autotier
+          build misparses the spaced form as 100× (the module also normalizes it; see
+          normQuota). Avoid leading-dot decimals (`.85` misparses to 100%).
+        '';
       };
       mountOptions = mkOption {
         type = types.listOf types.str;
@@ -290,9 +304,9 @@ in {
           krg = {
             ownerGroup = "Kastner Research Group";
             tiers = [
-              { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85 %"; }
-              { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90 %"; }
-              { id = "nfs";  label = "NFS (fabricant)"; fsType = "nfs"; device = "137.110.161.98:/srv/nfs/scratch-krg"; quota = "100 %"; }
+              { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85%"; }
+              { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90%"; }
+              { id = "nfs";  label = "NFS (fabricant)"; fsType = "nfs"; device = "137.110.161.98:/srv/nfs/scratch-krg"; quota = "100%"; }
             ];
           };
         }
