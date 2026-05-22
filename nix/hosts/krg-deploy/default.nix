@@ -45,5 +45,28 @@
   # Not yet domain-joined — disable AD client until keytab is provisioned.
   krg.adClient.enable = false;
 
+  # Periodic Ansible apply — mirrors NixOS autoUpgrade on the Ansible layer.
+  # Pulls main and runs site.yml nightly; drift gets corrected automatically.
+  systemd.services.ansible-apply = {
+    description = "Apply Ansible playbooks to managed infrastructure";
+    serviceConfig = {
+      Type            = "oneshot";
+      User            = "krg-admin";
+      WorkingDirectory = "/home/krg-admin/krg-infra/ansible";
+      ExecStart = "${pkgs.bash}/bin/bash -c '\
+        ${pkgs.git}/bin/git -C /home/krg-admin/krg-infra pull --ff-only && \
+        ${pkgs.ansible}/bin/ansible-playbook playbooks/site.yml'";
+    };
+  };
+
+  systemd.timers.ansible-apply = {
+    description = "Nightly Ansible apply";
+    wantedBy    = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "04:30";   # 30 min after NixOS autoUpgrade so NixOS lands first
+      Persistent = true;      # catch up if the machine was off at fire time
+    };
+  };
+
   system.stateVersion = "25.11";
 }
