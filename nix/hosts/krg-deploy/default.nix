@@ -42,5 +42,8 @@
     jq
   ];
 
+  # Not yet domain-joined — disable AD client until keytab is provisioned.
+  krg.adClient.enable = false;
+
   system.stateVersion = "25.11";
 }
