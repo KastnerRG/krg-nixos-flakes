@@ -56,9 +56,20 @@ nfs_exports:
       - { host: "137.110.161.67", options: "rw,sync,no_subtree_check,no_root_squash" }   # waiter
       # - { host: "137.110.161.106", options: "rw,sync,no_subtree_check,no_root_squash" } # krg-prod
 
-  # General bulk/scratch — large-record dataset for shared project data. Normal
-  # root_squash. Tighten/loosen the client list (and rw/ro) as needed.
-  - name: bulk
+  # Cold tier for waiter's krg /scratch (autotier — nix krg.scratch). autotier on
+  # waiter demotes least-popular krg scratch files NVMe -> HDD -> here, and reads
+  # them back on access. Per-LAB export (krg and e4e are independent labs sharing
+  # this infra): e4e gets its own export/NAS later, so keep this scoped to scratch-krg.
+  #
+  # no_root_squash: autotier runs as ROOT on waiter and moves arbitrary users' files
+  # onto this share preserving their owner/group — root_squash would map root ->
+  # `nobody` and break ownership/perms (the lab-isolation gate). Scoped to waiter's IP.
+  # recordsize=1M matches the bulk/sequential scratch profile; daily+ snapshots only.
+  #
+  # (Replaces the former generic `bulk` export, which was unused — the per-lab scratch
+  #  exports supersede it. The rpool/nfs/bulk DATASET, if it still exists, is removed
+  #  out-of-band after confirming it's empty: `zfs destroy rpool/nfs/bulk` — NOT here.)
+  - name: scratch-krg
     fsid: 12
     dataset_props:
       recordsize: "1M"
@@ -66,5 +77,4 @@ nfs_exports:
       "com.sun:auto-snapshot:frequent": "false"
       "com.sun:auto-snapshot:hourly": "false"
     clients:
-      - { host: "137.110.161.67", options: "rw,sync,no_subtree_check,root_squash" }   # waiter
-      # - { host: "132.239.10.0/24", options: "ro,sync,no_subtree_check,root_squash" } # sealab wifi (example)
+      - { host: "137.110.161.67", options: "rw,sync,no_subtree_check,no_root_squash" }   # waiter (autotier cold tier)

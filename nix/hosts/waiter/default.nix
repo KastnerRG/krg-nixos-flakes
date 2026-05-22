@@ -8,6 +8,7 @@
     ./disko-config.nix
     ../../modules/impermanence.nix
     ../../modules/nfs-home.nix
+    ../../modules/scratch.nix
   ];
 
   # Physical host — keep the NixOS firewall enabled (this is the default).
@@ -57,8 +58,48 @@
 
   # hddpool's datasets are all mountpoint=none with no fileSystems entry, so nothing
   # else triggers its import at boot — list it explicitly. (nvmepool is imported
-  # because / lives on it.)
+  # because / lives on it.) NOTE: krg.scratch below now mounts hddpool/scratch-krg,
+  # so a fileSystems entry references hddpool too — but keep this for the e4e
+  # datasets, which remain unmounted scaffolding.
   krg.zfs.extraPools = [ "hddpool" ];
+
+  # Tiered /scratch for the krg lab (autotier FUSE, modules/scratch.nix): one merged
+  # /scratch/krg over hot NVMe -> warm HDD -> cold NFS on fabricant. autotier demotes
+  # cold files down and promotes hot ones back automatically (daily pass).
+  #
+  # LAB ISOLATION: krg and e4e are INDEPENDENT labs sharing this box, so the tree is
+  # owned by the "Kastner Research Group" AD group, mode 2770 (allow_other +
+  # default_permissions enforce it through FUSE). The group must exist in Samba AD;
+  # until the per-host domain join + group creation land, the perms step is tolerant
+  # (tier roots stay root-owned/admin-only, then tighten on the next start).
+  #
+  # E4E IS NOT WIRED: no e4e users/machines yet, so its scratch-e4e datasets stay
+  # mountpoint=none (disko) reserved scaffolding. e4e will later get e4e-nas as BOTH
+  # its cold tier and its NFS homes (separate work). Add a `projects.e4e` here then.
+  #
+  # COLD TIER: fabricant exports rpool/nfs/scratch-krg -> /srv/nfs/scratch-krg to
+  # waiter with no_root_squash (ansible nfs_server), so autotier (root) preserves
+  # each file's owner/group when demoting onto the network tier. If fabricant is down
+  # the autotier unit fails CLOSED (RequiresMountsFor) — it will NOT demote onto the
+  # impermanent root (cf. the modules/nfs-home.nix login gate). The two local tiers
+  # are their own datasets, durable across the boot rollback regardless.
+  krg.scratch = {
+    enable = true;
+    projects.krg = {
+      ownerGroup = "Kastner Research Group";
+      # Each krg lab member gets a private /scratch/krg/<user>, auto-created on login
+      # (created only for Kastner-Research-Group members, only while /scratch/krg is
+      # mounted). autotier still tiers the whole lab pool underneath.
+      perUser.enable = true;
+      tiers = [
+        { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85 %"; }
+        { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90 %"; }
+        # Overflow / cold tier (Quota defaults to 100 %). fabricant hypervisor IP,
+        # same server as krg.nfsHome — pinned by IP so it never waits on DNS.
+        { id = "nfs";  label = "NFS (fabricant)"; fsType = "nfs"; device = "137.110.161.98:/srv/nfs/scratch-krg"; }
+      ];
+    };
+  };
 
   # Swap = zram (no on-disk swap; ZFS swap zvols are deadlock-prone under memory
   # pressure). zstd-compressed RAM cushion for OOM bursts. memoryPercent is a cap on

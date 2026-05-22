@@ -48,8 +48,8 @@ one perimeter concern that stays a separate, `proxmox`-group-only play in
 `site.yml` (it's a hypervisor concern, not an all-hosts default).
 
 `zfs_limits` + `nfs_server` are a **`fabricant`-only** play (not the `proxmox`
-group). `nfs_server` carves a `<pool>/nfs` ZFS dataset and exports `home` + `bulk`
-over **NFSv4** (single tcp/2049); `zfs_limits` caps the *other* datasets (e.g. the
+group). `nfs_server` carves a `<pool>/nfs` ZFS dataset and exports `home` +
+`scratch-krg` (waiter's autotier cold tier) over **NFSv4** (single tcp/2049); `zfs_limits` caps the *other* datasets (e.g. the
 VM disks) so user/NFS data wins pool contention. Pool, shares, clients, and quotas
 live in `inventory/host_vars/fabricant.yml`. The NFS port is opened in fabricant's
 **per-node `host.fw`** (host-scoped, via `proxmox_host_fw_rules`) — NOT cluster.fw,
