@@ -21,10 +21,10 @@
 #     persist legacy /persist   durable OS state (autosnap ON, all cadences)
 #     tools   legacy /tools     vendor binaries (autosnap ON, all cadences)
 #     docker  legacy /var/lib/docker  container state (autosnap OFF; layer churn)
-#     scratch-krg  UNMOUNTED    quota=8T  reservation=2T  recordsize=1M
+#     scratch-krg  legacy (krg autotier tier) quota=8T  reservation=2T  recordsize=1M
 #     scratch-e4e  UNMOUNTED    quota=8T  reservation=2T  recordsize=1M
 #   hddpool   mirror (2x HDD)             ashift=12 zstd atime=off xattr=sa posixacl
-#     scratch-krg  UNMOUNTED    quota=10T reservation=4T  recordsize=1M
+#     scratch-krg  legacy (krg autotier tier) quota=10T reservation=4T  recordsize=1M
 #     scratch-e4e  UNMOUNTED    quota=10T reservation=4T  recordsize=1M
 #
 # GOTCHA — mountpoint policy. Boot-relevant datasets (root/nix/persist/tools) use
@@ -33,9 +33,12 @@
 # NOT use ZFS-managed mountpoints for these: mixing zfs auto-mount with NixOS
 # fileSystems causes double-mount / ordering races, and the impermanence rollback
 # needs root mounted under NixOS's control. The scratch datasets are the opposite
-# case — created with `mountpoint = "none"` (you chose "unmounted"); they hold all
-# their quota/reservation/recordsize props but mount nowhere until autotier wires
-# them. `zfs set mountpoint=...` later is non-destructive.
+# case — disko emits NO fileSystems entry for them (no top-level `mountpoint`), so
+# modules/scratch.nix (krg.scratch) owns where they mount. The KRG datasets are now
+# `mountpoint = "legacy"` and mounted as autotier tiers by that module; the E4E
+# datasets stay `mountpoint = "none"` (reserved scaffolding — no e4e users yet; e4e
+# is an independent lab). `zfs set mountpoint=…` is non-destructive, so flipping
+# none<->legacy on a live box is safe (no reformat).
 {...}: let
   # GOTCHA — RAIDZ1 uses the SMALLEST member. All four NVMe zfs partitions are
   # "100%" of an identical disk minus an identical 2G ESP, so they come out equal.
@@ -289,9 +292,11 @@ in {
 
           scratch-krg = {
             type = "zfs_fs";
-            # No top-level `mountpoint` -> disko emits no fileSystems entry.
+            # No top-level `mountpoint` -> disko emits no fileSystems entry; the
+            # legacy mount is owned by modules/scratch.nix (krg.scratch), which
+            # mounts this as the NVMe (hot) autotier tier for the krg lab.
             options = {
-              mountpoint = "none"; # unmounted until autotier wires it
+              mountpoint = "legacy"; # krg autotier tier (mounted by krg.scratch)
               recordsize = "1M";
               quota = "8T"; # cap (oversubscribed on purpose; see note below)
               reservation = "2T"; # the actual guaranteed floor
@@ -331,8 +336,10 @@ in {
         datasets = {
           scratch-krg = {
             type = "zfs_fs";
+            # Legacy mount owned by modules/scratch.nix (krg.scratch): the HDD
+            # (warm) autotier tier for the krg lab.
             options = {
-              mountpoint = "none";
+              mountpoint = "legacy"; # krg autotier tier (mounted by krg.scratch)
               recordsize = "1M";
               quota = "10T";
               reservation = "4T";

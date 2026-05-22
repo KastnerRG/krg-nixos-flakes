@@ -36,4 +36,4 @@
   become: true
   roles:
     - zfs_limits      # cap VM disk storage (rpool/data) so user/NFS data wins
-    - nfs_server      # NFSv4 exports on rpool/nfs (home + bulk)
+    - nfs_server      # NFSv4 exports on rpool/nfs (home + scratch-krg)

@@ -24,7 +24,7 @@ nfs_parent_props:
   acltype: posixacl
   "com.sun:auto-snapshot": "false"
 
-# Guaranteed floor for the whole <pool>/nfs subtree (home + bulk + snapshots), via
+# Guaranteed floor for the whole <pool>/nfs subtree (home + scratch + snapshots), via
 # a ZFS `reservation`. Empty = none. Use this to prioritize user data on a shared
 # pool: it sets aside space nothing else can take, so VMs/other datasets can't
 # starve NFS. MUST be <= currently-free pool space or `zfs set` is rejected.

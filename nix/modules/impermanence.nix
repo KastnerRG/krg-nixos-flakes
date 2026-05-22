@@ -140,6 +140,13 @@ in {
         "/var/lib/krg" # compose-stack working dir: .secrets/ AND Grafana/
         # Prometheus/Loki data + the OEC installer archive. Wiped = monitoring
         # data loss + secrets gone every boot.
+
+        # --- tiered scratch (krg.scratch / autotier, compute profile) ---
+        "/var/lib/autotier" # autotier's per-lab RocksDB metadata
+        # (/var/lib/autotier/<lab>: file popularity / which-tier index). NOT the
+        # data — the scratch tiers are their own ZFS datasets + NFS, durable on
+        # their own — but wiped each boot autotier re-learns hot/cold from zero.
+        # Cheap to keep. See modules/scratch.nix.
       ]
       # Break-glass admin home: users/admin.nix pins it to /var/lib/<account> (OFF
       # /home, so it works when the NFS /home is down) — but that puts it on the
