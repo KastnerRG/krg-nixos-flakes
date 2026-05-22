@@ -22,7 +22,11 @@ Wants=zfs-mount.service
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
+# Deliberately NOT RemainAfterExit: a oneshot that exits successfully still satisfies
+# nfs-server's Requires=, but leaving it inactive means systemd RE-RUNS this (mount +
+# verify) on every nfs-server start/restart — not just at boot. So an Ansible/admin
+# `systemctl restart nfs-server` re-checks the mounts, and nfsd can't come back up
+# against an export that was unmounted after boot.
 # Mount everything (tolerant: an unrelated dataset's failure must not take NFS down)...
 ExecStart=-/usr/sbin/zfs mount -a
 # ...then REQUIRE that each export's mountpoint is really a mount (strict: no `-`).
