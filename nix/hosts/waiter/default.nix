@@ -13,21 +13,27 @@
   # Physical host — keep the NixOS firewall enabled (this is the default).
   krg.base.isVM = false;
 
-  # Impermanent ZFS root: / would be rolled back to nvmepool/root@blank every boot;
-  # durable state lives on /persist (modules/impermanence.nix). Enabling this also
-  # flips the host to systemd initrd (the rollback runs as a stage-1 unit).
+  # Impermanent ZFS root (erase-your-darlings): / is rolled back to nvmepool/root@blank
+  # in initrd every boot; durable state is bind-mounted back from /persist
+  # (modules/impermanence.nix). Enabling this also flips the host to systemd initrd
+  # (the rollback runs as a stage-1 unit). VALIDATED on-box across two reboots 2026-05-21.
   #
-  # DISABLED until NFS /home lands. waiter is multi-user and there is no /home
-  # dataset yet — SSSD's fallback_homedir is /home/%u, which would sit on the
-  # rolled-back root, so enabling impermanence now would WIPE every user's home
-  # on each reboot. The disko layout already keeps /nix, /persist, /tools and the
-  # dedicated /var/lib/docker dataset off the root, so with this off the box still
-  # boots from a normal persistent root (no data loss) — we just don't get the
-  # erase-your-darlings clean root yet.
-  # RESTORE: once /home is on NFS (or its own non-rolled-back dataset), flip this
-  # back to true and verify the @blank rollback + /persist bind mounts on a test
-  # reboot. Tracked in CLAUDE.md pending items.
-  krg.impermanence.enable = false;
+  # Two fixes had to land before this was safe (both now in tree):
+  #  - /home is on NFS and the mount is NON-BLOCKING (krg.nfsHome below — plain nofail,
+  #    NOT x-systemd.automount, which wedged early boot). This moves user homes OFF the
+  #    rolled-back root so they aren't wiped each boot.
+  #  - the rolled-back root is empty, and systemd 258's PID1 FREEZES on an empty /usr
+  #    ("Refusing to run ... /usr/ is not populated"); modules/impermanence.nix reseeds
+  #    /usr/bin/env in initrd before switch-root so it boots (see that module + the
+  #    disko-config.nix @blank note).
+  #
+  # GOTCHA when (re)enabling on a running or freshly-installed host: migrate live state
+  # into /persist BEFORE the first rollback (keytab, ssh host keys, /etc/machine-id,
+  # /var/lib/{nixos,sss,krg}; break-glass admin home /var/lib/<account> is in the list),
+  # or the first boot wipes it. Deploy with `nixos-rebuild boot` (NOT switch — switch
+  # fails on persist-files "file already exists"). /nix, /persist, /tools and
+  # /var/lib/docker are separate datasets, off the rolled-back root.
+  krg.impermanence.enable = true;
 
   # AD user homes come from NFS (fabricant: rpool/nfs/home -> /srv/nfs/home). This
   # moves /home OFF waiter's local ZFS root — the prerequisite for flipping
