@@ -40,13 +40,13 @@
     settings = {
       ui = true;
 
-      listener."tcp" = {
+      listener.default = {
+        type        = "tcp";
         address     = "0.0.0.0:8200";
         tls_disable = true;  # TODO: enable TLS once DNS/cert is stable
-        cluster_address = "127.0.0.1:8201";
       };
 
-      storage."raft" = {
+      storage.raft = {
         path    = "/var/lib/openbao";
         node_id = "krg-vault-1";
       };
