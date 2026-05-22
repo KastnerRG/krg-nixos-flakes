@@ -81,19 +81,32 @@ let
   '';
 
   # --- cache env vars (environment.shellInit) ---------------------------------
-  # Export each cacheEnv var under /local/<user>, but only if that dir exists (the
-  # pam hook above creates it on login). `id -un` is set in every shell; this avoids
-  # the pam_env $USER-expansion caveat. Tools mkdir their own subdirs on first use.
+  # Export each cacheEnv var under /local/<user>. `id -un` is set in every shell; this
+  # avoids the pam_env $USER-expansion caveat. Tools mkdir their own subdirs on first use.
+  # Two guards, both load-bearing:
+  #   - `mountpoint -q` (NOT `[ -d ]`): systemd.tmpfiles always creates the bare
+  #     <mountPoint> dir, so `[ -d ]` is true even when the dataset FAILED to mount —
+  #     which would point caches at the ephemeral root. We require the real mount, the
+  #     same check the pam hook uses.
+  #   - `[ -d "$__krg_lc" ]`: only redirect if the per-user dir exists. It is created by
+  #     the pam hook (running as root, the only one that can write under the 0755
+  #     root-owned <mountPoint>); the unprivileged shell can't mkdir it, so without this
+  #     the exported XDG_CACHE_HOME etc. would point at a dir the user can't create.
+  # mountPoint goes through a shell var (escaped ONCE) so it's never interpolated raw
+  # inside a double-quoted bash string (a non-standard mountPoint with $/backticks would
+  # otherwise expand).
   shellInitSnippet = optionalString (cfg.cacheEnv != { }) ''
     # krg.localCache: redirect regenerable caches onto node-local NVMe (/local).
-    if [ -d ${escapeShellArg cfg.mountPoint} ]; then
-      __krg_lc="${cfg.mountPoint}/$(${pkgs.coreutils}/bin/id -un 2>/dev/null)"
+    __krg_mp=${escapeShellArg cfg.mountPoint}
+    if ${pkgs.util-linux}/bin/mountpoint -q -- "$__krg_mp"; then
+      __krg_lc="$__krg_mp/$(${pkgs.coreutils}/bin/id -un 2>/dev/null)"
       if [ -d "$__krg_lc" ]; then
     ${concatStringsSep "\n" (mapAttrsToList (var: rel:
       "    export ${var}=\"$__krg_lc/${rel}\"") cfg.cacheEnv)}
       fi
       unset __krg_lc
     fi
+    unset __krg_mp
   '';
 in {
   options.krg.localCache = {
