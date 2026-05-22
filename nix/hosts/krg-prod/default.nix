@@ -100,6 +100,11 @@ in {
     # Traefik TLS certificate storage
     "d  /var/lib/krg/krg-prod/traefik-data                  0750 root docker -"
     "d  /var/lib/krg/krg-prod/traefik-data/letsencrypt      0750 root docker -"
+
+    # E4E Roster V3 — source is git-cloned here; nix only owns the working dir.
+    # After deploy: git clone git@github.com:UCSD-E4E/E4E-Roster-V3.git /var/lib/krg/e4e-roster
+    # then create /var/lib/krg/e4e-roster/.env (see compose.yml for required vars).
+    "d  /var/lib/krg/e4e-roster                             0750 root docker -"
   ];
 
 
@@ -127,6 +132,17 @@ in {
     workingDirectory = "/var/lib/krg/krg-prod";
     # External networks declared in compose.yml and compose.grafana.yml
     networks         = [ "traefik_proxy" "authentik" "prometheus_network" ];
+  };
+
+  # E4E Roster V3 — source lives at /var/lib/krg/e4e-roster (git-managed, not nix store).
+  # To deploy: git clone git@github.com:UCSD-E4E/E4E-Roster-V3.git /var/lib/krg/e4e-roster
+  # To update: git -C /var/lib/krg/e4e-roster pull && docker compose -f /var/lib/krg/e4e-roster/docker-compose.yml build && systemctl restart e4e-roster
+  # Required: /var/lib/krg/e4e-roster/.env (SESSION_SECRET, DB_PASSWORD, OIDC_*, ROSTER_HOST, GITHUB_APP_HOST, UDM_*)
+  krg.composeStacks.e4e-roster = {
+    description      = "E4E Roster V3 — roster, GitHub app, Slackbot";
+    composeFiles     = [ "/var/lib/krg/e4e-roster/docker-compose.yml" ];
+    workingDirectory = "/var/lib/krg/e4e-roster";
+    networks         = [ "traefik_proxy" ];
   };
 
   # Provide the OEC installer archive path once the file is available locally.
