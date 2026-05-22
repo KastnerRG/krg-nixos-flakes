@@ -141,6 +141,12 @@ in {
         # Prometheus/Loki data + the OEC installer archive. Wiped = monitoring
         # data loss + secrets gone every boot.
 
+        # NOTE — /local is intentionally NOT here either. krg.localCache mounts it
+        # from its own dataset (nvmepool/local, see hosts/waiter/disko-config.nix),
+        # off the @blank rollback, so the per-user IDE servers + caches it holds are
+        # durable on their own — no /persist bind needed. (Same rationale as
+        # /var/lib/docker above.) See modules/local-cache.nix.
+
         # --- tiered scratch (krg.scratch / autotier, compute profile) ---
         "/var/lib/autotier" # autotier's per-lab RocksDB metadata
         # (/var/lib/autotier/<lab>: file popularity / which-tier index). NOT the

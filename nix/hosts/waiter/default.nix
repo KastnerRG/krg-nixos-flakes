@@ -9,6 +9,7 @@
     ../../modules/impermanence.nix
     ../../modules/nfs-home.nix
     ../../modules/scratch.nix
+    ../../modules/local-cache.nix
   ];
 
   # Physical host — keep the NixOS firewall enabled (this is the default).
@@ -99,6 +100,27 @@
         { id = "nfs";  label = "NFS (fabricant)"; fsType = "nfs"; device = "137.110.161.98:/srv/nfs/scratch-krg"; }
       ];
     };
+  };
+
+  # Node-local fast per-user cache at /local/<user> (modules/local-cache.nix). The
+  # counterpart to scratch above: where /scratch/krg is a tiered FUSE namespace that
+  # demotes cold data to fabricant NFS, /local is a plain durable NVMe dataset
+  # (nvmepool/local, off the @blank rollback) for the regenerable, hot, NODE-local
+  # state that should NOT live on the NFS /home — the IDE remote servers
+  # (~/.vscode-server, ~/.cursor-server, symlinked in on login) and the cache class
+  # (XDG_CACHE_HOME, Hugging Face / torch / conda-pkgs / npm). On a CUDA box this is
+  # the big NFS-offload win: HF model downloads and vscode-server's small-file/watch
+  # traffic stay on local NVMe instead of hammering fabricant.
+  #
+  # Defaults (modules/local-cache.nix) cover the symlinks + cache env vars, so just
+  # enabling perUser is enough. MIGRATION: an existing real ~/.vscode-server on NFS is
+  # never clobbered — a user opts in once with `rm -rf ~/.vscode-server`, then the next
+  # login creates the symlink. On-box: `zfs create -o mountpoint=legacy -o quota=1T \
+  # -o com.sun:auto-snapshot=false nvmepool/local` before deploying (disko isn't re-run
+  # live; same as the scratch datasets).
+  krg.localCache = {
+    enable = true;
+    perUser.enable = true;
   };
 
   # Swap = zram (no on-disk swap; ZFS swap zvols are deadlock-prone under memory
