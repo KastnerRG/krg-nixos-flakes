@@ -21,6 +21,7 @@
 #     persist legacy /persist   durable OS state (autosnap ON, all cadences)
 #     tools   legacy /tools     vendor binaries (autosnap ON, all cadences)
 #     docker  legacy /var/lib/docker  container state (autosnap OFF; layer churn)
+#     local   legacy /local       node-local per-user fast cache (autosnap OFF) quota=1T
 #     scratch-krg  legacy (krg autotier tier) quota=8T  reservation=2T  recordsize=1M
 #     scratch-e4e  UNMOUNTED    quota=8T  reservation=2T  recordsize=1M
 #   hddpool   mirror (2x HDD)             ashift=12 zstd atime=off xattr=sa posixacl
@@ -288,6 +289,25 @@ in {
             options.mountpoint = "legacy";
             # recordsize default 128K (overlay2 = many small files, not bulk data)
             options."com.sun:auto-snapshot" = "false";
+          };
+
+          # Node-local per-user fast cache (krg.localCache, modules/local-cache.nix):
+          # /local/<user> holds regenerable, hot, NODE-local state that has no business
+          # on the NFS /home — IDE remote servers (~/.vscode-server, ~/.cursor-server,
+          # symlinked here) plus the cache class (XDG_CACHE_HOME, pip/HF/torch/conda-pkgs).
+          # Pure NVMe (no FUSE, no NFS, no tiering) so file-watching/inotify and small-file
+          # I/O are fast, and it's OFF the @blank rollback so caches survive reboots (no
+          # re-download). Like scratch, NO top-level `mountpoint` -> disko emits no
+          # fileSystems entry; modules/local-cache.nix owns the legacy /local mount.
+          # autosnapshot OFF (it's cache); quota caps it (no reservation — evictable).
+          local = {
+            type = "zfs_fs";
+            options = {
+              mountpoint = "legacy"; # /local mount owned by krg.localCache
+              # recordsize default 128K (vscode-server + caches = many small files)
+              quota = "1T";
+              "com.sun:auto-snapshot" = "false";
+            };
           };
 
           scratch-krg = {
