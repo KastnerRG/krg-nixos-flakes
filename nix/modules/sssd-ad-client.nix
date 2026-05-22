@@ -224,6 +224,20 @@ in {
     networking.hosts = mkIf (cfg.server != null && cfg.serverIp != null)
       { ${cfg.serverIp} = mkDefault [ cfg.server ]; };
 
+    # Every domain member uses the AD DC as its PRIMARY DNS by default. This is
+    # required, not just tidy: SSSD's own (c-ares) resolver queries the servers in
+    # resolv.conf directly and does NOT consult the /etc/hosts pin above, so unless
+    # the DC is a real nameserver the member cannot resolve krg-ldap.krg.local (the
+    # internal krg.local zone) and SSSD flaps offline — which breaks logins for any
+    # not-yet-cached (i.e. brand-new) user with a bare "Permission denied (publickey)".
+    # The DC runs SAMBA_INTERNAL DNS and forwards non-AD queries upstream
+    # (samba-ad.nix dnsForwarder), so it resolves everything; mkBefore keeps it ahead
+    # of a host's site fallback resolvers. NOT applied on the DC itself (it owns its
+    # resolver via samba-ad.nix) nor when serverIp is null (SRV autodiscovery, which
+    # then relies on DNS that already serves krg.local).
+    networking.nameservers = mkIf (!cfg.isDomainController && cfg.serverIp != null)
+      (mkBefore [ cfg.serverIp ]);
+
     # krb5.conf for member hosts (the DC's samba-ad module renders its own at normal
     # priority, so mkDefault here yields on the DC and applies on members). KDC is
     # pinned to `server`, resolved via the /etc/hosts entry above.
