@@ -120,6 +120,10 @@ in {
         "/var/lib/fail2ban" # ban DB — bans should outlive reboots (this rebuild
         # is post-breach; losing the jail state every boot defeats it).
         "/root" # root's shell history / state (sudo target; no root SSH).
+        "/var/lib/${config.krg.adminAccount}" # break-glass admin home. users/admin.nix
+        # pins it OFF /home (so it works when the NFS /home is down) — but that puts it
+        # on the rolled-back root, so it MUST be persisted here or the admin's home is
+        # wiped every boot. adminAccount = krg-admin / e4e-admin per host.
         "/etc/nixos" # for local/break-glass `nixos-rebuild` (autoUpgrade pulls
         # from GitHub, but keep on-box edits durable).
 

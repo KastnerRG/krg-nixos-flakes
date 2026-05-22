@@ -36,11 +36,20 @@
   krg.impermanence.enable = true;
 
   # AD user homes come from NFS (fabricant: rpool/nfs/home -> /srv/nfs/home). This
-  # moves /home OFF waiter's local ZFS root — the prerequisite for flipping
-  # impermanence back on above. Break-glass krg-admin is unaffected (its home is
-  # /var/lib/krg-admin, set in users/admin.nix). Server pinned by IP so /home never
-  # waits on DNS. The mount is a systemd automount, so if fabricant is down the box
-  # still boots; /home just mounts on first access once the server is back.
+  # moves /home OFF waiter's local ZFS root — the prerequisite for impermanence above.
+  # Break-glass krg-admin is unaffected: its home is /var/lib/krg-admin (users/admin.nix),
+  # which impermanence persists (modules/impermanence.nix). Server pinned by IP so /home
+  # never waits on DNS. The mount is a PLAIN nofail NFS mount (NOT an automount — autofs
+  # wedged early boot; see modules/nfs-home.nix), ordered after the network: the box
+  # always boots, and if fabricant is down at boot /home is simply left UNMOUNTED (it
+  # does NOT mount on later access — a remount or reboot is needed once the server is back).
+  #
+  # KNOWN TRADE-OFF (impermanence + nofail /home): if /home is unmounted at login time,
+  # pam_mkhomedir (krg.adClient) creates an ephemeral home on the rolled-back root that
+  # is WIPED on the next reboot — a data-loss window absent from the old persistent root.
+  # fabricant being down at boot is already a major incident (it also hosts the AD DC, so
+  # only SSSD-cached logins would even succeed), but gating AD logins on the /home mount
+  # to close that window is a tracked follow-up (see CLAUDE.md pending items).
   krg.nfsHome = {
     enable = true;
     server = "137.110.161.98";   # fabricant (the hypervisor serving rpool/nfs)
