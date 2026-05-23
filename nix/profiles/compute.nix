@@ -37,6 +37,12 @@
   krg.nvidia = {
     enable     = true;
     openDriver = true;
+    # GPU device access (/dev/nvidia*, root:cuda 0770) is gated on the local `cuda`
+    # group. AD users can't be put in a fixed-GID local group under idMapping, so a
+    # dedicated AD group is bridged in (boot+timer sync — see nvidia.nix). This group
+    # gates the GPU; krg.adClient.allowedGroups gates SSH login. The "GPU Users" AD
+    # group must exist under CN=Users and have members (see docs/creating-a-user.md).
+    cudaAccessGroups = [ "GPU Users" ];
   };
 
   # FPGA/EDA tooling is OPT-IN, not a compute default: waiter does FPGA research,
