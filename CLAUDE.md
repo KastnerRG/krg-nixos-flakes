@@ -120,7 +120,9 @@ krg-infra/
     vault/                         # PLANNED (hashicorp/vault): auth methods/policies/secret engines — structure not values (README stub)
   docs/
     creating-a-user.md             # AD user-creation runbook
-    e4e-nas-dsm.md                 # DSM runbook: the NAS settings with no API (AD join, shares/ACLs, firewall, SSH, snapshots, updates)
+    e4e-nas-dsm.md                 # DSM runbook: the NAS settings with no API (AD join, shares/ACLs, firewall, SSH, snapshots, updates) — → break-glass once spec/ seeded
+    krg-prod-iac.md                # krg-prod IaC architecture + NAS standup plan (how the spec maps onto this repo)
+    adr/                           # Architecture Decision Records — 0001 IaC-source-of-truth, 0002 Garage, 0003 Garage-on-NAS, 0004 VM-IO-budget, 0005 repo-integration/OpenTofu/krg-deploy
 ```
 
 > **Naming note:** `fabricant` now refers only to the Proxmox **host** (hypervisor,
