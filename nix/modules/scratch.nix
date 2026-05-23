@@ -49,6 +49,10 @@ with lib;
 let
   cfg = config.krg.scratch;
 
+  # Reject paths that could escape the user's home when concatenated in the root-run
+  # login hook: no leading "/" (absolute) and no ".." path segment.
+  relUnsafe = p: hasPrefix "/" p || elem ".." (splitString "/" p);
+
   # Hardened NFS options for a cold tier — identical posture to modules/nfs-home.nix:
   # _netdev+nofail so a down server never blocks boot, hard so no silent loss once
   # mounted, nconnect for throughput, bounded mount-timeout so a hung server can't
@@ -265,7 +269,9 @@ let
           (<mountPoint>/<user>), laid on login for lab members (e.g.
           ~/machine/scratch -> /scratch/krg/<user>) — the scratch analogue of
           krg.localCache's `symlinks`. Any parent dir (~/machine) is created first; an
-          existing real path is never clobbered. null = no home symlink.
+          existing real path is never clobbered. REQUIRES perUser.enable (the link is
+          laid by that per-user login hook and points at the per-user dir). Must be a
+          home-relative path (no leading "/", no ".." segment). null = no home symlink.
         '';
       };
       tierPeriod = mkOption {
@@ -396,6 +402,18 @@ in {
             # Duplicate labels -> two autotier [section] headers with the same name.
             assertion = labels == unique labels;
             message = "krg.scratch.projects.${name}: tier `label`s must be unique (autotier section headers): ${toString labels}";
+          }
+          {
+            # homeLink lands in a root-run login hook (path-traversal guard).
+            assertion = proj.homeLink == null || !(relUnsafe proj.homeLink);
+            message = ''krg.scratch.projects.${name}.homeLink "${toString proj.homeLink}" must be a home-relative path (no leading "/", no ".." segment).'';
+          }
+          {
+            # The home symlink is laid by the per-user login hook and points at the
+            # per-user dir, so it only takes effect when perUser.enable; assert rather
+            # than let homeLink silently no-op.
+            assertion = proj.homeLink == null || proj.perUser.enable;
+            message = "krg.scratch.projects.${name}.homeLink requires perUser.enable = true (the symlink is laid by the per-user login hook and points at the per-user dir).";
           }
         ]
       ) cfg.projects);

@@ -57,6 +57,10 @@ with lib;
 let
   cfg = config.krg.localCache;
 
+  # Reject paths that could escape the user's home / the per-user dir when concatenated
+  # in the root-run login hook: no leading "/" (absolute) and no ".." path segment.
+  relUnsafe = p: hasPrefix "/" p || elem ".." (splitString "/" p);
+
   # README dropped in ~/machine (marker.enable) so the layout is self-documenting:
   # node-local + NOT backed up. Hostname baked in at eval time.
   markerFile = pkgs.writeText "machine-readme" ''
@@ -263,6 +267,19 @@ in {
 
   config = mkIf cfg.enable (mkMerge [
     {
+      # Admin-set link/target paths land in a root-run login hook, so reject anything
+      # that could escape the user's home or /local/<user> (absolute, or with a ".."
+      # segment) at eval time rather than in the shell.
+      assertions =
+        (mapAttrsToList (link: target: {
+          assertion = !(relUnsafe link) && !(relUnsafe target);
+          message = ''krg.localCache.symlinks entry "${link}" -> "${target}": both must be home-relative paths (no leading "/", no ".." segment) — it runs in a root login hook.'';
+        }) cfg.symlinks)
+        ++ optional cfg.marker.enable {
+          assertion = !(relUnsafe cfg.marker.path);
+          message = ''krg.localCache.marker.path "${cfg.marker.path}" must be a home-relative path (no leading "/", no ".." segment).'';
+        };
+
       # The local dataset is mounted here (disko leaves it mountpoint=legacy with no
       # fileSystems entry, like the scratch datasets, so this module owns the mount).
       fileSystems.${cfg.mountPoint} = {
