@@ -120,8 +120,9 @@ No directories are pre-created: the key comes from AD, and `pam_mkhomedir` creat
 `chsh` does **not** work for AD accounts: they aren't in `/etc/passwd` (NSS resolves
 them through `sss`), and SSSD doesn't implement shell changes — the login shell is
 owned by the **directory**, not the local box. Without a `loginShell` attribute every
-account gets the SSSD `default_shell` (a Nix-store `bash`). To give one user a
-different shell, set `loginShell` on their AD object — it is read on every member host.
+account gets the host's configured SSSD `default_shell` (a Nix-store `bash` on NixOS
+members, `/bin/bash` on Debian/PVE members). To give one user a different shell, set
+`loginShell` on their AD object — it is read on every member host.
 
 ```bash
 # On krg-ldap, as root. (loginShell is just the shell; it does NOT turn on RFC2307
