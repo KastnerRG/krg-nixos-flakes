@@ -96,7 +96,10 @@ in {
       description = "Sync AD group members into the local cuda group (GPU device access)";
       after       = [ "sssd.service" "network-online.target" ];
       wants       = [ "sssd.service" "network-online.target" ];
-      path        = [ pkgs.shadow pkgs.coreutils pkgs.gnused pkgs.glibc.bin ];
+      # getent MUST be pkgs.getent (the NixOS NSS-correct build), NOT pkgs.glibc.bin:
+      # the raw glibc getent can't load the `sss` NSS module in a unit, so AD group
+      # lookups silently return nothing (matches scratch.nix's AD-group lookup).
+      path        = [ pkgs.shadow pkgs.coreutils pkgs.gnused pkgs.getent ];
       serviceConfig.Type = "oneshot";
       script = ''
         set -uo pipefail
