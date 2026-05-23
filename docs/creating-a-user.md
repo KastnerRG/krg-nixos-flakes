@@ -115,6 +115,38 @@ ssh <username>@<host>          # e.g. krg-ldap.ucsd.edu / 137.110.161.109
 No directories are pre-created: the key comes from AD, and `pam_mkhomedir` creates
 `/home/<username>` on first login.
 
+## Granting GPU (CUDA) access on compute hosts
+
+GPU access is **separate from login**. On compute hosts (e.g. waiter) the NVIDIA
+device nodes `/dev/nvidia*` are owned `root:cuda` mode `0770`, so using CUDA needs
+membership in the local `cuda` group — *not* the group that lets the user SSH in
+(`krg.adClient.allowedGroups`, e.g. `Waiter`). SSSD algorithmic ID mapping derives an
+AD group's gid from its SID, so an AD group can't directly own the fixed device gid;
+instead the **`GPU Users`** AD group is bridged into the local `cuda` group by the
+`cuda-group-sync` unit (`krg.nvidia.cudaAccessGroups`, see
+[`nix/modules/hardware/nvidia.nix`](../nix/modules/hardware/nvidia.nix)).
+
+To give a user the GPU, add them to `GPU Users` (create it once if it doesn't exist):
+
+```bash
+# On krg-ldap, as root.
+sudo samba-tool group add "GPU Users"          # one-time, if not already present
+sudo samba-tool group addmembers "GPU Users" <username>
+```
+
+The compute host re-syncs membership on boot and every 10 min; to apply it now:
+
+```bash
+# On the compute host (e.g. waiter), as root.
+sudo systemctl start cuda-group-sync
+getent group cuda          # now lists <username>
+```
+
+The user must **log in again** afterwards — supplementary groups are read at login
+(`initgroups`), so an existing session won't pick up `cuda` until the next login.
+Verify with `id | grep cuda` then `nvidia-smi`. Removing a user from `GPU Users`
+revokes their GPU access on the next sync.
+
 ## Giving a user a non-default login shell (e.g. zsh)
 
 `chsh` does **not** work for AD accounts: they aren't in `/etc/passwd` (NSS resolves
