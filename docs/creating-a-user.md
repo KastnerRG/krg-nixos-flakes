@@ -115,6 +115,56 @@ ssh <username>@<host>          # e.g. krg-ldap.ucsd.edu / 137.110.161.109
 No directories are pre-created: the key comes from AD, and `pam_mkhomedir` creates
 `/home/<username>` on first login.
 
+## Giving a user a non-default login shell (e.g. zsh)
+
+`chsh` does **not** work for AD accounts: they aren't in `/etc/passwd` (NSS resolves
+them through `sss`), and SSSD doesn't implement shell changes — the login shell is
+owned by the **directory**, not the local box. Without a `loginShell` attribute every
+account gets the host's configured SSSD `default_shell` (a Nix-store `bash` on NixOS
+members, `/bin/bash` on Debian/PVE members). To give one user a different shell, set
+`loginShell` on their AD object — it is read on every member host.
+
+```bash
+# On krg-ldap, as root. (loginShell is just the shell; it does NOT turn on RFC2307
+# mode, so in the default id-mapping mode uid/gid stay algorithmic — don't add
+# uidNumber/gidNumber.)
+sudo samba-tool user edit <username>
+# add a line:
+loginShell: /run/current-system/sw/bin/zsh
+```
+
+**Use the path that exists on the host where the user does interactive work**, because
+`loginShell` is a single value read fleet-wide and the path differs per platform:
+
+| Host kind | zsh path to use |
+|---|---|
+| NixOS with `programs.zsh.enable` (e.g. waiter) | `/run/current-system/sw/bin/zsh` |
+| Debian/PVE member (`apt install zsh`) | `/usr/bin/zsh` |
+
+The SSSD config sets `allowed_shells = *` + `shell_fallback` (the Nix-store bash on
+NixOS, `/bin/bash` on Debian — see [`nix/modules/sssd-ad-client.nix`](../nix/modules/sssd-ad-client.nix)
+and [`ansible/roles/ad_client`](../ansible/roles/ad_client/)), so the value is
+**fail-safe**: a shell is used only on hosts where that exact path is in `/etc/shells`,
+and on hosts that lack it the user **falls back to bash instead of being locked out**.
+So a NixOS zsh path gives zsh on waiter and bash on the hypervisor/DC — no lockout, but
+also no zsh there. A single `loginShell` can encode only one path; if a user needs zsh
+on *both* a NixOS host and a Debian host (whose paths differ), set the value for their
+primary host and add a guarded `exec zsh` to `~/.bash_profile` on the other:
+
+```sh
+if [[ $- == *i* ]] && command -v zsh >/dev/null 2>&1; then exec zsh -l; fi
+```
+
+Then refresh and verify (the user re-logs in to pick it up):
+
+```bash
+sudo sss_cache -E                  # on each affected member host (or wait for cache expiry)
+getent passwd <username>           # last field shows the chosen shell where installed
+```
+
+> The local break-glass admin (`krg-admin`/`e4e-admin`) is a files-NSS user, not SSSD,
+> so none of this touches it — its shell stays whatever `nix/users/admin.nix` sets.
+
 ## Appendix: one-time schema extension
 
 AD ships no SSH-key attribute, so the OpenSSH-LPK schema must be added **once** to
