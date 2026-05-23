@@ -6,10 +6,20 @@
 #   1. IDE remote servers — ~/.vscode-server, ~/.cursor-server — via a SYMLINK
 #      created on login (the server tree is per-host and pure cache: delete it and
 #      VS Code/Cursor re-download on next connect).
-#   2. The cache class — XDG_CACHE_HOME (~/.cache: pip, matplotlib, …), Hugging
-#      Face / torch model caches, the conda PACKAGE cache, npm — via per-session
-#      env vars pointed under /local/<user>. Only CACHES move; conda ENVS and real
-#      data stay in the user's home.
+#   2. The cache class — XDG_CACHE_HOME, Hugging Face / torch model caches, the conda
+#      PACKAGE cache, npm — via per-session env vars pointed under /local/<user>/cache
+#      (surfaced as ~/machine/cache). Only CACHES move; conda ENVS and real data stay
+#      in the user's home.
+#   3. Working git repos — ~/machine/workspace -> /local/<user>/workspace, a plain dir
+#      on this dataset. git+IDE is the small-file/watch-heavy load NFS is worst at, so
+#      checkouts belong here. Repos are NOT cache: the git remote is their backup (this
+#      dataset has no snapshots), so push — only uncommitted work is ever at risk.
+#
+# USER-FACING ~/machine/ LAYER: 2 and 3 (plus ~/machine/scratch, owned by
+# modules/scratch.nix) are presented under one tidy ~/machine/ dir so users get "this is
+# NOT your home, it lives on this box" without memorizing /local/<user>/... or
+# /scratch/<lab>/<user>. The names are symlinks in the NFS home pointing OUT to local
+# storage; `marker.enable` drops a README there saying as much.
 #
 # WHY not /home (NFS): the IDE servers and these caches are hot, watch-heavy,
 # many-small-file workloads — exactly what NFS is worst at (latency per stat/open,
@@ -27,12 +37,16 @@
 #
 # PER-USER DIR + SYMLINKS: a pam_exec session hook (the same pattern as
 # krg.scratch.perUser and pam_mkhomedir) creates /local/<user> (mode 0700) on login,
-# then symlinks each `symlinks` name from the user's home into it. GUARDED: only while
-# /local is actually mounted (never seed onto a bare mountpoint), and a symlink is
-# created ONLY if the home path doesn't already exist — so an existing real
-# ~/.vscode-server is never clobbered (such a user opts in once with `rm -rf
-# ~/.vscode-server`, then the next login creates the symlink). Non-blocking: a failure
-# here never denies login.
+# then lays the `symlinks` map — each entry links a home path to a /local/<user> target
+# (e.g. ~/.vscode-server -> /local/<user>/.vscode-server, and the user-facing
+# ~/machine/{workspace,cache} -> /local/<user>/{workspace,cache}). Link and target paths
+# may differ, so any parent of the link (~/machine) is created first — `ln` won't.
+# GUARDED: only while /local is actually mounted (never seed onto a bare mountpoint), and
+# a link is made ONLY if the home path doesn't already exist — so an existing real
+# ~/.vscode-server is never clobbered (the user opts in once with `rm -rf
+# ~/.vscode-server`, then the next login links it). With `marker.enable`, a write-if-absent
+# README is dropped (default ~/machine/README). Non-blocking: a failure never denies
+# login. The companion ~/machine/scratch link is owned by krg.scratch, not this module.
 #
 # CACHE ENV VARS: set via environment.shellInit (cross-shell: bash + zsh), computed
 # with `id -un` at shell start (robust where $USER expansion in sessionVariables is
@@ -42,6 +56,19 @@
 with lib;
 let
   cfg = config.krg.localCache;
+
+  # README dropped in ~/machine (marker.enable) so the layout is self-documenting:
+  # node-local + NOT backed up. Hostname baked in at eval time.
+  markerFile = pkgs.writeText "machine-readme" ''
+    This folder is NODE-LOCAL storage on ${config.networking.hostName} — it is NOT part
+    of your home directory, and NOTHING in it is backed up.
+
+      workspace/   your git repos — push to the remote; that push IS your only backup
+      cache/       regenerable caches (HF/torch/pip/npm/conda pkgs) — safe to delete
+      scratch/     tiered lab scratch (autotier) — treat as disposable
+
+    If a folder here is missing or empty, that storage just isn't mounted right now.
+  '';
 
   # --- per-user dir + symlink creation (pam_exec session hook) ----------------
   # Runs at session open as root (before the session drops to the user). See header
@@ -65,18 +92,42 @@ let
     home="$(${pkgs.getent}/bin/getent passwd "$PAM_USER" 2>/dev/null | ${pkgs.coreutils}/bin/head -n1 | ${pkgs.coreutils}/bin/cut -d: -f6)"
     [ -n "$home" ] && [ -d "$home" ] || exit 0
 
-    for name in ${concatStringsSep " " (map escapeShellArg cfg.symlinks)}; do
-      target="$d/$name"
-      link="$home/$name"
-      # Guard 2: never clobber an existing real path (-e follows, -L catches a
-      # dangling/old symlink). Leave it; the user removes it once to opt in.
-      if [ ! -e "$link" ] && [ ! -L "$link" ]; then
-        ${pkgs.coreutils}/bin/mkdir -p "$target" || continue
-        ${pkgs.coreutils}/bin/chown "$PAM_USER" "$target" || true
-        ${pkgs.coreutils}/bin/ln -s "$target" "$link" || continue
-        ${pkgs.coreutils}/bin/chown -h "$PAM_USER" "$link" || true
+    # Lay one symlink: $home/<linkRel> -> $d/<targetRel>. Link and target paths can
+    # differ (e.g. ~/machine/workspace -> /local/<user>/workspace), so create any parent
+    # of the link first (~/machine) — `ln` won't. Guard: never clobber an existing real
+    # path (-e follows; -L catches a dangling/old symlink); the user removes it once to
+    # opt in. chown the created parent so ~/machine isn't a root-owned dir in their home.
+    mklink() {
+      local link="$home/$1" target="$d/$2" pdir
+      [ ! -e "$link" ] && [ ! -L "$link" ] || return 0
+      ${pkgs.coreutils}/bin/mkdir -p "$target" || return 0
+      ${pkgs.coreutils}/bin/chown "$PAM_USER" "$target" || true
+      pdir="$(${pkgs.coreutils}/bin/dirname "$link")"
+      if [ "$pdir" != "$home" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p "$pdir" || return 0
+        ${pkgs.coreutils}/bin/chown "$PAM_USER" "$pdir" || true
       fi
-    done
+      ${pkgs.coreutils}/bin/ln -s "$target" "$link" || return 0
+      ${pkgs.coreutils}/bin/chown -h "$PAM_USER" "$link" || true
+    }
+    ${concatStringsSep "\n" (mapAttrsToList (link: target:
+      "    mklink ${escapeShellArg link} ${escapeShellArg target}") cfg.symlinks)}
+    ${optionalString cfg.marker.enable ''
+      # Self-documenting marker: write-if-absent README that this area is node-local
+      # and not backed up (see markerFile above).
+      mrel=${escapeShellArg cfg.marker.path}
+      mfile="$home/$mrel"
+      if [ ! -e "$mfile" ]; then
+        mdir="$(${pkgs.coreutils}/bin/dirname "$mfile")"
+        ${pkgs.coreutils}/bin/mkdir -p "$mdir" || true
+        if [ "$mdir" != "$home" ]; then
+          ${pkgs.coreutils}/bin/chown "$PAM_USER" "$mdir" || true
+        fi
+        ${pkgs.coreutils}/bin/cp ${markerFile} "$mfile" || true
+        ${pkgs.coreutils}/bin/chown "$PAM_USER" "$mfile" || true
+        ${pkgs.coreutils}/bin/chmod 0644 "$mfile" || true
+      fi
+    ''}
     exit 0
   '';
 
@@ -132,23 +183,55 @@ in {
     };
 
     symlinks = mkOption {
-      type = types.listOf types.str;
-      default = [ ".vscode-server" ".cursor-server" ];
-      description = ''
-        Home-relative paths symlinked into <mountPoint>/<user> on login (e.g.
-        ~/.vscode-server -> /local/<user>/.vscode-server). Created only if the home
-        path does not already exist (an existing real dir is never clobbered).
+      type = types.attrsOf types.str;
+      default = {
+        ".vscode-server" = ".vscode-server";
+        ".cursor-server" = ".cursor-server";
+      };
+      example = literalExpression ''
+        {
+          ".vscode-server"    = ".vscode-server";
+          "machine/workspace" = "workspace";   # ~/machine/workspace -> /local/<user>/workspace
+          "machine/cache"     = "cache";        # ~/machine/cache     -> /local/<user>/cache
+        }
       '';
+      description = ''
+        Map of home-relative LINK path -> <mountPoint>/<user>-relative TARGET path, laid
+        on login (e.g. ~/.vscode-server -> /local/<user>/.vscode-server, or the
+        user-facing ~/machine/workspace -> /local/<user>/workspace). Link and target may
+        differ; any parent dir of the link (~/machine) is created first. A link is made
+        only if the home path does not already exist (an existing real dir/symlink is
+        never clobbered). Setting this REPLACES the default, so re-list the IDE servers.
+      '';
+    };
+
+    marker = mkOption {
+      default = { };
+      description = ''
+        Optional README dropped (write-if-absent) in each user's home, marking the
+        node-local area as not-your-home + not-backed-up. Off by default; enable it on
+        hosts that expose the ~/machine/ layout via `symlinks`.
+      '';
+      type = types.submodule {
+        options = {
+          enable = mkEnableOption "the node-local 'not backed up' README in each user's home";
+          path = mkOption {
+            type = types.str;
+            default = "machine/README";
+            description = "Home-relative path of the marker file (its parent dir is created if missing).";
+          };
+        };
+      };
     };
 
     cacheEnv = mkOption {
       type = types.attrsOf types.str;
       default = {
-        XDG_CACHE_HOME  = ".cache";              # pip, matplotlib, many tools
-        HF_HOME         = ".cache/huggingface";  # Hugging Face hub (hardcodes ~/.cache, ignores XDG)
-        TORCH_HOME      = ".cache/torch";         # torch.hub model cache
-        CONDA_PKGS_DIRS = ".conda/pkgs";          # conda PACKAGE cache (envs stay in home)
-        npm_config_cache = ".cache/npm";          # npm download cache
+        XDG_CACHE_HOME  = "cache";              # pip, matplotlib, many tools (= ~/machine/cache)
+        HF_HOME         = "cache/huggingface";  # Hugging Face hub (hardcodes ~/.cache, ignores XDG)
+        TORCH_HOME      = "cache/torch";         # torch.hub model cache
+        CONDA_PKGS_DIRS = "cache/conda/pkgs";    # conda PACKAGE cache (envs stay in home)
+        npm_config_cache = "cache/npm";          # npm download cache
       };
       description = ''
         Cache env vars -> path RELATIVE to <mountPoint>/<user>, exported per shell

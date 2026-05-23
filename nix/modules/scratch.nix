@@ -147,6 +147,9 @@ let
   # scratch mount is active — never create on the bare/ephemeral root when autotier
   # is down (fail-closed cold tier); (2) only for members of ownerGroup, compared by
   # NUMERIC gid since the group name may contain spaces ("Kastner Research Group").
+  # If `homeLink` is set, it also lays a home symlink to <mountPoint>/<PAM_USER> (e.g.
+  # ~/machine/scratch), creating any parent (~/machine) first and never clobbering a
+  # real path — the scratch analogue of krg.localCache's symlinks.
   mkPerUserScript = projName: proj:
     pkgs.writeShellScript "krg-scratch-mkuser-${projName}" ''
       set -u
@@ -162,10 +165,32 @@ let
         esac
       ''}
       d="$mp/$PAM_USER"
-      [ -e "$d" ] && exit 0
-      ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
-      ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
-      ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
+      if [ ! -e "$d" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
+        ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
+        ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
+      fi
+      ${optionalString (proj.homeLink != null) ''
+        # Home-facing symlink to the per-user scratch dir (e.g. ~/machine/scratch ->
+        # /scratch/<lab>/<user>) — the scratch analogue of krg.localCache's symlinks.
+        # Lab-member-gated above; never clobbers a real path; parent (~/machine) made
+        # first since `ln` won't. Dangles whenever the scratch mount is down (above) —
+        # expected, this hook only runs while it's up.
+        home="$(${pkgs.getent}/bin/getent passwd "$PAM_USER" 2>/dev/null | ${pkgs.coreutils}/bin/head -n1 | ${pkgs.coreutils}/bin/cut -d: -f6)"
+        if [ -n "$home" ] && [ -d "$home" ]; then
+          hl=${escapeShellArg proj.homeLink}
+          link="$home/$hl"
+          if [ ! -e "$link" ] && [ ! -L "$link" ]; then
+            pdir="$(${pkgs.coreutils}/bin/dirname "$link")"
+            if [ "$pdir" != "$home" ]; then
+              ${pkgs.coreutils}/bin/mkdir -p "$pdir" || true
+              ${pkgs.coreutils}/bin/chown "$PAM_USER" "$pdir" || true
+            fi
+            ${pkgs.coreutils}/bin/ln -s "$d" "$link" || true
+            ${pkgs.coreutils}/bin/chown -h "$PAM_USER" "$link" || true
+          fi
+        fi
+      ''}
       exit 0
     '';
 
@@ -229,6 +254,18 @@ let
           are denied (o+x grants traverse only, not read; see mkPermsScript). An
           AD/SSSD group (may contain spaces). null = leave root-owned (admin-only).
           When set, the unit orders after sssd so the group resolves.
+        '';
+      };
+      homeLink = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        example = "machine/scratch";
+        description = ''
+          Optional home-relative symlink to this lab's per-user dir
+          (<mountPoint>/<user>), laid on login for lab members (e.g.
+          ~/machine/scratch -> /scratch/krg/<user>) — the scratch analogue of
+          krg.localCache's `symlinks`. Any parent dir (~/machine) is created first; an
+          existing real path is never clobbered. null = no home symlink.
         '';
       };
       tierPeriod = mkOption {
