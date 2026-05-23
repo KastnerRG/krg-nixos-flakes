@@ -10,6 +10,7 @@ flake — the authoritative sources are linked inline; if the diagrams and the
 - Bootloader/hardware: [`nix/hosts/waiter/hardware-configuration.nix`](../nix/hosts/waiter/hardware-configuration.nix)
 - Compute profile: [`nix/profiles/compute.nix`](../nix/profiles/compute.nix) → [`base`](../nix/profiles/base.nix)
 
+> **Related:** [fabricant](fabricant-topology.md) · [krg-ldap](krg-ldap-topology.md).
 > Mermaid diagrams render inline on GitHub. `fabricant` = the Proxmox **hypervisor**
 > (137.110.161.98) that serves NFS and hosts the `krg-ldap` AD DC VM
 > (137.110.161.109); `krg-prod` (137.110.161.106) runs Prometheus.

@@ -10,6 +10,7 @@ tool (not guest-vs-host — some NixOS machines are physical):
 
 - Building/deploying NixOS machines: [`nix/README.md`](nix/README.md)
 - Hardening the Proxmox hosts: [`ansible/README.md`](ansible/README.md)
+- Operator runbooks + topology/inventory: [`docs/`](docs/README.md)
 - Architecture + agent guidance: [`CLAUDE.md`](CLAUDE.md)
 
 ## Context
