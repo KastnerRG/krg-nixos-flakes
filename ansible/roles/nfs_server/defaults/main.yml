@@ -47,3 +47,23 @@ nfs_idmap_domain: krg.local
 # <nfs_root>/<name>) + one /etc/exports.d line. Defined in host_vars; see the
 # example there for the schema (name / fsid / dataset_props / clients).
 nfs_exports: []
+
+# --- ZFS auto-snapshots ----------------------------------------------------
+# fabricant is Debian/Proxmox, so it has NONE of NixOS's services.zfs.autoSnapshot
+# timers. The com.sun:auto-snapshot=true property the shares carry (host_vars) is
+# inert on its own — nothing acts on it, so the homes would get NO snapshots. This
+# installs the zfs-auto-snapshot tool + per-cadence systemd timers that consume it,
+# scoped to opted-in datasets ONLY (--default-exclude in the units; rationale in the
+# zfs-auto-snapshot.service.j2 template). Set false to leave snapshots unmanaged.
+zfs_auto_snapshot_enabled: true
+
+# Retention per cadence. MIRRORS nix/modules/zfs.nix krg.zfs.autoSnapshot so a /home
+# snapshot taken on fabricant matches one taken on a NixOS host — keep the two in
+# sync. oncalendar is a systemd OnCalendar= expression.
+#   frequent 4 (1h) · hourly 168 (1wk) · daily 14 (2wk) · weekly 16 (4mo) · monthly 12 (1yr)
+zfs_auto_snapshot_cadences:
+  - {label: frequent, oncalendar: "*:0/15", keep: 4}
+  - {label: hourly, oncalendar: "hourly", keep: 168}
+  - {label: daily, oncalendar: "daily", keep: 14}
+  - {label: weekly, oncalendar: "weekly", keep: 16}
+  - {label: monthly, oncalendar: "monthly", keep: 12}

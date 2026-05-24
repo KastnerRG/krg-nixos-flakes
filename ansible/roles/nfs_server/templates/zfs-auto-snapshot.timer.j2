@@ -1,0 +1,17 @@
+{# Managed by Ansible (krg-infra nfs_server). Edit the role, not here. #}
+# Drives zfs-auto-snapshot-{{ item.label }}.service. Cadence + retention MIRROR the
+# NixOS side (nix/modules/zfs.nix krg.zfs.autoSnapshot) so a /home snapshot taken
+# here lines up with one on a NixOS host. Keep the two in sync.
+#
+# Persistent=true catches up exactly one missed run after downtime, so a reboot that
+# straddles a daily/weekly/monthly point still records it rather than silently
+# skipping the snapshot.
+[Unit]
+Description=ZFS auto-snapshot ({{ item.label }}) timer
+
+[Timer]
+OnCalendar={{ item.oncalendar }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -28,6 +28,13 @@ where the backup is *before* you need it. Today the only off-host copy is the
 **~10.9 TiB waiter backup on fabricant's `rpool/ROOT/pve-1`** (and ZFS auto-snapshots,
 which protect against deletion but **not** against losing the pool/host).
 
+ZFS auto-snapshots of `/home` + `scratch-krg` run **on fabricant** via the Ansible
+`nfs_server` role (`zfs-auto-snapshot` systemd timers; retention mirrors the NixOS
+`krg.zfs.autoSnapshot` — frequent 4 / hourly 168 / daily 14 / weekly 16 / monthly 12).
+They are **opt-in** (`--default-exclude`): only datasets with `com.sun:auto-snapshot=
+true` are snapshotted, never the PVE root / VM zvols. To restore a deleted file,
+`zfs list -t snapshot rpool/nfs/home` on fabricant and copy from `.../.zfs/snapshot/`.
+
 > ⚠️ **Backup gap.** There is no current cross-site/cross-host replication of
 > fabricant's NFS datasets (`/home`, `scratch-krg`) or the AD DB. Losing the
 > fabricant pool loses user homes. Establishing real backups (e.g. `zfs send` to
