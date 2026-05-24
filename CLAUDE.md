@@ -70,7 +70,8 @@ krg-infra/
     keys/admins.json               # SHARED admin SSH keys — read by nix + ansible
     networks/trusted.json          # SHARED trusted nets / Proxmox IPSets — read by nix + ansible + PVE cluster.fw
     modules/
-      docker.nix  users.nix  snapper.nix
+      docker.nix  users.nix  nix-ld.nix  impermanence.nix
+      zfs.nix                      # ZFS support + auto-scrub + auto-snapshot retention (krg.zfs); WHICH datasets/cadence is per-dataset via com.sun:auto-snapshot props. NixOS hosts run the timers; fabricant (Proxmox) runs the same tool via ansible nfs_server
       nfs-home.nix                 # mount /home from NFS (krg.nfsHome) — AD user homes off the local ZFS root (enables impermanence)
       scratch.nix                  # tiered /scratch/<lab> via autotier (krg.scratch) — NVMe→HDD→NFS, per-lab FUSE namespace
       local-cache.nix              # node-local /local/<user> (krg.localCache) — IDE servers + cache class OFF the NFS /home (durable NVMe dataset, no FUSE/NFS)
@@ -102,7 +103,7 @@ krg-infra/
       oec_qualys_trellix/          # campus-mandated Qualys + Trellix (set oec_installer) — via base
       proxmox_firewall/            # PVE cluster.fw + per-guest <vmid>.fw + per-node host.fw (host rules eval before cluster rules; proxmox group, separate play)
       zfs_limits/                  # quota/reservation on EXISTING ZFS datasets — caps VM storage so user data wins (fabricant ONLY play)
-      nfs_server/                  # NFSv4 exports on ZFS datasets under <pool>/nfs (fabricant ONLY play; NFS tcp/2049 opened via fabricant host.fw)
+      nfs_server/                  # NFSv4 exports on ZFS datasets under <pool>/nfs (fabricant ONLY play; NFS tcp/2049 opened via fabricant host.fw); ALSO schedules zfs-auto-snapshot (systemd timers) for the opted-in shares — Proxmox has no NixOS services.zfs.autoSnapshot, so retention here MIRRORS nix krg.zfs.autoSnapshot, scoped opt-in via --default-exclude
 ```
 
 > **Naming note:** `fabricant` now refers only to the Proxmox **host** (hypervisor,

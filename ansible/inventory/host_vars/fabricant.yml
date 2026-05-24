@@ -49,6 +49,9 @@ nfs_exports:
   - name: home
     fsid: 11
     dataset_props:
+      # Opt this dataset IN to auto-snapshots (all five cadences). The nfs_server role
+      # runs the zfs-auto-snapshot timers that act on this property (--default-exclude,
+      # so only opted-in datasets); retention mirrors nix krg.zfs.autoSnapshot.
       "com.sun:auto-snapshot": "true"
     clients:
       # The host(...) entries are EXPORT ACLs on this server only — they don't touch
