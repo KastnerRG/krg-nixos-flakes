@@ -54,7 +54,10 @@ nfs_exports: []
 # inert on its own — nothing acts on it, so the homes would get NO snapshots. This
 # installs the zfs-auto-snapshot tool + per-cadence systemd timers that consume it,
 # scoped to opted-in datasets ONLY (--default-exclude in the units; rationale in the
-# zfs-auto-snapshot.service.j2 template). Set false to leave snapshots unmanaged.
+# zfs-auto-snapshot.service.j2 template). Setting this false is a REAL toggle: the
+# role stops + removes the timers (reversible), so the host actually stops
+# snapshotting — it doesn't merely stop managing them. The package and the stock cron
+# are left untouched (restoring the cron would snapshot every PVE/VM dataset).
 zfs_auto_snapshot_enabled: true
 
 # Retention per cadence. MIRRORS nix/modules/zfs.nix krg.zfs.autoSnapshot so a /home

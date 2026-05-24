@@ -127,6 +127,34 @@
     label: "zfs-auto-snapshot-{{ item.label }}.timer"
   when: zfs_auto_snapshot_enabled
 
+# Teardown path — make zfs_auto_snapshot_enabled a REAL, reversible toggle. Flipping
+# it false doesn't just stop managing snapshots; it stops + removes the timers so the
+# host actually stops snapshotting. (The package + stock cron are intentionally left
+# alone: we never want the stock cron restored — it has no --default-exclude and would
+# snapshot every PVE/VM dataset.) Stop must run while the unit files still exist, so it
+# precedes their removal; failed_when:false tolerates a host where they were never
+# installed (stop/disable of an unknown unit errors).
+- name: Stop + disable the zfs-auto-snapshot timers (when disabled)
+  ansible.builtin.systemd_service:
+    name: "zfs-auto-snapshot-{{ item.label }}.timer"
+    state: stopped
+    enabled: false
+  loop: "{{ zfs_auto_snapshot_cadences }}"
+  loop_control:
+    label: "zfs-auto-snapshot-{{ item.label }}.timer"
+  when: not zfs_auto_snapshot_enabled
+  failed_when: false
+
+- name: Remove the zfs-auto-snapshot unit files (when disabled)
+  ansible.builtin.file:
+    path: "/etc/systemd/system/zfs-auto-snapshot-{{ item.0.label }}.{{ item.1 }}"
+    state: absent
+  loop: "{{ zfs_auto_snapshot_cadences | product(['service', 'timer']) | list }}"
+  loop_control:
+    label: "zfs-auto-snapshot-{{ item.0.label }}.{{ item.1 }}"
+  when: not zfs_auto_snapshot_enabled
+  notify: reload systemd
+
 # --- NFS server config -----------------------------------------------------
 - name: Configure NFS protocol versions (v4-only by default)
   ansible.builtin.template:
