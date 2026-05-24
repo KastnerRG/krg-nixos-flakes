@@ -446,6 +446,13 @@ in {
             '';
             Restart = "on-failure";
             RestartSec = "30s"; # don't hot-loop while a tier (e.g. NFS) is down
+            # High-concurrency FUSE daemon: a parallel workload (e.g. ML training
+            # reading the corpus) fans out many simultaneous opens against the tier
+            # backing files. The systemd default soft NOFILE is 1024 — far too low — and
+            # hitting it throws EMFILE inside autotier's read/release path, which it does
+            # NOT catch → SIGABRT (a crash that only reproduces under real concurrent
+            # load, not a light read). Raise the soft limit to the hard default.
+            LimitNOFILE = 524288;
           };
         }
       ) projectList);
