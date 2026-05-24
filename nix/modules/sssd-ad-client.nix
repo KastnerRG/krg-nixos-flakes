@@ -40,6 +40,10 @@ let
   groupFilter = optionalString (cfg.allowedGroups != [ ])
     "(|${concatMapStringsSep "" (g: "(memberOf=CN=${g},CN=Users,${baseDN})") cfg.allowedGroups})";
   effectiveFilter = if cfg.accessFilter != null then cfg.accessFilter else groupFilter;
+  # shell_fallback target: null means store-path bash, which (unlike /bin/bash)
+  # always exists on NixOS — so a fallback never resolves to a missing path.
+  effectiveShellFallback =
+    if cfg.shellFallback != null then cfg.shellFallback else "${pkgs.bashInteractive}/bin/bash";
 in {
   options.krg.adClient = {
     enable = mkEnableOption "SSSD Active Directory client (log in as AD users)";
@@ -148,6 +152,38 @@ in {
         disabled. Use permissive (log only) or enforcing if you adopt GPOs.
       '';
     };
+
+    allowedShells = mkOption {
+      type        = types.listOf types.str;
+      default     = [ "*" ];
+      example     = [ "/run/current-system/sw/bin/bash" "/run/current-system/sw/bin/zsh" ];
+      description = ''
+        SSSD allowed_shells, evaluated per host: a user's AD loginShell is honoured
+        only where that exact path is in /etc/shells on THIS host; if it is allowed
+        here but not in /etc/shells it is replaced by `shellFallback`; if it is in
+        neither, SSSD hands back a nologin shell. The default `[ "*" ]` (wildcard)
+        means "any shell in /etc/shells is used, everything else falls back" — so a
+        single AD loginShell value is safe across heterogeneous hosts: e.g.
+        /run/current-system/sw/bin/zsh resolves to zsh on a zsh-enabled NixOS host
+        but degrades to bash on Debian members or NixOS hosts without programs.zsh,
+        instead of locking the user out. Set `[ ]` to omit allowed_shells entirely
+        (the raw loginShell is then returned verbatim — the pre-fallback behaviour,
+        which CAN lock a user out of a host that lacks their shell). Per-user shells
+        are set in AD; see ../../docs/creating-a-user.md.
+      '';
+    };
+
+    shellFallback = mkOption {
+      type        = types.nullOr types.str;
+      default     = null;
+      defaultText = literalExpression ''"''${pkgs.bashInteractive}/bin/bash"'';
+      description = ''
+        SSSD shell_fallback: the shell substituted when a user's shell is allowed
+        (in `allowedShells`) but not installed (not in /etc/shells). Null = the
+        Nix-store bash, which always exists on NixOS (unlike /bin/bash). Only takes
+        effect when `allowedShells` is non-empty.
+      '';
+    };
   };
 
   config = mkIf cfg.enable {
@@ -165,6 +201,16 @@ in {
         # NixOS has no /bin/bash — a login shell must be a real path (store bash)
         # or sshd rejects the account pre-auth: "shell /bin/bash does not exist".
         default_shell = ${pkgs.bashInteractive}/bin/bash
+        ${optionalString (cfg.allowedShells != [ ]) ''
+          # Per-user AD loginShell, fail-safe across heterogeneous hosts. SSSD
+          # honours a user's loginShell only where that path is in /etc/shells on
+          # THIS host (so /run/current-system/sw/bin/zsh → zsh on a zsh host); a
+          # shell allowed here but not installed degrades to shell_fallback rather
+          # than nologin, so an AD value that is invalid on this box (a NixOS path
+          # on Debian, zsh on a host without programs.zsh) lands on bash instead of
+          # locking the user out. "*" = any installed shell. docs/creating-a-user.md.
+          allowed_shells = ${concatStringsSep ", " cfg.allowedShells}
+          shell_fallback = ${effectiveShellFallback}''}
 
         [pam]
         ${optionalString cfg.sshKeysFromAD "\n[ssh]\n"}
@@ -223,6 +269,20 @@ in {
     # is its own name→IP, harmless. mkDefault so a host can override.
     networking.hosts = mkIf (cfg.server != null && cfg.serverIp != null)
       { ${cfg.serverIp} = mkDefault [ cfg.server ]; };
+
+    # Every domain member uses the AD DC as its PRIMARY DNS by default. This is
+    # required, not just tidy: SSSD's own (c-ares) resolver queries the servers in
+    # resolv.conf directly and does NOT consult the /etc/hosts pin above, so unless
+    # the DC is a real nameserver the member cannot resolve krg-ldap.krg.local (the
+    # internal krg.local zone) and SSSD flaps offline — which breaks logins for any
+    # not-yet-cached (i.e. brand-new) user with a bare "Permission denied (publickey)".
+    # The DC runs SAMBA_INTERNAL DNS and forwards non-AD queries upstream
+    # (samba-ad.nix dnsForwarder), so it resolves everything; mkBefore keeps it ahead
+    # of a host's site fallback resolvers. NOT applied on the DC itself (it owns its
+    # resolver via samba-ad.nix) nor when serverIp is null (SRV autodiscovery, which
+    # then relies on DNS that already serves krg.local).
+    networking.nameservers = mkIf (!cfg.isDomainController && cfg.serverIp != null)
+      (mkBefore [ cfg.serverIp ]);
 
     # krb5.conf for member hosts (the DC's samba-ad module renders its own at normal
     # priority, so mkDefault here yields on the DC and applies on members). KDC is

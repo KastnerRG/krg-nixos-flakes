@@ -92,6 +92,9 @@
       # (created only for Kastner-Research-Group members, only while /scratch/krg is
       # mounted). autotier still tiers the whole lab pool underneath.
       perUser.enable = true;
+      # Surface it in the unified ~/machine/ layer: ~/machine/scratch -> /scratch/krg/<user>
+      # (dangles whenever fabricant NFS is down and autotier fails closed — expected).
+      homeLink = "machine/scratch";
       tiers = [
         { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85%"; }
         { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90%"; }
@@ -112,15 +115,30 @@
   # the big NFS-offload win: HF model downloads and vscode-server's small-file/watch
   # traffic stay on local NVMe instead of hammering fabricant.
   #
-  # Defaults (modules/local-cache.nix) cover the symlinks + cache env vars, so just
-  # enabling perUser is enough. MIGRATION: an existing real ~/.vscode-server on NFS is
-  # never clobbered — a user opts in once with `rm -rf ~/.vscode-server`, then the next
-  # login creates the symlink. On-box: `zfs create -o mountpoint=legacy -o quota=1T \
-  # -o com.sun:auto-snapshot=false nvmepool/local` before deploying (disko isn't re-run
-  # live; same as the scratch datasets).
+  # The symlinks map below assembles the ~/machine/ layout (workspace + cache, next to
+  # ~/machine/scratch from krg.scratch); cache env vars (XDG_CACHE_HOME etc.) point under
+  # /local/<user>/cache so they ARE ~/machine/cache. MIGRATION: an existing real
+  # ~/.vscode-server on NFS is never clobbered — a user opts in once with `rm -rf
+  # ~/.vscode-server`, then the next login creates the symlink; caches re-home from
+  # /local/<user>/.cache to /local/<user>/cache on next shell (a one-time re-download).
+  # On-box: `zfs create -o mountpoint=legacy -o quota=1T -o com.sun:auto-snapshot=false \
+  # nvmepool/local` before deploying (disko isn't re-run live; same as the scratch
+  # datasets).
   krg.localCache = {
     enable = true;
     perUser.enable = true;
+    # ~/machine/ — the user-facing landing for this box's node-local storage (see the
+    # module header). The IDE dotfile symlinks MUST stay at their exact ~/.{vscode,
+    # cursor}-server paths; workspace + cache surface under ~/machine/ next to
+    # ~/machine/scratch (laid by krg.scratch.projects.krg.homeLink above). Re-listing the
+    # dotfiles is required because setting `symlinks` replaces the module default.
+    symlinks = {
+      ".vscode-server"    = ".vscode-server";
+      ".cursor-server"    = ".cursor-server";
+      "machine/workspace" = "workspace";   # repos: /local/<user>/workspace (push = backup)
+      "machine/cache"     = "cache";        # = $XDG_CACHE_HOME (HF/torch/npm/conda pkgs)
+    };
+    marker.enable = true;   # drop ~/machine/README: "lives on waiter, NOT backed up"
   };
 
   # Swap = zram (no on-disk swap; ZFS swap zvols are deadlock-prone under memory
@@ -162,6 +180,10 @@
       ipv4.addresses = [{ address = "137.110.161.67"; prefixLength = 24; }];
     };
     defaultGateway = "137.110.161.1";
+    # The AD DC (krg-ldap) is prepended as the PRIMARY resolver by krg.adClient
+    # (modules/sssd-ad-client.nix) for every domain member — so SSSD can resolve the
+    # internal krg.local zone instead of flapping offline. These are just waiter's
+    # site fallbacks, used after the DC.
     nameservers    = [ "132.239.0.252" "8.8.8.8" "1.1.1.1" ];
 
     # ZFS requires a unique hostId — generate with:
