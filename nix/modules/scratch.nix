@@ -430,14 +430,19 @@ in {
             ExecStart = "${cfg.package}/bin/autotierfs -c ${mkConfig name proj} ${proj.mountPoint} -o ${concatStringsSep "," cfg.fuseOptions}";
             # Clean unmount first; if the mount is busy, `fusermount3 -u` fails "Device
             # or resource busy" and leaves a STALE endpoint (ENOTCONN) that crash-loops
-            # the next start. Fall back to a LAZY detach, which always succeeds and never
-            # leaves a zombie (existing fds drain, new access fails). `|| true` so a no-op
-            # stop (already unmounted) isn't reported as a unit failure.
+            # the next start. Fall back to a LAZY detach, which succeeds even when busy and
+            # never leaves a zombie (existing fds drain, new access fails). Guard on an
+            # actual /proc/mounts entry — which lists a healthy mount AND a stale ENOTCONN
+            # endpoint (the latter fails `mountpoint -q`, so don't use that) — so an
+            # already-unmounted stop exits cleanly instead of spuriously failing, while a
+            # real mount that can't be torn down even lazily is left to surface (non-zero)
+            # rather than masked by a blanket `|| true`.
             ExecStop = pkgs.writeShellScript "autotier-${name}-stop" ''
-              ${pkgs.fuse3}/bin/fusermount3 -u ${escapeShellArg proj.mountPoint} \
-                || ${pkgs.fuse3}/bin/fusermount3 -u -z ${escapeShellArg proj.mountPoint} \
-                || ${pkgs.util-linux}/bin/umount -l ${escapeShellArg proj.mountPoint} \
-                || true
+              mp=${escapeShellArg proj.mountPoint}
+              ${pkgs.gnugrep}/bin/grep -qF " $mp " /proc/mounts || exit 0
+              ${pkgs.fuse3}/bin/fusermount3 -u "$mp" \
+                || ${pkgs.fuse3}/bin/fusermount3 -u -z "$mp" \
+                || ${pkgs.util-linux}/bin/umount -l "$mp"
             '';
             Restart = "on-failure";
             RestartSec = "30s"; # don't hot-loop while a tier (e.g. NFS) is down
