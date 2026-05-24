@@ -138,6 +138,26 @@ stat -c '%a %G' /srv/scratch-tiers/{nvme,hdd,nfs}/krg   # want 2771
 
 ---
 
+## Python environments (uv / poetry)
+
+### uv venv is slow, lives on NFS, or warns `Failed to hardlink files`
+**Symptom:** `uv sync` / `uv run` is slow, your `.venv` sits on the NFS `/home`,
+and/or uv prints `Failed to hardlink files; falling back to full copy`.
+**Cause:** uv creates `.venv` *in the project dir* (on NFS here) while its cache is
+on node-local `/local` — hardlinks can't cross filesystems, so uv copies, and the
+venv also pays NFS's small-file/watch latency.
+**Fix:** put the venv on `/local` too (per project — uv has no global switch):
+```bash
+rm -rf .venv
+export UV_PROJECT_ENVIRONMENT="/local/$(id -un)/venvs/$(basename "$PWD")"
+uv sync
+```
+Persist it via a direnv `.envrc` or by symlinking `.venv` → the `/local` path. Full
+guide (poetry is already local; pip too): the **Python environments** section of
+[waiter-topology.md](waiter-topology.md#python-environments-uv-poetry-pip).
+
+---
+
 ## Storage / hardware
 
 ### waiter `sdb` (ata3) SATA link errors in dmesg

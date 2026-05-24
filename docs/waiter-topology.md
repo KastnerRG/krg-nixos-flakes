@@ -143,6 +143,54 @@ Notes:
   regenerable state that has no business on NFS. The symlink is never created over
   an existing real `~/.vscode-server`.
 
+### Python environments (uv, poetry, pip)
+
+A virtualenv is thousands of small files that get `stat`/`open`-ed constantly and
+watched by your editor — exactly the workload NFS is worst at (and inotify doesn't
+cross NFS, so watchers fall back to polling). Venvs are also fully regenerable from
+a lockfile, so they belong on node-local **`/local`**, not the network `/home`.
+`krg.localCache` already points the package **caches** (`XDG_CACHE_HOME`, `HF_HOME`,
+…) at `/local/<you>/.cache`; where the **venv** lands depends on the tool:
+
+- **poetry — already on `/local`.** Poetry stores venvs *out of project* under its
+  cache dir, which follows `XDG_CACHE_HOME`, so they live in
+  `/local/<you>/.cache/pypoetry/virtualenvs/`. Just don't turn on in-project venvs
+  (`poetry config virtualenvs.in-project` should be `false`, the default; `true`
+  puts `.venv` back on NFS).
+- **pip / `python -m venv`** — the download cache is already on `/local`; create the
+  environment itself there, e.g. `python -m venv /local/$(id -un)/venvs/myproj`.
+- **uv — needs a per-project nudge.** uv's cache is on `/local`, **but uv creates the
+  project env at `.venv` inside the project dir**, which on your NFS home means the
+  venv lands on NFS. uv has no global "put venvs on /local" switch, so redirect it
+  **per project**:
+
+  ```bash
+  rm -rf .venv                                                   # remove the NFS one
+  export UV_PROJECT_ENVIRONMENT="/local/$(id -un)/venvs/$(basename "$PWD")"
+  uv sync
+  ```
+
+  Make it stick for that project by putting the `export` in a [direnv](https://direnv.net/)
+  `.envrc`, or by symlinking the venv (uv follows the link, and your editor still
+  finds `./.venv`):
+
+  ```bash
+  d="/local/$(id -un)/venvs/$(basename "$PWD")"; mkdir -p "$d"; ln -s "$d" .venv
+  ```
+
+**Why bother — the hardlink trap.** uv hardlinks packages from its cache into the
+venv, and hardlinks can't span filesystems. A `/local` cache + an NFS `.venv` makes
+uv fall back to copying every file (slower, and it prints `Failed to hardlink files;
+falling back to full copy`). Putting the venv on `/local` alongside the cache
+restores fast, hardlinked installs.
+
+**Caveats.** `/local` is *not* snapshotted or backed up
+([disaster-recovery.md](disaster-recovery.md)) — fine for a venv (recreate with
+`uv sync` / `poetry install`), but keep your **source** in `/home`. And don't set a
+*fleet-wide* `UV_PROJECT_ENVIRONMENT`: a single static path forces every uv project
+to share one venv (constant re-syncs; corruption with two concurrent shells), so
+this stays a per-project setting by design.
+
 ---
 
 ## Network
