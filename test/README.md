@@ -16,7 +16,7 @@ box's storage/fans anyway (see [`../docs/krg-prod-iac.md`](../docs/krg-prod-iac.
 | Sub-milestone | State |
 |---|---|
 | 1a — libvirt/KVM/OVMF/swtpm host module + devShell | **done** (this commit) |
-| 1b — pinned RR `.img` + DSM 7.3 `.pat`, libvirt domain, `dsm-vm` app | **next** — needs the pins below |
+| 1b — pinned RR `.img` + DSM 7.3 `.pat`, libvirt domain, `dsm-vm` app | **wired** — pins in `dsm.nix`, domain in `domains/`, `nix run ./test#dsm-vm`; first boot is the one-time interactive step |
 | 1c — VM roles: `dsm-prod-mirror` / `dsm-pr` / `dsm-upgrade` | planned |
 | 1d — `test-pr` loop (clone → plan/apply → exporter diff → destroy) | planned |
 
@@ -49,20 +49,29 @@ libvirt domain**, and the *first* boot is a one-time manual step:
 2. Snapshot that as the **`dsm-prod-mirror`** baseline.
 3. `dsm-pr` VMs **clone** the snapshot (no re-running RR) — that part is automatable.
 
-### Pins to fill (the blocker for 1b)
+### Run it
 
-Compute these in the devShell (`nix-prefetch-url <url>`), then wire them into the
-`dsm-vm` app + domain:
+```bash
+nix run ./test#dsm-vm [vm-name]    # default name: dsm-prod-mirror
+```
 
-- **RR loader release** — pick a specific `RROrg/rr` release (don't track latest);
-  record version + the `.img.zip` URL + `sha256`.
-- **DSM 7.3 `.pat` for DS3622xs+** — the `DSM_DS3622xs+_<build>.pat` from Synology's
-  archive; record URL + `sha256`. (Must be the **DS3622xs+** image, matching the
-  emulated model — not DS3617xs.)
+It materializes a writable copy of the pinned RR loader + a 32 GB data disk, stages
+the pinned `.pat`, renders `domains/dsm-vm.xml`, and `virsh define`s + starts the VM
+(on `qemu:///system`). Then connect (`virsh -c qemu:///system console <name>`, or
+virt-manager), drive the RR menu (DS3622xs+ / DSM 7.3, install from the staged
+`.pat`), run the DSM wizard, and snapshot the baseline.
 
-> Pinning both keeps the rig from silently drifting to a newer DSM than prod — which
-> is the whole point. Confirm prod's exact DSM 7.3 build (Control Panel → Info Center)
-> and pin the rig to match.
+### Pinned (in `dsm.nix` — bump deliberately)
+
+| Input | Pin |
+|---|---|
+| RR loader | `26.4.0` (`rr-26.4.0.img.zip`) |
+| DSM | `7.3.2-86009` · `DSM_DS3622xs+_86009.pat` (399.61 MB) |
+
+> Pinning both keeps the rig from drifting to a newer DSM than prod — the whole point.
+> We **build to** DSM 7.3, and the prod Mode-2 reinstall lands on the same
+> `7.3.2-86009`, so test == prod by construction. To move the target, bump the pins
+> and recompute `sha256` with `nix-prefetch-url`.
 
 ## 1c / 1d — VM roles + test loop (planned)
 
