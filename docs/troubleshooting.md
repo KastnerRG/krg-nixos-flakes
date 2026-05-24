@@ -135,16 +135,22 @@ FUSE. (Confirm: `zpool status -x` healthy.)
 ```bash
 sudo systemctl stop autotier-krg.service
 sudo umount -l /scratch/krg                       # clear the dead endpoint (lazy; -u fails "busy")
-# autotier's metadata is a HASH dir (it ignores the configured Metadata Path):
-ls -d /var/lib/autotier/[0-9]*                     # find the <hash> dir
-sudo mv /var/lib/autotier/<hash>{,.bak-$(date +%s)}   # move corrupt metadata aside (reversible)
+# Find autotier's metadata dir: the one under /var/lib/autotier that contains `db/`
+# + `adhoc.socket`. autotier derives a hash dir from the mountpoint (e.g.
+# /var/lib/autotier/6831447894506998999) and IGNORES the configured Metadata Path —
+# so identify it by contents, don't assume the name:
+sudo ls -la /var/lib/autotier/*/                   # the dir with db/ + adhoc.socket is it
+META=/var/lib/autotier/PUT_THAT_DIR_HERE           # set to the dir you found above
+sudo mv "$META" "$META.bak-$(date +%s)"            # move corrupt metadata aside (reversible)
 sudo systemctl reset-failed autotier-krg.service   # clear the restart start-limit
 sudo systemctl start autotier-krg.service
-# fresh metadata ⇒ files return ENOENT until indexed. Force a crawl to re-ingest them
-# (conf path = the `-c` arg in the unit's ExecStart):
-sudo autotier oneshot -c /nix/store/<hash>-autotier-krg.conf
-# verify a real content read no longer crashes it:
-f=$(sudo find /scratch/krg -maxdepth 5 -type f | head -1); sudo dd if="$f" of=/dev/null bs=1M | tail -1
+# fresh metadata ⇒ files return ENOENT until indexed. Force a crawl to re-ingest them.
+# Derive the config path from the running unit (the `-c` arg in ExecStart):
+CONF=$(systemctl show -p ExecStart autotier-krg.service | grep -oE '/nix/store/[^ ]*-autotier-krg\.conf' | head -1)
+sudo autotier oneshot -c "$CONF"
+# verify a real content read no longer crashes it (reads bytes + checks exit status):
+f=$(sudo find /scratch/krg -maxdepth 5 -type f | head -1)
+sudo head -c 1M "$f" >/dev/null && echo "read OK: $f"
 systemctl is-active autotier-krg.service           # should stay active
 ```
 Only clearing the endpoint (without the metadata wipe + `oneshot`) is **not** enough — it
