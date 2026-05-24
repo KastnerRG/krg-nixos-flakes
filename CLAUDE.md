@@ -118,6 +118,7 @@ krg-infra/
     e4e-nas/                       # Synology DSM (synology-community/synology): versions/providers/variables.tf + containers/packages/scheduler.tf (templates, commented)
     authentik/                     # PLANNED (goauthentik/authentik): Authentik SSO objects — apps/providers/flows/groups (README stub)
     vault/                         # PLANNED (hashicorp/vault): auth methods/policies/secret engines — structure not values (README stub)
+  spec/krg-prod/                     # declarative DSM source of truth (shares/groups/smb-globals/nfs-exports/acls/users/garage) — consumed by ansible synology_* roles; seeded from docs/e4e-nas-dsm.md
   docs/
     creating-a-user.md             # AD user-creation runbook
     e4e-nas-dsm.md                 # DSM runbook: the NAS settings with no API (AD join, shares/ACLs, firewall, SSH, snapshots, updates) — → break-glass once spec/ seeded

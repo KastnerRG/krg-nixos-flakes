@@ -5,7 +5,7 @@ to **standing the NAS back up under IaC** — the current focus. Decisions are r
 as ADRs in [`adr/`](adr/); this is the working map.
 
 `krg-prod` spans two hosts:
-- **e4e-nas** — Synology DS3617xs, DSM 7.2.2 (storage + Garage S3).
+- **e4e-nas** — Synology DS3617xs (`broadwell`), DSM 7.3 (storage + Garage S3).
 - **krg-prod** — NixOS VM on Proxmox (monitoring stack + supporting services).
 
 Git is the source of truth; UI/by-hand changes are drift (ADR 0001).
@@ -54,8 +54,9 @@ that minimal and documented as break-glass; everything after is repeatable IaC.
 0. **Seed `spec/krg-prod/`** from the build sheet (`docs/e4e-nas-dsm.md`: 55 shares,
    16 groups, service settings → `shares.yml`/`groups.yml`/`smb-globals.yml`/
    `nfs-exports.yml`). Pure data; unblocks every role.
-1. **Test rig** (XPEnology DSM 7.2.2 in libvirt) — validate CLI/API/idempotency
-   before prod. Highest-uncertainty, zero prod blast radius.
+1. **Test rig** (XPEnology **DS3622xs+/`broadwellnk`, DSM 7.3** in libvirt via the RR
+   loader) — validate CLI/API/idempotency before prod. Highest-uncertainty, zero
+   prod blast radius.
 2. **`synology_users` role** (+ exporter) — first idempotent role, proven on the rig.
 3. **OpenTofu skeleton + backend + import** existing shares; scaffold the Garage
    container resource.
@@ -72,3 +73,7 @@ that minimal and documented as break-glass; everything after is repeatable IaC.
   node. Until then, state is local.
 - **Test-rig fidelity:** DSM-in-KVM validates CLI/API/idempotency, **not** storage
   (SHR/Btrfs on real disks) or fans/sensors — those only surface on the real NAS.
+  It also emulates **DS3622xs+ (`broadwellnk`)**, not a literal DS3617xs: the RR
+  loader supports `broadwellnk` on DSM 7.3, whereas native `broadwell` (DS3617xs) is
+  poorly supported and `bromolow` (DS3615xs, Ivy-Bridge-era) is dropped at 7.3. Fine
+  — the DSM CLI surface we test is model-agnostic.

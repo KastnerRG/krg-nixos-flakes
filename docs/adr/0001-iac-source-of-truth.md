@@ -4,7 +4,7 @@
 
 ## Context
 
-`krg-prod` spans two managed hosts: the Synology **e4e-nas** (DS3617xs, DSM 7.2.2)
+`krg-prod` spans two managed hosts: the Synology **e4e-nas** (DS3617xs, DSM 7.3)
 and the **krg-prod NixOS VM** on Proxmox. The wider repo goal is to be able to burn
 the infrastructure down and stand it back up from code (see the project's
 burn-down-and-rebuild north star). DSM in particular invites click-ops, and

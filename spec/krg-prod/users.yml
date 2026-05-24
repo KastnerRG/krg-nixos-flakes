@@ -1,0 +1,15 @@
+# Users on e4e-nas — declarative source of truth.
+# Consumed by the `synology_users` Ansible role (wraps `synouser`); paired exporter
+# reads `synouser --enum` back.
+#
+# TODO (needs your input): human users come from AD (KRG.LOCAL via winbind), so this
+# is likely only for **local/service accounts** — e.g. the automation API account and
+# the break-glass SSH admin. List those here. The built-in `admin`/`guest` are
+# disabled, not managed.
+#
+# Schema (proposed):
+# users:
+#   - { name: krg-admin, description: "break-glass admin", groups: [administrators], ssh_key_only: true }
+#   - { name: tf-automation, description: "OpenTofu/Ansible API account", groups: [administrators] }
+
+users: []   # TODO — local/service accounts only (humans come from AD)

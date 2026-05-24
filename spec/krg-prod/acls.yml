@@ -1,0 +1,26 @@
+# Per-share ACLs (the share -> group grant matrix) on e4e-nas — source of truth.
+# Consumed by the `synology_shares`/`synology_acls` role (wraps `synoacltool`);
+# exporter reads `synoacltool -get <path>` back per share.
+#
+# TODO (needs your input — capture from the LIVE NAS *before* the Mode-2 reset):
+#   for each share:  synoacltool -get /volumeX/<share>
+# The binary ACL blobs in the DSM config export reference the DEAD old-domain SIDs,
+# so they are NOT a usable source — the live box (or your knowledge) is. The
+# `governs:` hints in groups.yml are inferred name-correlations to start from, not
+# the authoritative matrix.
+#
+# Remember the gotcha (runbook): preserved data carries dead-SID on-disk ACLs, so
+# each share needs a recursive "apply to sub-folders and files" pass after the
+# KRG.LOCAL join.
+#
+# Schema (proposed):
+# acls:
+#   - share: maya
+#     grants:
+#       - { group: maya, access: rw }       # access: ro | rw | no
+#       - { group: leads, access: rw }
+#   - share: admin
+#     grants:
+#       - { group: administrators, access: rw }
+
+acls: []   # TODO — capture from the live box before reset
