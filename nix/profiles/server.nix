@@ -42,9 +42,9 @@
     # 80/443 open globally (Traefik ingress); SSH (22) is source-restricted
     # (serviceHost), so the firewall module moves it from the open list to a
     # per-source rule. Traefik's 8080 (API/metrics) is intentionally NOT published
-    # to the host (docker-compose/krg-prod/compose.yml). Docker publishes ports past
-    # these nftables INPUT rules anyway, so the publish was the only real control —
-    # Prometheus now scrapes traefik:8080 over the docker network instead.
+    # to the host (docker-compose/krg-prod/compose.yml). When Prometheus is
+    # re-enabled it will scrape traefik:8080 over the Docker network instead of
+    # the host port (add prometheus to traefik_proxy at that time).
     allowedTCPPorts = [ 22 80 443 ];
     # Native node-exporter (9100), scraped from the monitoring host only. (The old
     # 9000 "service exporter" was the Ansible deploy-monitor, gone under autoUpgrade.)

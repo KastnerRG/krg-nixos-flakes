@@ -9,6 +9,10 @@ services:
     shm_size: 128 mb
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/authentik_postgres_admin_password
+    env_file:
+      # Provides AUTHENTIK_POSTGRESQL__PASSWORD used by the init script
+      # (2026-05-21_create_users.sh) to set the authentik role password.
+      - .secrets/authentik_admin_password.env
     volumes:
       - ./authentik/postgres/data/:/var/lib/postgresql/data/:rw
       - ./authentik/postgres/config/:/etc/postgresql/:ro

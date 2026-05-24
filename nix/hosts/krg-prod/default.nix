@@ -1,8 +1,9 @@
 { ... }:
 let
-  # Referencing the directory (not individual files) ensures Docker Compose
-  # `include:` directives can resolve sibling compose files from the same
-  # Nix store path, and lets us symlink config subdirs from the working dir.
+  # Referencing the directory (not individual files) puts the entire
+  # docker-compose/krg-prod/ subtree into a single Nix store path so that
+  # relative symlinks and config bind-mounts below all point into the same
+  # store derivation.
   composeDir = ../../docker-compose/krg-prod;
 in {
   imports = [
@@ -42,8 +43,9 @@ in {
     # ── Working directory layout under /var/lib/krg/krg-prod/ ─────────────
     # (the compose-stack module already creates /var/lib/krg/krg-prod/ and .secrets/)
 
-    # Docker Compose include: resolves relative to the project directory (not the
-    # compose file's store path), so symlink sub-stacks into the working dir.
+    # Docker Compose `include:` resolves relative to the project directory, not
+    # the compose file's Nix store path, so symlink each sub-stack into the
+    # working dir where compose.yml can find them by name.
     "L+ /var/lib/krg/krg-prod/compose.authentik.yml    - - - - ${composeDir}/compose.authentik.yml"
     "L+ /var/lib/krg/krg-prod/compose.grafana.yml      - - - - ${composeDir}/compose.grafana.yml"
     "L+ /var/lib/krg/krg-prod/compose.label-studio.yml - - - - ${composeDir}/compose.label-studio.yml"
