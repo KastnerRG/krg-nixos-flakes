@@ -16,9 +16,10 @@ EOSQL
 
 # Set the password separately using psql's :'var' quoting so that any special
 # characters in the password are properly escaped as a SQL string literal.
+# ENCRYPTED is specified explicitly to make the security intent clear.
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" \
     --set=authpw="$AUTHENTIK_POSTGRESQL__PASSWORD" \
-    -c "ALTER ROLE authentik PASSWORD :'authpw'"
+    -c "ALTER ROLE authentik ENCRYPTED PASSWORD :'authpw'"
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname="authentik_db" <<-EOSQL
 	GRANT ALL ON SCHEMA public TO authentik;
