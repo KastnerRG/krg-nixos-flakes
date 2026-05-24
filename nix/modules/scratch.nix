@@ -410,13 +410,35 @@ in {
             ++ optional (proj.ownerGroup != null) "sssd.service";
           unitConfig.RequiresMountsFor = map (tier: tierPath name tier) proj.tiers;
 
+          # Do NOT bounce on a routine `nixos-rebuild switch` (incl. the nightly
+          # auto-upgrade). The NixOS default restartIfChanged=true reruns ExecStop on
+          # ANY closure change, and ExecStop tears down the WHOLE FUSE namespace —
+          # killing in-flight tier moves + every open /scratch fd. Worse, if a process
+          # holds the mount the unmount fails "busy", leaving a STALE endpoint that makes
+          # the next autotierfs SIGABRT in boost::filesystem on its own mountpoint — a
+          # crash loop that (2026-05-24) also corrupted the RocksDB metadata and needed a
+          # manual wipe + `autotier oneshot` to recover (see docs/troubleshooting.md).
+          # With this false, new config needs a DELIBERATE `systemctl restart
+          # autotier-${name}` in a quiet window (or a reboot, clean on this impermanence box).
+          restartIfChanged = false;
+
           serviceConfig = {
             Type = "forking"; # autotierfs daemonizes via fuse_main() (see header)
             ExecStartPre = mkPermsScript name proj;
             # Single-line on purpose: systemd unit values are one line, and an
             # indented Nix '' string would leave a trailing newline in ExecStart=.
             ExecStart = "${cfg.package}/bin/autotierfs -c ${mkConfig name proj} ${proj.mountPoint} -o ${concatStringsSep "," cfg.fuseOptions}";
-            ExecStop = "${pkgs.fuse3}/bin/fusermount3 -u ${proj.mountPoint}";
+            # Clean unmount first; if the mount is busy, `fusermount3 -u` fails "Device
+            # or resource busy" and leaves a STALE endpoint (ENOTCONN) that crash-loops
+            # the next start. Fall back to a LAZY detach, which always succeeds and never
+            # leaves a zombie (existing fds drain, new access fails). `|| true` so a no-op
+            # stop (already unmounted) isn't reported as a unit failure.
+            ExecStop = pkgs.writeShellScript "autotier-${name}-stop" ''
+              ${pkgs.fuse3}/bin/fusermount3 -u ${escapeShellArg proj.mountPoint} \
+                || ${pkgs.fuse3}/bin/fusermount3 -u -z ${escapeShellArg proj.mountPoint} \
+                || ${pkgs.util-linux}/bin/umount -l ${escapeShellArg proj.mountPoint} \
+                || true
+            '';
             Restart = "on-failure";
             RestartSec = "30s"; # don't hot-loop while a tier (e.g. NFS) is down
           };

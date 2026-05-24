@@ -111,13 +111,44 @@ resolves-but-is-empty revokes.
 
 ### `nixos-rebuild switch` killed jobs / dropped open files under /scratch
 **Symptom:** running jobs using `/scratch/krg` die or get EIO during/after a deploy.
-**Cause:** `switch` bounces the `autotier-krg` unit; its `ExecStop` runs
-`fusermount3 -u`, tearing down the **whole** `/scratch` FUSE namespace — killing
-in-flight tier moves and every open `/scratch` fd. (Fix `restartIfChanged = false`
-is tracked in [`scratch.nix`](../nix/modules/scratch.nix) work.)
-**Fix / avoid:** don't `switch` while scratch is in active use; prefer
-`nixos-rebuild boot` + a scheduled reboot, or restart `autotier-krg` deliberately
-during a quiet window.
+**Cause:** a `switch` whose closure changed the `autotier-krg` unit used to bounce it;
+its `ExecStop` runs `fusermount3 -u`, tearing down the **whole** `/scratch` FUSE
+namespace — killing in-flight tier moves and every open `/scratch` fd.
+**Fix:** the unit now sets `restartIfChanged = false` ([`scratch.nix`](../nix/modules/scratch.nix)),
+so routine rebuilds/auto-upgrades leave the mount alone, and `ExecStop` falls back to a
+lazy unmount so a busy stop can't leave a zombie endpoint. New autotier config needs a
+**deliberate** `systemctl restart autotier-krg` in a quiet window (or a reboot). Still
+avoid restarting it while scratch is in active use.
+
+### autotier crash-loops after a deploy — SIGABRT / "Transport endpoint is not connected"
+**Symptom:** `autotier-krg.service` is `activating (auto-restart) (Result: core-dump)`;
+`/scratch/krg` reports **"Transport endpoint is not connected"**; the service may come
+up and list dirs but then die the instant you read file *content*. Coredumps are SIGABRT.
+**Cause:** an unclean stop (classically a deploy bounce whose `ExecStop` unmount failed
+"busy", before `restartIfChanged=false`) left a **stale FUSE endpoint** and/or **corrupted
+autotier's RocksDB metadata**. Two stacked crashes: (1) startup aborts in
+`boost::filesystem::status` on the dead endpoint; (2) with corrupt metadata it aborts in
+`fuse_ops::release` on the first content read. **Your data is safe** — files live on the
+tier backing dirs (`/srv/scratch-tiers/<tier>/krg/<user>/…`), readable directly, bypassing
+FUSE. (Confirm: `zpool status -x` healthy.)
+**Fix** (validated 2026-05-24; the metadata holds only popularity history, no data):
+```bash
+sudo systemctl stop autotier-krg.service
+sudo umount -l /scratch/krg                       # clear the dead endpoint (lazy; -u fails "busy")
+# autotier's metadata is a HASH dir (it ignores the configured Metadata Path):
+ls -d /var/lib/autotier/[0-9]*                     # find the <hash> dir
+sudo mv /var/lib/autotier/<hash>{,.bak-$(date +%s)}   # move corrupt metadata aside (reversible)
+sudo systemctl reset-failed autotier-krg.service   # clear the restart start-limit
+sudo systemctl start autotier-krg.service
+# fresh metadata ⇒ files return ENOENT until indexed. Force a crawl to re-ingest them
+# (conf path = the `-c` arg in the unit's ExecStart):
+sudo autotier oneshot -c /nix/store/<hash>-autotier-krg.conf
+# verify a real content read no longer crashes it:
+f=$(sudo find /scratch/krg -maxdepth 5 -type f | head -1); sudo dd if="$f" of=/dev/null bs=1M | tail -1
+systemctl is-active autotier-krg.service           # should stay active
+```
+Only clearing the endpoint (without the metadata wipe + `oneshot`) is **not** enough — it
+mounts and lists, then re-crashes on the first content read.
 
 ### Every write to /scratch fails with EACCES (for all lab members)
 **Symptom:** `ls`/`cd` work, but creating any file under `/scratch/krg` fails.
