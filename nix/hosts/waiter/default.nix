@@ -72,9 +72,11 @@
   #
   # LAB ISOLATION: krg and e4e are INDEPENDENT labs sharing this box, so /scratch/krg is
   # owned by the "Kastner Research Group" AD group, mode 2770 (a real ZFS-mount 2770 now;
-  # the old autotier o+x hack is gone). The group must exist in Samba AD; until the
-  # per-host domain join + group creation land, the perms step is tolerant (/scratch/krg
-  # stays root-owned/admin-only, then tightens on the next start).
+  # the old autotier o+x hack is gone). The "Kastner Research Group" group already
+  # exists in Samba AD (it backed the prior deploy), so the perms step applies 2770
+  # as soon as SSSD resolves it after the domain re-join; it stays tolerant
+  # (/scratch/krg root-owned/admin-only) if the group can't yet resolve, so /scratch
+  # always comes up — then tightens on the next start.
   #
   # E4E IS NOT WIRED: no e4e users/machines yet, so scratchpool/scratch-e4e stays
   # mountpoint=none (disko) reserved scaffolding. e4e will later get e4e-nas as its NFS
