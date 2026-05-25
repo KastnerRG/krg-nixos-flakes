@@ -38,7 +38,7 @@ pool imports only when the running `networking.hostId` matches the one that last
 had it. A changed hostId, or a pool that wasn't cleanly exported (power loss), locks
 it out.
 **Fix:** from a rescue/installer environment, `zpool import -f nvmepool` (and
-`hddpool`). Then make the running hostId match the committed one. **Prevention:**
+`scratchpool`). Then make the running hostId match the committed one. **Prevention:**
 always `zpool export -a` before rebooting during an install, and treat the committed
 hostId as load-bearing (never edit casually, never reuse on another box).
 
