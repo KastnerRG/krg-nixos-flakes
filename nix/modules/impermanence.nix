@@ -147,12 +147,11 @@ in {
         # durable on their own — no /persist bind needed. (Same rationale as
         # /var/lib/docker above.) See modules/local-cache.nix.
 
-        # --- tiered scratch (krg.scratch / autotier, compute profile) ---
-        "/var/lib/autotier" # autotier's per-lab RocksDB metadata
-        # (/var/lib/autotier/<lab>: file popularity / which-tier index). NOT the
-        # data — the scratch tiers are their own ZFS datasets + NFS, durable on
-        # their own — but wiped each boot autotier re-learns hot/cold from zero.
-        # Cheap to keep. See modules/scratch.nix.
+        # NOTE — /scratch (krg.scratch, modules/scratch.nix) needs NOTHING here. It's
+        # a plain ZFS mount on its own pool (scratchpool, off the @blank rollback), so
+        # it's durable on its own; the overflow job keeps its manifest ON that dataset
+        # and the archive symlinks are the source of truth — no /persist bind, and no
+        # autotier RocksDB to persist anymore (autotier is gone).
       ]
       # Break-glass admin home: users/admin.nix pins it to /var/lib/<account> (OFF
       # /home, so it works when the NFS /home is down) — but that puts it on the
