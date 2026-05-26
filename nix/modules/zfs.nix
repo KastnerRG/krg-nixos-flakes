@@ -46,8 +46,9 @@ in {
       description = ''
         Pools to import at boot that nothing in `fileSystems` references. The root
         pool is imported because `/` lives on it; a data-only pool whose datasets
-        are all mountpoint=none/legacy-but-unmounted (e.g. waiter's hddpool) would
-        otherwise never be imported. List it here.
+        are all mountpoint=none/legacy-but-unmounted would otherwise never be
+        imported (e.g. waiter's scratchpool is listed here so its reserved, unmounted
+        e4e dataset's pool still imports). List it here.
       '';
     };
 
@@ -175,7 +176,8 @@ in {
     };
 
     # Periodic TRIM (weekly). nvmepool also runs continuous autotrim=on (set in
-    # disko); periodic is the catch-all sweep. No-op on the spinning hddpool.
+    # disko); periodic is the catch-all sweep. No-op on scratchpool's spinning HDDs
+    # (it trims only the NVMe special/cache members).
     services.zfs.trim.enable = true;
 
     # Pool health → Prometheus (textfile collector). Guarded on node-exporter

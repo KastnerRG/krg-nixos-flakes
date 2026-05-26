@@ -21,6 +21,7 @@ actually operate / recover this" layer.
 |---|---|
 | [fleet-inventory.md](fleet-inventory.md) | Every host — IP, role, VMID, hypervisor — plus the Prometheus monitoring map |
 | [waiter-topology.md](waiter-topology.md) | waiter storage (ZFS/impermanence) + network diagrams |
+| [scratch-greenfield.md](scratch-greenfield.md) | waiter `/scratch` ZFS-native design (replaced autotier): pools/vdevs, the NFS overflow + `scratch-restore`, how to operate it |
 | [fabricant-topology.md](fabricant-topology.md) | fabricant (Proxmox) storage + NFS + firewall diagrams |
 | [krg-ldap-topology.md](krg-ldap-topology.md) | krg-ldap (AD DC) storage + network diagrams |
 

@@ -28,6 +28,13 @@ where the backup is *before* you need it. Today the only off-host copy is the
 **~10.9 TiB waiter backup on fabricant's `rpool/ROOT/pve-1`** (and ZFS auto-snapshots,
 which protect against deletion but **not** against losing the pool/host).
 
+ZFS auto-snapshots of `/home` + `scratch-krg` run **on fabricant** via the Ansible
+`nfs_server` role (`zfs-auto-snapshot` systemd timers; retention mirrors the NixOS
+`krg.zfs.autoSnapshot` — frequent 4 / hourly 168 / daily 14 / weekly 16 / monthly 12).
+They are **opt-in** (`--default-exclude`): only datasets with `com.sun:auto-snapshot=
+true` are snapshotted, never the PVE root / VM zvols. To restore a deleted file,
+`zfs list -t snapshot rpool/nfs/home` on fabricant and copy from `.../.zfs/snapshot/`.
+
 > ⚠️ **Backup gap.** There is no current cross-site/cross-host replication of
 > fabricant's NFS datasets (`/home`, `scratch-krg`) or the AD DB. Losing the
 > fabricant pool loses user homes. Establishing real backups (e.g. `zfs send` to
@@ -46,8 +53,9 @@ waiter is the only box with the destructive ZFS/impermanence install, and it has
 ### 0. Before you wipe — know what you're destroying
 `disko --mode disko` **wipes and repartitions every device** in the config, every
 run. It is NOT idempotent. User homes are on **fabricant NFS** (safe), but anything
-local — `/scratch/krg`'s NVMe/HDD tiers, `/local` caches — is gone. The cold
-scratch tier and `/home` survive on fabricant.
+local — `/scratch/krg` (on `scratchpool`: striped HDD + NVMe special/L2ARC), `/local`
+caches — is gone. The cold scratch **overflow** copies and `/home` survive on
+fabricant. See [scratch-greenfield.md](scratch-greenfield.md) for the scratch layout.
 
 ### 1. Identify disks by-id and fill the config
 The disko config pins devices by `/dev/disk/by-id/*` (NOT `sdX`/`nvmeXn1`, which
@@ -91,8 +99,9 @@ hand (per [`hosts/waiter/default.nix`](../nix/hosts/waiter/default.nix)):
 sudo zfs create -o mountpoint=legacy -o quota=1T \
   -o com.sun:auto-snapshot=false nvmepool/local
 ```
-The `scratch-krg` tiers are created by disko; if you ever add them live, flip
-`mountpoint=none → legacy` with `zfs set` (non-destructive).
+`scratchpool/scratch-krg` (the `/scratch/krg` dataset) is created by disko; the
+reserved `scratch-e4e` stays `mountpoint=none`. If you ever add a scratch dataset
+live, flip `mountpoint=none → legacy` with `zfs set` (non-destructive).
 
 ### 5. Deploy with `boot`, not `switch` — and migrate state FIRST
 With impermanence, the **first** activation must seed `/persist` *before* the first
@@ -115,16 +124,19 @@ sudo reboot
 - **`/home`:** nothing to restore on waiter — it's an NFS mount from fabricant.
   Just confirm it mounts (`mountpoint -q /home`); the login gate keeps AD users out
   until it does.
-- **`/scratch/krg`:** the cold tier lives on fabricant; local tiers refill as
-  autotier promotes. No manual restore.
+- **`/scratch/krg`:** a plain ZFS mount on `scratchpool`, created empty by disko.
+  Re-stage whatever you staged to fabricant before the wipe; archived (overflowed)
+  files live on the cold NFS area and come back via `scratch-restore`. No autotier.
 
 ### 7. Validate
 ```bash
-zpool status                       # both pools ONLINE
+zpool status                       # nvmepool + scratchpool ONLINE
 systemctl --failed                 # 0 failed units
 mountpoint -q /home && echo home-ok
-ls /scratch/krg                    # autotier FUSE mounted
+mountpoint -q /scratch/krg && echo scratch-ok   # plain ZFS mount (no FUSE)
 nvidia-smi                         # GPU/driver up
+# then, the test that matters: run the REAL multi-worker training read that killed
+# autotier (a light read is the test that fooled us before).
 ```
 Reboot once more and re-check — impermanence is only proven across a reboot (root
 returns to `@blank`, `/persist` binds reappear).

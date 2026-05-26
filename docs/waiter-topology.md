@@ -22,9 +22,15 @@ flake — the authoritative sources are linked inline; if the diagrams and the
 waiter is **ZFS-on-root with an impermanent (erase-your-darlings) root**: every
 boot `nvmepool/root` is rolled back to its empty `@blank` snapshot, so durable
 state must live either on a non-rolled-back dataset (`/nix`, `/persist`,
-`/tools`, `/var/lib/docker`, `/local`) or be bind-mounted back from `/persist`.
-User data lives **off the box** — `/home` over NFS and `/scratch/krg` tiered down
-to NFS — so the rollback never touches it.
+`/tools`, `/var/lib/docker`, `/local`, `scratchpool`) or be bind-mounted back from
+`/persist`. User data lives **off the rolled-back root** — `/home` over NFS, and
+`/scratch/krg` on its own durable `scratchpool` — so the rollback never touches it.
+
+> **Scratch is ZFS-native, not FUSE.** `/scratch` was previously tiered by
+> **autotier** (a FUSE daemon) which crashed under concurrent training reads. It's
+> gone — see [scratch-greenfield.md](scratch-greenfield.md). `/scratch/krg` is now a
+> plain ZFS mount on `scratchpool`: bytes on the striped HDD, hot reads served by an
+> NVMe metadata (special) vdev + L2ARC; a daily job overflows cold files to NFS.
 
 ### Physical → pools → datasets
 
@@ -39,18 +45,24 @@ flowchart TB
 
   subgraph parts["Partitioning (GPT, by-id)"]
     esp["4× 2 GiB vfat ESP<br/>(one per NVMe, independent)"]
-    nvz["4× ZFS partitions<br/>(rest of each NVMe)"]
-    hdz["2× whole-disk ZFS partitions"]
+    nvo["4× os ZFS partitions (1.4 TiB ea)"]
+    nvsp["4× special ZFS partitions (128 GiB ea)"]
+    nvc["4× cache ZFS partitions (1.4 TiB ea)"]
+    hdz["2× whole-disk ZFS partitions (16 TB ea)"]
   end
 
   nv --> esp
-  nv --> nvz
+  nv --> nvo
+  nv --> nvsp
+  nv --> nvc
   hd --> hdz
 
   esp --> grub["GRUB mirroredBoots<br/>/boot · /boot-1 · /boot-2 · /boot-3<br/>EFI fallback BOOTX64.EFI on each<br/>→ boots from any surviving NVMe"]
 
-  nvz --> nvmepool["<b>nvmepool</b> — RAIDZ1 (1 parity)<br/>ashift=12 · autotrim · zstd · atime=off"]
-  hdz --> hddpool["<b>hddpool</b> — mirror<br/>ashift=12 · zstd · atime=off"]
+  nvo --> nvmepool["<b>nvmepool</b> — RAIDZ1 (1 parity)<br/>ashift=12 · autotrim · zstd · atime=off<br/>redundant: survives one NVMe loss"]
+  hdz --> scratchpool["<b>scratchpool</b> — data: 2× HDD STRIPED (~29 TiB)<br/>NO redundancy (scratch is regenerable)"]
+  nvsp --> scratchpool
+  nvc --> scratchpool
 
   subgraph nvds["nvmepool datasets (legacy mounts)"]
     direction TB
@@ -60,18 +72,18 @@ flowchart TB
     d_tools["tools → /tools<br/>(vendor binaries · autosnap)"]
     d_docker["docker → /var/lib/docker<br/>(off rollback · autosnap off)"]
     d_local["local → /local<br/>(krg.localCache · off rollback · quota 1T)"]
-    d_skrg["scratch-krg<br/>(autotier NVMe tier · 1M recsize)<br/>quota 8T / 2T reserved"]
-    d_se4e["scratch-e4e<br/>(mountpoint=none — reserved)"]
   end
 
-  subgraph hdds["hddpool datasets"]
+  subgraph spds["scratchpool layout"]
     direction TB
-    h_skrg["scratch-krg<br/>(autotier HDD tier · 1M recsize)<br/>quota 10T / 4T reserved"]
-    h_se4e["scratch-e4e<br/>(mountpoint=none — reserved)"]
+    sp_special["special vdev (4× NVMe, striped)<br/>metadata-only → fast listings/find"]
+    sp_cache["cache / L2ARC (4× NVMe, striped)<br/>hot-read cache (LRU)"]
+    sp_skrg["scratch-krg → /scratch/krg<br/>(data on HDD · 1M recsize · relatime · autosnap off)"]
+    sp_se4e["scratch-e4e<br/>(mountpoint=none — reserved)"]
   end
 
-  nvmepool --> d_root & d_nix & d_persist & d_tools & d_docker & d_local & d_skrg & d_se4e
-  hddpool --> h_skrg & h_se4e
+  nvmepool --> d_root & d_nix & d_persist & d_tools & d_docker & d_local
+  scratchpool --> sp_special & sp_cache & sp_skrg & sp_se4e
 
   d_persist -.->|"bind-mounts state back into /"| d_root
 ```
@@ -81,9 +93,9 @@ flowchart TB
 `/var/log`, `/var/lib/nixos` (uid/gid map), `/var/lib/systemd`,
 `/var/lib/fail2ban` (ban DB), `/var/lib/sss` (SSSD offline cache),
 `/var/lib/krg` (compose working dir + secrets + monitoring data),
-`/var/lib/autotier` (tier popularity DB), `/root`, `/etc/nixos`,
-`/var/lib/krg-admin` (break-glass home); files `/etc/machine-id`, the SSH host
-keys, `/etc/krb5.keytab` (AD membership).
+`/root`, `/etc/nixos`, `/var/lib/krg-admin` (break-glass home); files
+`/etc/machine-id`, the SSH host keys, `/etc/krb5.keytab` (AD membership).
+(`/scratch` needs nothing here — it's on its own durable pool.)
 
 | dataset | mount | pool | rolled back? | snapshots |
 |---|---|---|---|---|
@@ -93,8 +105,12 @@ keys, `/etc/krb5.keytab` (AD membership).
 | `nvmepool/tools` | `/tools` | nvmepool | no | all cadences |
 | `nvmepool/docker` | `/var/lib/docker` | nvmepool | no | off |
 | `nvmepool/local` | `/local` | nvmepool | no | off (quota 1T) |
-| `nvmepool/scratch-krg` | autotier NVMe tier | nvmepool | no | daily/weekly/monthly |
-| `hddpool/scratch-krg` | autotier HDD tier | hddpool | no | daily/weekly/monthly |
+| `scratchpool/scratch-krg` | `/scratch/krg` | scratchpool (HDD stripe + NVMe special/L2ARC) | no | **off** (regenerable; see note) |
+
+> Scratch snapshots are **off on purpose**: the data is regenerable, and snapshots
+> would pin blocks the overflow job frees when it demotes a file to NFS. The cold
+> copies on fabricant NFS *are* snapshotted (ansible `nfs_server`), so archived data
+> still has accidental-delete protection.
 
 ### Logical view — what users see (`/home`, `/scratch`, `/local`)
 
@@ -104,35 +120,42 @@ flowchart LR
 
   subgraph waiter["waiter (local)"]
     home["/home/&lt;user&gt;<br/>(NFS mount, AD home)"]
-    scratch["/scratch/krg<br/><b>autotier FUSE</b> — one merged namespace<br/>owned by 'Kastner Research Group' (2771)<br/>per-user /scratch/krg/&lt;user&gt;"]
+    scratch["/scratch/krg<br/><b>plain ZFS mount</b> (no FUSE)<br/>owned by 'Kastner Research Group' (3770 setgid+sticky)<br/>per-user /scratch/krg/&lt;user&gt;"]
     local["/local/&lt;user&gt;<br/>node-local NVMe cache (0700)<br/>~/.vscode-server, ~/.cursor-server (symlinks)<br/>XDG_CACHE_HOME, HF_HOME, torch, conda-pkgs, npm"]
   end
 
-  subgraph tiers["/scratch/krg tiers (fastest first, auto hot/cold)"]
-    direction TB
-    t1["① NVMe — nvmepool/scratch-krg<br/>/srv/scratch-tiers/nvme/krg · cap 85%"]
-    t2["② HDD — hddpool/scratch-krg<br/>/srv/scratch-tiers/hdd/krg · cap 90%"]
-    t3["③ NFS (fabricant) — 137.110.161.98:/srv/nfs/scratch-krg<br/>/srv/scratch-tiers/nfs/krg · overflow 100%"]
+  subgraph readpath["how a /scratch read is served (in-kernel ZFS, no daemon)"]
+    direction LR
+    r1["① ARC (RAM)"]
+    r2["② L2ARC (NVMe cache)"]
+    r3["③ HDD stripe (data home)"]
+    r1 --> r2 --> r3
   end
 
   user --> home
   user --> scratch
   user --> local
 
-  scratch --> t1
-  t1 -->|"demote cold ▼ / promote hot ▲"| t2
-  t2 -->|"demote cold ▼ / promote hot ▲"| t3
+  scratch --> readpath
 
+  scratch -.->|"overflow: daily — idle &gt;6mo, or coldest when &gt;85% full<br/>copy→verify→symlink (scratch-restore brings back)"| cold[("fabricant NFS<br/>137.110.161.98:/srv/nfs/scratch-krg<br/>→ /srv/scratch-cold/krg")]
   home -.->|"NFSv4.2 (hard,nofail,nconnect=4)"| fab[("fabricant<br/>137.110.161.98<br/>rpool/nfs/home<br/>→ /srv/nfs/home")]
-  t3 -.->|"NFSv4.2 no_root_squash"| fab
-  local --> nvmepool[("nvmepool/local<br/>(pure NVMe, no FUSE/NFS)")]
+  local --> nvl[("nvmepool/local<br/>(pure NVMe, no FUSE/NFS)")]
 ```
 
 Notes:
-- **`/scratch/krg`** is one [autotier](../nix/modules/scratch.nix) FUSE namespace
-  that keeps the working set on NVMe and drains cold files NVMe → HDD → fabricant
-  NFS (daily pass). It **fails closed**: if the NFS cold tier is down the
-  `autotier-krg` unit won't start (so it never demotes onto the impermanent root).
+- **`/scratch/krg`** is a plain ZFS mount ([`scratch.nix`](../nix/modules/scratch.nix))
+  on `scratchpool` — no FUSE daemon in the read path. ZFS serves hot reads from RAM
+  (ARC) then NVMe (L2ARC); the bytes live on the striped HDD; metadata is on the NVMe
+  special vdev. The daily `scratch-overflow` timer demotes files to fabricant NFS for two
+  reasons (both by last-access): a **TTL sweep** moves anything not accessed in 6 months
+  even when there's free space, and a **capacity sweep** moves the coldest files when the
+  pool passes 85% (down to 75%). A demoted file becomes a symlink (reads still work over
+  the network); `scratch-restore <path>` pulls it back. It **fails
+  closed**: if the cold NFS area is down the unit won't start, and a local file is never
+  unlinked until its NFS copy is verified. See [scratch-greenfield.md](scratch-greenfield.md).
+  Each member also gets a private `/scratch/krg/<user>` and a convenience **`~/scratch`**
+  symlink to it, both laid on login (the symlink never clobbers a real `~/scratch`).
 - **`/home`** is a plain `nofail` NFSv4.2 mount ([`nfs-home.nix`](../nix/modules/nfs-home.nix)),
   pinned to fabricant by IP so it never waits on DNS. A PAM **login gate** denies
   any AD user whose home is under `/home` while that mount is down — closing the
@@ -183,7 +206,7 @@ flowchart TB
   fw --> svcs
 
   wn -->|"AD/SSSD: Kerberos, LDAP, SSH keys from AD<br/>+ primary DNS for krg.local zone"| ad
-  wn -->|"NFSv4.2: /home + /scratch cold tier"| fab
+  wn -->|"NFSv4.2: /home + /scratch cold overflow"| fab
   wn -->|"nightly auto-upgrade (flake) + builds"| ext
 ```
 
@@ -209,7 +232,7 @@ Ansible layer.
 | target | purpose | how |
 |---|---|---|
 | `krg-ldap` 137.110.161.109 | AD membership: login, SSH keys, sudo, internal DNS | SSSD (Kerberos/LDAP); DC pinned as **primary nameserver** |
-| `fabricant` 137.110.161.98 | `/home` + `/scratch/krg` cold tier | NFSv4.2 (`hard,nofail,nconnect=4`) |
+| `fabricant` 137.110.161.98 | `/home` + `/scratch/krg` cold overflow | NFSv4.2 (`hard,nofail,nconnect=4`) |
 | `132.239.0.252`, `8.8.8.8`, `1.1.1.1` | fallback DNS (after the DC) | resolv.conf |
 | github / nix binary cache | nightly `system.autoUpgrade` (04:00) + builds | https |
 

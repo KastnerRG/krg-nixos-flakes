@@ -38,7 +38,7 @@ pool imports only when the running `networking.hostId` matches the one that last
 had it. A changed hostId, or a pool that wasn't cleanly exported (power loss), locks
 it out.
 **Fix:** from a rescue/installer environment, `zpool import -f nvmepool` (and
-`hddpool`). Then make the running hostId match the committed one. **Prevention:**
+`scratchpool`). Then make the running hostId match the committed one. **Prevention:**
 always `zpool export -a` before rebooting during an install, and treat the committed
 hostId as load-bearing (never edit casually, never reuse on another box).
 
@@ -107,49 +107,61 @@ resolves-but-is-empty revokes.
 
 ---
 
-## Scratch (autotier) — waiter `/scratch/krg`
+## Scratch — waiter `/scratch/krg`
 
-### `nixos-rebuild switch` killed jobs / dropped open files under /scratch
-**Symptom:** running jobs using `/scratch/krg` die or get EIO during/after a deploy.
-**Cause:** `switch` bounces the `autotier-krg` unit; its `ExecStop` runs
-`fusermount3 -u`, tearing down the **whole** `/scratch` FUSE namespace — killing
-in-flight tier moves and every open `/scratch` fd. (Fix `restartIfChanged = false`
-is tracked in [`scratch.nix`](../nix/modules/scratch.nix) work.)
-**Fix / avoid:** don't `switch` while scratch is in active use; prefer
-`nixos-rebuild boot` + a scheduled reboot, or restart `autotier-krg` deliberately
-during a quiet window.
+> Describes the **greenfield** design ([scratch-greenfield.md](scratch-greenfield.md)):
+> a plain ZFS mount on `scratchpool` (no FUSE), with a daily NFS overflow. The old
+> autotier (FUSE) failure modes are gone with the tool.
+
+### A file under /scratch is a symlink into `/srv/scratch-cold/...` / reads got slow
+**Symptom:** `ls -l` shows a file is a symlink to the cold NFS area; reading it is slow.
+**Cause:** it wasn't accessed for a while and the overflow job demoted it to NFS to
+free local space. **Nothing is lost** — the data is on fabricant.
+**Fix:** pull it back to fast storage — `scratch-restore <path>` (or a directory).
+
+### `scratchpool` is full / overflow isn't freeing space
+**Checks:**
+```bash
+zpool list scratchpool                       # CAP% — overflow fires above 85%
+systemctl status scratch-overflow-krg.timer  # daily timer enabled?
+mountpoint -q /srv/scratch-cold/krg && echo cold-ok   # FAIL-CLOSED if not mounted
+sudo scratch-overflow --pool scratchpool --scratch /scratch/krg \
+  --cold /srv/scratch-cold/krg --high 85 --low 75 --min-age-days 14 --dry-run
+```
+**Common causes:** the cold NFS area isn't mounted (fabricant down) so the unit
+**won't start by design** (`RequiresMountsFor`); or every candidate was accessed
+within the last 14 days (`--min-age-days`), so nothing is eligible to demote.
 
 ### Every write to /scratch fails with EACCES (for all lab members)
 **Symptom:** `ls`/`cd` work, but creating any file under `/scratch/krg` fails.
-**Cause:** autotier's FUSE *create* path drops supplementary groups, so a `2770`
-group-only tier root is untraversable on create.
-**Fix:** tier roots must be **`2771`** (the `o+x` grants traverse without the group;
-no `o+r`, so isolation holds). The module sets this; verify:
+**Cause:** `/scratch/krg` hasn't been `chgrp`'d to the lab group yet — the perms step
+couldn't **resolve** `Kastner Research Group`, so it left the tree root-owned/admin-only
+(tolerant, by design). The group already exists in AD; the usual reason it doesn't
+resolve is SSSD/AD lookup not being healthy yet (host not joined, DNS can't reach the
+DC, or `sssd.service` down — see the SSSD/DNS-flap note above). (This is a **real 3770**
+now — the old autotier `2771`/`o+x` workaround is gone.)
+**Fix:** make sure the group resolves — `getent group 'Kastner Research Group'` returns
+a line (host joined, DNS to the DC working, `sssd.service` active) — then
+`systemctl restart krg-scratch-perms-krg`; verify:
 ```bash
-stat -c '%a %G' /srv/scratch-tiers/{nvme,hdd,nfs}/krg   # want 2771
+stat -c '%a %G' /scratch/krg                 # want 3770 'Kastner Research Group'
 ```
-
-### /scratch fills up / cold data never demotes
-**Symptom:** the NVMe tier hits 100% though a quota was set.
-**Cause:** autotier misparses a percent quota written **with a space** (`85 %` →
-8500%), so the demotion watermark never trips.
-**Fix:** write quotas with **no space** (`85%`). The module normalizes this
-(`normQuota`), so this only bites if a tier quota is edited by hand on-box.
 
 ---
 
 ## Storage / hardware
 
 ### waiter `sdb` (ata3) SATA link errors in dmesg
-**Symptom:** recurring SATA bus/link errors for `sdb` (an `hddpool` mirror leg),
-since 2026-05-22.
-**Status:** **letting it ride** — `hddpool` is ONLINE with 0 errors, only ephemeral
-scratch lives there, and its mirror twin (`sde`) is healthy. The box can't be
-physically serviced right now.
-**Cautions:** do **not** scrub a flapping disk (a scrub hammers it). The escalation
-**gap**: `smartd` is not enabled, so there's no proactive failure alert — pool-health
-is only surfaced via the node_exporter textfile collector ([`zfs.nix`](../nix/modules/zfs.nix)).
-Watch `zpool status hddpool`; if the twin degrades, the mirror is at risk.
+**Symptom:** recurring SATA bus/link errors for `sdb` (a `scratchpool` data leg),
+first seen 2026-05-22.
+**Status:** **letting it ride** — `scratchpool` is ONLINE with 0 errors and only
+holds regenerable scratch. The box can't be physically serviced right now.
+**Cautions:** do **not** scrub a flapping disk (a scrub hammers it). Note the
+greenfield `scratchpool` data is **striped (no redundancy)** — if `sdb` fails the
+pool is lost and **regenerated** (accepted; the data is regenerable). `smartd` is now
+enabled ([`hosts/waiter/default.nix`](../nix/hosts/waiter/default.nix)) for advance
+warning; pool health also goes to Prometheus via the textfile collector
+([`zfs.nix`](../nix/modules/zfs.nix)). Watch `zpool status scratchpool`.
 
 ---
 

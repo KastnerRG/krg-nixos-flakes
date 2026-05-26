@@ -56,6 +56,105 @@
   loop_control:
     label: "{{ nfs_parent_dataset }}/{{ item.name }}"
 
+# --- ZFS auto-snapshots ----------------------------------------------------
+# Make the com.sun:auto-snapshot property the shares carry actually DO something:
+# Proxmox/Debian has no NixOS services.zfs.autoSnapshot, so without these timers the
+# property is inert and the homes get no snapshots. --default-exclude keeps it scoped
+# to opted-in datasets only — see defaults/main.yml + the .service template for why.
+- name: Install zfs-auto-snapshot
+  ansible.builtin.apt:
+    name: zfs-auto-snapshot
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: zfs_auto_snapshot_enabled
+
+# The Debian package ships its OWN cron entries (cron.d + cron.{hourly,daily,weekly,
+# monthly}) with upstream retention and NO --default-exclude. Left in place they'd
+# (a) snapshot every PVE/VM dataset and (b) fight our timers' --keep on the shared
+# labels (whichever runs last sets the floor). Remove them — our systemd timers are
+# the single scheduler. (dpkg may restore these on a package upgrade; the next
+# Ansible run removes them again.)
+- name: Remove the package's stock cron entries (our timers replace them)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/cron.d/zfs-auto-snapshot
+    - /etc/cron.hourly/zfs-auto-snapshot
+    - /etc/cron.daily/zfs-auto-snapshot
+    - /etc/cron.weekly/zfs-auto-snapshot
+    - /etc/cron.monthly/zfs-auto-snapshot
+  when: zfs_auto_snapshot_enabled
+
+- name: Install zfs-auto-snapshot service units (one per cadence)
+  ansible.builtin.template:
+    src: zfs-auto-snapshot.service.j2
+    dest: "/etc/systemd/system/zfs-auto-snapshot-{{ item.label }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ zfs_auto_snapshot_cadences }}"
+  loop_control:
+    label: "zfs-auto-snapshot-{{ item.label }}.service"
+  when: zfs_auto_snapshot_enabled
+  notify: reload systemd
+
+- name: Install zfs-auto-snapshot timer units (one per cadence)
+  ansible.builtin.template:
+    src: zfs-auto-snapshot.timer.j2
+    dest: "/etc/systemd/system/zfs-auto-snapshot-{{ item.label }}.timer"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ zfs_auto_snapshot_cadences }}"
+  loop_control:
+    label: "zfs-auto-snapshot-{{ item.label }}.timer"
+  when: zfs_auto_snapshot_enabled
+  notify: reload systemd
+
+# Only the TIMERS are enabled (the services are oneshots the timers pull in). A
+# changed unit is picked up by daemon_reload below; daemon-reload also re-arms timers,
+# so an edited OnCalendar/--keep takes effect without an explicit restart.
+- name: Enable + start the zfs-auto-snapshot timers
+  ansible.builtin.systemd_service:
+    name: "zfs-auto-snapshot-{{ item.label }}.timer"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ zfs_auto_snapshot_cadences }}"
+  loop_control:
+    label: "zfs-auto-snapshot-{{ item.label }}.timer"
+  when: zfs_auto_snapshot_enabled
+
+# Teardown path — make zfs_auto_snapshot_enabled a REAL, reversible toggle. Flipping
+# it false doesn't just stop managing snapshots; it stops + removes the timers so the
+# host actually stops snapshotting. (The package + stock cron are intentionally left
+# alone: we never want the stock cron restored — it has no --default-exclude and would
+# snapshot every PVE/VM dataset.) Stop must run while the unit files still exist, so it
+# precedes their removal; failed_when:false tolerates a host where they were never
+# installed (stop/disable of an unknown unit errors).
+- name: Stop + disable the zfs-auto-snapshot timers (when disabled)
+  ansible.builtin.systemd_service:
+    name: "zfs-auto-snapshot-{{ item.label }}.timer"
+    state: stopped
+    enabled: false
+  loop: "{{ zfs_auto_snapshot_cadences }}"
+  loop_control:
+    label: "zfs-auto-snapshot-{{ item.label }}.timer"
+  when: not zfs_auto_snapshot_enabled
+  failed_when: false
+
+- name: Remove the zfs-auto-snapshot unit files (when disabled)
+  ansible.builtin.file:
+    path: "/etc/systemd/system/zfs-auto-snapshot-{{ item.0.label }}.{{ item.1 }}"
+    state: absent
+  loop: "{{ zfs_auto_snapshot_cadences | product(['service', 'timer']) | list }}"
+  loop_control:
+    label: "zfs-auto-snapshot-{{ item.0.label }}.{{ item.1 }}"
+  when: not zfs_auto_snapshot_enabled
+  notify: reload systemd
+
 # --- NFS server config -----------------------------------------------------
 - name: Configure NFS protocol versions (v4-only by default)
   ansible.builtin.template:
