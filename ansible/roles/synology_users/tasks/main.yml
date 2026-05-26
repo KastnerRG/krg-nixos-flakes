@@ -1,0 +1,86 @@
+---
+# synology_users — manage LOCAL DSM users + (optionally) LOCAL groups from
+# spec/krg-prod/{users,groups}.yml by wrapping the DSM CLI (synouser/synogroup).
+# DSM is not Debian, so ansible.builtin.user/group don't apply. Idempotent +
+# --check aware. Human identities come from the AD domain (winbind), NOT this role;
+# this role is for the service/break-glass LOCAL accounts (and local groups, if the
+# spec opts into type: local).
+#
+# ⚠️ The DSM CLI surface is UNDOCUMENTED and version-specific. The synouser/synogroup
+# argument forms below reflect best-known DSM 7.x usage and MUST be validated on the
+# test rig (DS3622xs+/DSM 7.3, test/) before trusting on prod — that is exactly this
+# milestone's purpose. Cross-ref: docs/krg-prod-iac.md, ADR 0005.
+
+- name: Load the declarative spec
+  ansible.builtin.include_vars:
+    file: "{{ item.file }}"
+    name: "{{ item.name }}"
+  loop:
+    - { file: "{{ synology_groups_spec }}", name: groups_spec }
+    - { file: "{{ synology_users_spec }}", name: users_spec }
+  loop_control:
+    label: "{{ item.name }}"
+
+# --- Local groups (only when the spec declares type: local) ---------------------
+# Default is type: ad → group objects live in KRG.LOCAL (created with samba-tool on
+# the DC, surfaced via winbind), so this role does NOT create them.
+- name: AD-managed groups are not created here (informational)
+  ansible.builtin.debug:
+    msg: >-
+      groups.yml type={{ groups_spec.type | default('ad') }} — group objects come from
+      KRG.LOCAL (winbind), not synogroup. Skipping local group creation.
+  when: (groups_spec.type | default('ad')) != 'local'
+
+- name: Manage local DSM groups
+  when: (groups_spec.type | default('ad')) == 'local'
+  block:
+    - name: Probe each local group (rc != 0 == missing)
+      ansible.builtin.command: "synogroup --get {{ item.name }}"
+      register: synogroup_probe
+      changed_when: false
+      failed_when: false
+      check_mode: false # always probe so --check can report would-create
+      loop: "{{ groups_spec.groups | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Create missing local groups
+      ansible.builtin.command: "synogroup --add {{ item.item.name }}"
+      when: item.rc != 0
+      changed_when: true
+      loop: "{{ synogroup_probe.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      # NOTE: membership/attribute sync (synogroup --member) is a follow-up — needs
+      # the exporter's current-state diff to stay idempotent. Create is the first cut.
+
+# --- Local users (service / break-glass accounts; humans come from AD) ----------
+- name: Probe each local user (rc != 0 == missing)
+  ansible.builtin.command: "synouser --get {{ item.name }}"
+  register: synouser_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  loop: "{{ users_spec.users | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create missing local users
+  # synouser --add <name> <password> "<desc>" <expire 0/1> "<email>" <cannot_chg_pw 0/1>
+  # Password comes from the vaulted `synology_user_passwords` map, NEVER from the spec.
+  ansible.builtin.command: >-
+    synouser --add {{ item.item.name }}
+    {{ (synology_user_passwords[item.item.name] | default('')) | quote }}
+    {{ (item.item.description | default('')) | quote }}
+    0 {{ (item.item.email | default('')) | quote }} 0
+  when: item.rc != 0
+  no_log: true # password is on the command line
+  changed_when: true
+  loop: "{{ synouser_probe.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+# --- Drift export (read-only) — only with `--tags export` -----------------------
+- name: Export live state for drift detection
+  ansible.builtin.import_tasks: export.yml
+  tags: [export, never]

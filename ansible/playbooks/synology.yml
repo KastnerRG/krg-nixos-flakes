@@ -1,0 +1,17 @@
+# Synology DSM (e4e-nas) — declarative config via the synology_* CLI-wrapping roles.
+# DSM is not Debian: roles wrap synouser/synogroup/synoshare/... over SSH. Spec lives
+# in spec/krg-prod/*.yml; git is truth, UI changes are drift (ADR 0001). Prereqs are
+# in inventory/group_vars/synology.yml.
+#
+#   ansible-playbook playbooks/synology.yml                 # apply
+#   ansible-playbook playbooks/synology.yml --check --diff  # dry run
+#   ansible-playbook playbooks/synology.yml --tags export   # drift snapshot (read-only)
+#
+# Deliberately a SEPARATE play from site.yml's Debian/PVE baseline — DSM shares none
+# of that (no apt, no systemd baseline, no OEC). Validate on the test rig first.
+- name: Synology DSM — users & groups
+  hosts: synology
+  become: true
+  gather_facts: false # DSM fact-gathering is unreliable; roles use explicit commands
+  roles:
+    - synology_users

@@ -1,0 +1,15 @@
+# Synology DSM hosts (e4e-nas = the krg-prod NAS). DSM is not Debian — the
+# synology_* roles wrap the DSM CLI (synouser/synogroup/synoshare/...) over SSH.
+# Identities/shares are declared in spec/krg-prod/*.yml (git is truth; UI = drift —
+# ADR 0001). See playbooks/synology.yml.
+#
+# PREREQS on the box (runbook): SSH enabled; an administrators-group account that is
+# NOT the built-in `admin`, with key auth + NOPASSWD sudo for automation; and the
+# DSM **Python3** package installed so ansible modules can run.
+ansible_user: krg-admin
+ansible_become: true
+ansible_become_method: ansible.builtin.sudo
+ansible_python_interpreter: /usr/bin/python3
+
+# Declarative spec (repo root /spec/krg-prod) consumed by the synology_* roles.
+krg_spec_dir: "{{ playbook_dir }}/../../spec/krg-prod"
