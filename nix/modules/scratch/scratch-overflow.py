@@ -101,6 +101,73 @@ def fsync_dir(path):
         os.close(fd)
 
 
+def open_manifest(state_dir):
+    """Open <state_dir>/manifest.jsonl for append, SAFELY.
+
+    The scratch root is group-writable by lab members, so a user could plant a
+    symlink at .scratch-overflow or manifest.jsonl to redirect this root-run write.
+    Refuse to use a state dir that isn't a real root-owned directory, and open the
+    file O_NOFOLLOW. Returns an fp, or None (manifest skipped — it's an audit log,
+    non-critical; the archive symlinks are the source of truth for restore).
+    """
+    try:
+        ds = os.lstat(state_dir)
+        if stat.S_ISLNK(ds.st_mode) or not stat.S_ISDIR(ds.st_mode) or ds.st_uid != 0:
+            log(f"WARNING: {state_dir} is not a root-owned dir (symlink/planted?) — "
+                "skipping manifest this run")
+            return None
+    except FileNotFoundError:
+        try:
+            os.mkdir(state_dir, 0o750)
+        except OSError as e:
+            log(f"WARNING: cannot create {state_dir}: {e} — skipping manifest")
+            return None
+    try:
+        fd = os.open(os.path.join(state_dir, "manifest.jsonl"),
+                     os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o640)
+        return os.fdopen(fd, "a")
+    except OSError as e:
+        log(f"WARNING: cannot open manifest: {e} — skipping manifest")
+        return None
+
+
+def write_note(scratch, cold):
+    """Write the breadcrumb at the scratch root, refusing to follow a planted symlink."""
+    path = os.path.join(scratch, NOTE_NAME)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+        with os.fdopen(fd, "w") as f:
+            f.write(NOTE_TEXT.format(cold=cold))
+    except OSError:
+        pass  # cosmetic; never fail the run over the note
+
+
+def makedirs_mirror(scratch, cold, rel):
+    """Create cold/<dirname(rel)>, mirroring each source dir's owner/mode (+ setgid).
+
+    The default root umask would leave the cold tree as root:root 0755, which would
+    undermine the per-user 0700 privacy of the scratch tree. Replicate the source
+    directory perms level by level instead.
+    """
+    sub = os.path.dirname(rel)
+    if not sub:
+        return
+    cur_src, cur_cold = scratch, cold
+    for part in sub.split(os.sep):
+        if not part:
+            continue
+        cur_src = os.path.join(cur_src, part)
+        cur_cold = os.path.join(cur_cold, part)
+        if not os.path.isdir(cur_cold):
+            os.mkdir(cur_cold)
+        try:
+            sst = os.stat(cur_src)
+            os.chown(cur_cold, sst.st_uid, sst.st_gid)
+            os.chmod(cur_cold, stat.S_IMODE(sst.st_mode))
+        except OSError:
+            pass
+
+
 def gather_candidates(scratch, min_atime, skip_dir_prefixes, skip_exact):
     """Regular, non-symlink files under scratch not accessed since min_atime.
 
@@ -177,7 +244,7 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
 
     part = dest + ".part"
     try:
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        makedirs_mirror(scratch, cold, rel)  # mirror source dir owner/mode into cold
         src_sha, nbytes = copy_and_hash(path, part)
         if nbytes != size:
             # source changed under us mid-copy — bail, leave local untouched
@@ -331,9 +398,7 @@ def main():
     if args.dry_run:
         manifest_fp = open(os.devnull, "w")
     else:
-        os.makedirs(state_dir, exist_ok=True)
-        os.chmod(state_dir, 0o750)
-        manifest_fp = open(os.path.join(state_dir, "manifest.jsonl"), "a")
+        manifest_fp = open_manifest(state_dir) or open(os.devnull, "w")
 
     freed = 0
     moved = 0
@@ -379,11 +444,7 @@ def main():
         manifest_fp.close()
 
     if not args.dry_run and moved:
-        try:
-            with open(os.path.join(args.scratch, NOTE_NAME), "w") as f:
-                f.write(NOTE_TEXT.format(cold=args.cold))
-        except OSError:
-            pass
+        write_note(args.scratch, args.cold)
         size, alloc, free = pool_bytes(args.zpool, args.pool)
         log(f"done: moved {moved} files, freed ~{freed} bytes; "
             f"pool now {capacity_pct(size, free):.1f}% full")

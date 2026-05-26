@@ -392,9 +392,18 @@ in {
 
       # /scratch parent + each lab mountpoint must exist before the mounts. 0755 is
       # the bare mountpoint; the perms step tightens the mounted root to 2770.
-      systemd.tmpfiles.rules =
+      # /scratch + each lab mountpoint, plus each overflow lab's cold mountpoint (and
+      # its parent) so the NFS mount target exists at boot with admin-only perms. The
+      # NFS mount overlays it; the local dir only shows through when NFS is down (and
+      # then overflow is fail-closed anyway). `unique` dedupes a shared parent.
+      systemd.tmpfiles.rules = unique (
         [ "d /scratch 0755 root root -" ]
-        ++ map ({ name, proj }: "d ${proj.mountPoint} 0755 root root -") projectList;
+        ++ map ({ name, proj }: "d ${proj.mountPoint} 0755 root root -") projectList
+        ++ concatMap ({ name, proj }:
+          optionals proj.overflow.enable [
+            "d ${dirOf proj.overflow.coldMountPoint} 0755 root root -"
+            "d ${proj.overflow.coldMountPoint} 0700 root root -"
+          ]) projectList);
 
       systemd.services = listToAttrs (concatMap ({ name, proj }:
         # ---- ownership/isolation: chmod 2770 + chgrp lab group, after the mount ----
@@ -421,8 +430,9 @@ in {
             path = [ config.boot.zfs.package pkgs.coreutils ];
             serviceConfig = {
               Type = "oneshot";
-              # argv list + escapeSystemdExecArgs so mountPoint/coldMountPoint with
-              # spaces or special chars can't break systemd's argument splitting.
+              # argv list + escapeSystemdExecArgs so any special characters in the args
+              # are handled safely by systemd's parser. (Whitespace in mountPoint/
+              # coldMountPoint is separately rejected at eval time by assertions above.)
               ExecStart = utils.escapeSystemdExecArgs ([
                 "${scratchOverflow}/bin/scratch-overflow"
                 "--pool" (ovPool proj)
