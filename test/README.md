@@ -22,16 +22,22 @@ box's storage/fans anyway (see [`../docs/krg-prod-iac.md`](../docs/krg-prod-iac.
 
 ## 1a — host setup (now)
 
-Import the module into your laptop's NixOS config:
+**Two ways to run — pick one:**
 
-```nix
-# laptop configuration.nix (or its flake)
-imports = [ inputs.krg-rig.nixosModules.libvirt-host ];
-krg.dsmRig = { enable = true; user = "chris"; };
-```
+- **Portable (no libvirtd, no NixOS module)** — for a machine *not* managed by this
+  repo. Needs only `/dev/kvm` access. On NixOS, add yourself to the `kvm` group in
+  *your own* config — `users.users.<you>.extraGroups = [ "kvm" ];` — and nothing else.
+- **Via libvirt (managed host / CI)** — import the module into a NixOS config:
 
-It enables `libvirtd` + KVM + **OVMF** (UEFI) + **swtpm** (TPM) + `virt-manager`,
-adds your user to `libvirtd`/`kvm`, and turns on nested KVM. Then:
+  ```nix
+  imports = [ inputs.krg-rig.nixosModules.libvirt-host ];
+  krg.dsmRig = { enable = true; user = "chris"; };
+  ```
+
+  It enables `libvirtd` + KVM + **OVMF** + **swtpm** + `virt-manager`, adds you to
+  `libvirtd`/`kvm`, and turns on nested KVM.
+
+Tooling either way:
 
 ```bash
 nix develop ./test     # virsh, tofu, ansible, yq, garage, nix-prefetch — all pinned
@@ -52,14 +58,19 @@ libvirt domain**, and the *first* boot is a one-time manual step:
 ### Run it
 
 ```bash
-nix run ./test#dsm-vm [vm-name]    # default name: dsm-prod-mirror
+# Portable — direct QEMU, no libvirtd (use this if your machine isn't managed by this repo):
+nix run ./test#dsm-vm-qemu [vm-name]   # DSM wizard → http://localhost:5000 | VNC → 127.0.0.1:5900
+
+# Via libvirt (needs the krg.dsmRig module):
+nix run ./test#dsm-vm [vm-name]        # default name: dsm-prod-mirror
 ```
 
-It materializes a writable copy of the pinned RR loader + a 32 GB data disk, stages
-the pinned `.pat`, renders `domains/dsm-vm.xml`, and `virsh define`s + starts the VM
-(on `qemu:///system`). Then connect (`virsh -c qemu:///system console <name>`, or
-virt-manager), drive the RR menu (DS3622xs+ / DSM 7.3, install from the staged
-`.pat`), run the DSM wizard, and snapshot the baseline.
+Both materialize a writable copy of the pinned RR loader + a 32 GB data disk and stage
+the pinned `.pat`. `dsm-vm-qemu` boots QEMU directly (OVMF + e1000e user-mode net with
+a `:5000` host-forward + VNC + serial); `dsm-vm` renders `domains/dsm-vm.xml` and
+`virsh define`/`start`s it on `qemu:///system`. Either way: drive the RR menu
+(DS3622xs+ / DSM 7.3, install from the staged `.pat`), run the DSM wizard, and snapshot
+the baseline.
 
 ### Pinned (in `dsm.nix` — bump deliberately)
 

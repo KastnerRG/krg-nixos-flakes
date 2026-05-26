@@ -1,5 +1,5 @@
 {
-  description = "krg DSM test rig — libvirt/KVM host module, devShell, and the dsm-vm app. Target: XPEnology DS3622xs+/broadwellnk, DSM 7.3.2-86009, via RR loader 26.4.0. Separate from the production flake at ../nix.";
+  description = "krg DSM test rig — libvirt/KVM host module, devShell, and DSM-VM launchers. Target: XPEnology DS3622xs+/broadwellnk, DSM 7.3.2-86009, via RR loader 26.4.0. Separate from the production flake at ../nix.";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -7,8 +7,9 @@
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      rig = import ./dsm.nix { inherit pkgs; }; # { dsm-vm, dsm-vm-qemu }
     in {
-      # Import into your laptop's NixOS config to provision the virtualization host.
+      # Import into a NixOS config to provision the libvirt host (for the dsm-vm path).
       nixosModules.libvirt-host = import ./modules/libvirt-host.nix;
 
       # `nix develop ./test` — everything to drive the rig + the IaC under test, pinned.
@@ -26,18 +27,24 @@
         ];
         shellHook = ''
           echo "krg DSM test rig — virsh / tofu / ansible / yq / garage pinned."
-          echo "Boot a DSM VM:  nix run ./test#dsm-vm [vm-name]   (see ./README.md)"
+          echo "Portable (no libvirtd):  nix run ./test#dsm-vm-qemu [name]"
+          echo "Via libvirt (managed):   nix run ./test#dsm-vm [name]"
         '';
       };
 
-      # `nix run ./test#dsm-vm [name]` — provision + boot a DSM rig VM from the pinned
-      # RR loader + DSM .pat (see dsm.nix). First boot is the interactive RR menu + DSM
-      # wizard → snapshot the dsm-prod-mirror baseline; dsm-pr later clones it.
-      packages.${system}.dsm-vm = import ./dsm.nix { inherit pkgs; };
+      packages.${system} = { inherit (rig) dsm-vm dsm-vm-qemu; };
 
-      apps.${system}.dsm-vm = {
-        type = "app";
-        program = "${self.packages.${system}.dsm-vm}/bin/dsm-vm";
+      apps.${system} = {
+        # libvirt path — needs the krg.dsmRig host module (qemu:///system).
+        dsm-vm = {
+          type = "app";
+          program = "${rig.dsm-vm}/bin/dsm-vm";
+        };
+        # portable path — direct QEMU, no libvirtd / no NixOS module; only needs /dev/kvm.
+        dsm-vm-qemu = {
+          type = "app";
+          program = "${rig.dsm-vm-qemu}/bin/dsm-vm-qemu";
+        };
       };
     };
 }
