@@ -15,10 +15,12 @@ services:
       - postgres_admin_password
     command: --config_file=/etc/postgresql/postgres.conf
     ports:
-      - 5433:5432
+      # Loopback only — see the Authentik Postgres note. Docker would otherwise
+      # publish this on the VM's external interface, bypassing the host firewall.
+      - 127.0.0.1:5433:5432
     networks:
       - label_studio
-    user: "${USER_ID}:${GROUP_ID}"
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
 
   label_studio_pg:
     container_name: label-studio

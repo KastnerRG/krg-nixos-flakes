@@ -1,5 +1,7 @@
 services:
   outline:
+    # TODO(pin): replace :latest with a verified release tag (e.g. 0.8x.y) before
+    # re-enabling — :latest defeats the reproducible-deploy goal everything else uses.
     image: docker.getoutline.com/outlinewiki/outline:latest
     env_file:
       - ./outline/docker.env
@@ -14,7 +16,7 @@ services:
       - "traefik.http.routers.outline.rule=Host(`wiki.fabricant.ucsd.edu`)"
       - "traefik.http.routers.outline.entrypoints=websecure"
       - "traefik.http.routers.outline.tls.certresolver=letsencrypt"
-    user: "${USER_ID}:${GROUP_ID}"
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
     networks:
       - outline
       - traefik_proxy
