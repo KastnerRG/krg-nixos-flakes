@@ -51,6 +51,17 @@ def sha256_of(path):
     return h.hexdigest()
 
 
+def fsync_dir(path):
+    try:
+        fd = os.open(path, os.O_DIRECTORY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def restore_one(link, keep_cold, verbose):
     """Restore a single archived symlink. Returns True on a successful restore."""
     if not os.path.islink(link):
@@ -80,6 +91,7 @@ def restore_one(link, keep_cold, verbose):
         if os.geteuid() == 0:  # admin restore: preserve the original owner
             os.chown(part, tst.st_uid, tst.st_gid)
         os.replace(part, link)  # atomically replace the symlink with the real file
+        fsync_dir(os.path.dirname(link))  # make the local rename durable
     except OSError as e:
         try:
             if os.path.lexists(part):
@@ -103,6 +115,7 @@ def restore_one(link, keep_cold, verbose):
         if unchanged:
             try:
                 os.unlink(target)
+                fsync_dir(os.path.dirname(target))  # make the cold deletion durable
             except OSError as e:
                 log(f"restored {link} but could not remove cold copy {target}: {e}")
         else:

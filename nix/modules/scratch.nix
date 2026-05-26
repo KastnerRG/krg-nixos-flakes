@@ -58,9 +58,10 @@ let
     "x-systemd.mount-timeout=30s"
   ];
 
-  # A home-relative path that could escape $HOME (absolute, or contains a ".."
-  # segment). Used to validate perUser.homeLink at eval time.
-  relUnsafe = p: hasPrefix "/" p || elem ".." (splitString "/" p);
+  # perUser.homeLink must be a SINGLE path segment: non-empty, no "/" (so its parent
+  # is always $HOME — the hook never has to mkdir a root-owned dir in the user's home),
+  # and not "." / "..". Validated at eval time.
+  badHomeLink = p: p == "" || hasInfix "/" p || p == "." || p == "..";
 
   # scratch-overflow / scratch-restore as stdlib-only Python. writePython3Bin gives a
   # build-time syntax + import check; flakeIgnore drops style-only lints (line length
@@ -125,10 +126,11 @@ let
         ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
       fi
       ${optionalString (proj.perUser.homeLink != null) ''
+        # homeLink is a SINGLE path segment (asserted), so the link's parent is $home
+        # itself — we never mkdir (and so never leave a root-owned dir in the home).
         home=$(${pkgs.getent}/bin/getent passwd "$PAM_USER" | ${pkgs.coreutils}/bin/cut -d: -f6)
         if [ -n "$home" ] && [ -d "$home" ]; then
           link="$home/${proj.perUser.homeLink}"
-          ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$link")" 2>/dev/null || true
           # leave a real (non-symlink) path alone; otherwise create/refresh the symlink
           if [ -e "$link" ] && [ ! -L "$link" ]; then
             :
@@ -253,7 +255,9 @@ let
                 so on a host that mounts the home but lacks this scratch path it would
                 dangle. NEVER created over an existing real path (a real ~/<homeLink>
                 is left untouched); an existing symlink is refreshed to the right
-                target. Relative path under the home — no leading "/" or ".." segment.
+                target. Must be a SINGLE path segment (no "/") so the link sits
+                directly in $HOME — the hook then never creates (root-owned) parent
+                dirs in the user's home.
               '';
             };
           };
@@ -328,8 +332,8 @@ in {
         }
         {
           # The link is laid under $HOME; reject anything that could escape it.
-          assertion = proj.perUser.homeLink == null || !(relUnsafe proj.perUser.homeLink);
-          message = "krg.scratch.projects.${name}: perUser.homeLink must be a relative path under $HOME (no leading \"/\" or \"..\" segment).";
+          assertion = proj.perUser.homeLink == null || !(badHomeLink proj.perUser.homeLink);
+          message = "krg.scratch.projects.${name}: perUser.homeLink must be a single path segment under $HOME (no \"/\", not \".\"/\"..\").";
         }
       ]) cfg.projects);
 
