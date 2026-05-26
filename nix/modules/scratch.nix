@@ -37,7 +37,7 @@
 # its manifest ON the scratch dataset (durable, travels with the data) and the
 # symlinks themselves are the source of truth for restore — nothing here needs a
 # /persist bind.
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, utils, ... }:
 with lib;
 let
   cfg = config.krg.scratch;
@@ -387,16 +387,18 @@ in {
             path = [ config.boot.zfs.package pkgs.coreutils ];
             serviceConfig = {
               Type = "oneshot";
-              ExecStart = concatStringsSep " " ([
+              # argv list + escapeSystemdExecArgs so mountPoint/coldMountPoint with
+              # spaces or special chars can't break systemd's argument splitting.
+              ExecStart = utils.escapeSystemdExecArgs ([
                 "${scratchOverflow}/bin/scratch-overflow"
-                "--pool ${ovPool proj}"
-                "--scratch ${proj.mountPoint}"
-                "--cold ${proj.overflow.coldMountPoint}"
-                "--high ${toString proj.overflow.highWatermark}"
-                "--low ${toString proj.overflow.lowWatermark}"
-                "--min-age-days ${toString proj.overflow.minAgeDays}"
-              ] ++ optional (proj.overflow.maxIdleDays > 0)
-                "--max-idle-days ${toString proj.overflow.maxIdleDays}");
+                "--pool" (ovPool proj)
+                "--scratch" proj.mountPoint
+                "--cold" proj.overflow.coldMountPoint
+                "--high" (toString proj.overflow.highWatermark)
+                "--low" (toString proj.overflow.lowWatermark)
+                "--min-age-days" (toString proj.overflow.minAgeDays)
+              ] ++ optionals (proj.overflow.maxIdleDays > 0)
+                [ "--max-idle-days" (toString proj.overflow.maxIdleDays) ]);
               # bound resource use of the daily sweep
               Nice = 10;
               IOSchedulingClass = "idle";

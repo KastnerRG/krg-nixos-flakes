@@ -25,9 +25,12 @@ def log(msg):
 
 
 def copy_and_hash(src, dst):
+    # dst opened O_NOFOLLOW so a symlink swapped in at the temp path is refused, not
+    # followed (restore may run as root); src is the already-realpath'd cold file.
     h = hashlib.sha256()
     n = 0
-    with open(src, "rb") as fi, open(dst, "wb") as fo:
+    dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with open(src, "rb") as fi, os.fdopen(dst_fd, "wb") as fo:
         while True:
             buf = fi.read(COPY_CHUNK)
             if not buf:
@@ -87,10 +90,24 @@ def restore_one(link, keep_cold, verbose):
         return False
 
     if not keep_cold:
+        # Only remove the cold copy if it is STILL byte-for-byte what we just restored
+        # (guard against a concurrent write to the cold file during the copy). If it
+        # changed, keep it and warn rather than risk deleting newer data.
         try:
-            os.unlink(target)
-        except OSError as e:
-            log(f"restored {link} but could not remove cold copy {target}: {e}")
+            tst2 = os.stat(target)
+            unchanged = (tst2.st_ino, tst2.st_size, tst2.st_mtime_ns,
+                         tst2.st_ctime_ns) == (tst.st_ino, tst.st_size,
+                                               tst.st_mtime_ns, tst.st_ctime_ns)
+        except OSError:
+            unchanged = False
+        if unchanged:
+            try:
+                os.unlink(target)
+            except OSError as e:
+                log(f"restored {link} but could not remove cold copy {target}: {e}")
+        else:
+            log(f"restored {link} but cold copy {target} changed during restore — "
+                f"kept it (rerun with the file idle to reclaim NFS space)")
     log(f"restored {link} ({tst.st_size} bytes)")
     return True
 
@@ -119,6 +136,9 @@ def main():
             for link in walk_links(p):
                 if restore_one(link, args.keep_cold, args.verbose):
                     restored += 1
+                else:
+                    # every link under the dir is an archived file we meant to restore
+                    failed += 1
         else:
             if restore_one(p, args.keep_cold, args.verbose):
                 restored += 1

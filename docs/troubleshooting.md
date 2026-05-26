@@ -134,11 +134,15 @@ within the last 14 days (`--min-age-days`), so nothing is eligible to demote.
 
 ### Every write to /scratch fails with EACCES (for all lab members)
 **Symptom:** `ls`/`cd` work, but creating any file under `/scratch/krg` fails.
-**Cause:** `/scratch/krg` hasn't been `chgrp`'d to the lab group yet — the
-`Kastner Research Group` AD group doesn't resolve, so the perms step left it
-root-owned/admin-only (tolerant, by design). (This is a **real 2770** now — the old
-autotier `2771`/`o+x` workaround is gone.)
-**Fix:** create the AD group, then `systemctl restart krg-scratch-perms-krg`; verify:
+**Cause:** `/scratch/krg` hasn't been `chgrp`'d to the lab group yet — the perms step
+couldn't **resolve** `Kastner Research Group`, so it left the tree root-owned/admin-only
+(tolerant, by design). The group already exists in AD; the usual reason it doesn't
+resolve is SSSD/AD lookup not being healthy yet (host not joined, DNS can't reach the
+DC, or `sssd.service` down — see the SSSD/DNS-flap note above). (This is a **real 2770**
+now — the old autotier `2771`/`o+x` workaround is gone.)
+**Fix:** make sure the group resolves — `getent group 'Kastner Research Group'` returns
+a line (host joined, DNS to the DC working, `sssd.service` active) — then
+`systemctl restart krg-scratch-perms-krg`; verify:
 ```bash
 stat -c '%a %G' /scratch/krg                 # want 2770 'Kastner Research Group'
 ```

@@ -63,10 +63,16 @@ def capacity_pct(size, free):
 
 
 def copy_and_hash(src, dst):
-    """Stream src -> dst computing src's sha256 in one pass. Returns (sha, nbytes)."""
+    """Stream src -> dst computing src's sha256 in one pass. Returns (sha, nbytes).
+
+    Both ends are opened O_NOFOLLOW so a symlink swapped in at either path (the job
+    runs as root on a no_root_squash export) is refused rather than followed.
+    """
     h = hashlib.sha256()
     n = 0
-    with open(src, "rb") as fi, open(dst, "wb") as fo:
+    src_fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
+    dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(src_fd, "rb") as fi, os.fdopen(dst_fd, "wb") as fo:
         while True:
             buf = fi.read(COPY_CHUNK)
             if not buf:
@@ -96,7 +102,14 @@ def fsync_dir(path):
 
 
 def gather_candidates(scratch, min_atime, skip_prefixes):
-    """Regular, non-symlink files under scratch not accessed since min_atime."""
+    """Regular, non-symlink files under scratch not accessed since min_atime.
+
+    Builds one in-memory list of (atime, size, path) and sorts it. That's bounded in
+    practice: sharding is the data-layout standard here (a few large shards, not
+    millions of tiny files — see docs/scratch-greenfield.md), the tuples are light
+    (~tens of MB even at a million files), and the sweep runs Nice=10 / idle I/O once
+    a day. If file counts ever explode, switch to a streaming bounded-heap selection.
+    """
     cands = []
     for root, dirs, files in os.walk(scratch, topdown=True):
         # never descend into the state dir
@@ -142,6 +155,15 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
         log(f"would archive [{reason}] {rel} ({size} bytes) -> {dest}")
         return size
 
+    # Path-traversal guard: the cold tree is on a no_root_squash export and we run as
+    # root, so a stray symlink in a path component must not let a write escape `cold`.
+    # realpath() resolves any symlink component; refuse if dest lands outside cold.
+    cold_real = os.path.realpath(cold)
+    dest_real = os.path.realpath(dest)
+    if dest_real != cold_real and not dest_real.startswith(cold_real + os.sep):
+        log(f"skip {rel}: cold dest escapes {cold} (symlinked path component?) — refusing")
+        return 0
+
     part = dest + ".part"
     try:
         os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -171,13 +193,33 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
         log(f"skip {rel}: {e} (local file left intact)")
         return 0
 
-    # cold copy is durable + verified — now swap the local file for a symlink.
+    # The cold copy reflects the source AS IT WAS when we read it. If the source was
+    # modified after that (a job rewrote it), swapping in the symlink now would discard
+    # the newer local content. Re-stat and bail if identity/size/mtime/ctime changed —
+    # the cold copy is then a stale orphan, so drop it and leave the local file intact.
+    try:
+        st2 = os.stat(path)
+    except OSError:
+        st2 = None
+    changed = st2 is None or (
+        st2.st_ino, st2.st_size, st2.st_mtime_ns, st2.st_ctime_ns
+    ) != (st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+    if changed:
+        try:
+            os.unlink(dest)
+        except OSError:
+            pass
+        log(f"skip {rel}: source changed during archive — local file kept, cold copy discarded")
+        return 0
+
+    # cold copy is durable + verified + source unchanged — swap local file for a symlink.
     link_tmp = path + ".scratch-archived"
     try:
         if os.path.lexists(link_tmp):
             os.unlink(link_tmp)
         os.symlink(dest, link_tmp)
         os.replace(link_tmp, path)  # atomically frees the local file's blocks
+        fsync_dir(os.path.dirname(path))  # make the local rename durable too
     except OSError as e:
         try:
             if os.path.lexists(link_tmp):
