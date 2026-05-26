@@ -159,7 +159,18 @@ in {
       # rolled-back root, so persist it or it is wiped each boot. Guarded with `?`
       # so this module still evaluates on a host that enables impermanence WITHOUT
       # importing users/admin.nix (which declares krg.adminAccount).
-      ++ optional (config.krg ? adminAccount) "/var/lib/${config.krg.adminAccount}";
+      #
+      # STRUCTURED (not a bare string) so impermanence creates the /persist source
+      # OWNED BY the admin (0700) instead of root:root. On a FRESH /persist — e.g. a
+      # greenfield rebuild / DR — a bare-string entry leaves the bind-source root-owned,
+      # so the admin can't write its own home (~/.bash_history etc. fail with EACCES).
+      # Group is the account's resolved primary group (NixOS isNormalUser -> "users").
+      ++ optional (config.krg ? adminAccount) {
+        directory = "/var/lib/${config.krg.adminAccount}";
+        user = config.krg.adminAccount;
+        group = config.users.users.${config.krg.adminAccount}.group;
+        mode = "0700";
+      };
 
       files = [
         "/etc/machine-id" # GOTCHA: stable host identity. Without it, journald +
