@@ -134,7 +134,9 @@ systemctl status scratch-overflow-krg.timer
 
 **Where to put work** (push people here to keep `/home` NFS healthy):
 - **Active datasets / training caches / `git clone` of big repos → `/scratch/krg/<you>`**
-  (fast local, regenerable, auto-overflows when full).
+  (fast local, regenerable, auto-overflows when full). A convenience symlink
+  **`~/scratch`** points there, created on login (a real `~/scratch` is never clobbered).
+  Note it's *machine-local* despite living in your NFS home — it's this box's scratch.
 - **Code + results you must keep → `/home`** (NFS, backed up).
 - **IDE servers + tool caches → `/local/<you>`** (handled automatically by
   `krg.localCache`; see [waiter-topology.md](waiter-topology.md)).

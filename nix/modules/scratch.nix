@@ -58,6 +58,10 @@ let
     "x-systemd.mount-timeout=30s"
   ];
 
+  # A home-relative path that could escape $HOME (absolute, or contains a ".."
+  # segment). Used to validate perUser.homeLink at eval time.
+  relUnsafe = p: hasPrefix "/" p || elem ".." (splitString "/" p);
+
   # scratch-overflow / scratch-restore as stdlib-only Python. writePython3Bin gives a
   # build-time syntax + import check; flakeIgnore drops style-only lints (line length
   # etc.) — the scripts are the real source of truth in nix/modules/scratch/*.py.
@@ -91,10 +95,15 @@ let
     '';
 
   # --- per-user dir creation (pam_exec session hook) --------------------------
-  # Runs at session open, as root. Creates <mountPoint>/<PAM_USER> for lab members.
+  # Runs at session open, as root. Creates <mountPoint>/<PAM_USER> for lab members,
+  # and (if perUser.homeLink is set) a convenience symlink ~/<homeLink> -> that dir.
   # GUARDED two ways: (1) only if the scratch mount is active — never create on the
   # bare/ephemeral root when the dataset isn't mounted; (2) only for members of
   # ownerGroup, compared by NUMERIC gid since the group name may contain spaces.
+  # Does NOT early-exit when the per-user dir already exists, so a RETURNING user
+  # still gets the home symlink (re)laid. The symlink is never created over an
+  # existing REAL path (a real ~/<homeLink> is left untouched); the home is NFS
+  # (no_root_squash) so root can create it + chown it to the user.
   mkPerUserScript = name: proj:
     pkgs.writeShellScript "krg-scratch-mkuser-${name}" ''
       set -u
@@ -110,10 +119,25 @@ let
         esac
       ''}
       d="$mp/$PAM_USER"
-      [ -e "$d" ] && exit 0
-      ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
-      ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
-      ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
+      if [ ! -e "$d" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
+        ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
+        ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
+      fi
+      ${optionalString (proj.perUser.homeLink != null) ''
+        home=$(${pkgs.getent}/bin/getent passwd "$PAM_USER" | ${pkgs.coreutils}/bin/cut -d: -f6)
+        if [ -n "$home" ] && [ -d "$home" ]; then
+          link="$home/${proj.perUser.homeLink}"
+          ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$link")" 2>/dev/null || true
+          # leave a real (non-symlink) path alone; otherwise create/refresh the symlink
+          if [ -e "$link" ] && [ ! -L "$link" ]; then
+            :
+          else
+            ${pkgs.coreutils}/bin/ln -sfn "$d" "$link" || true
+            ${pkgs.coreutils}/bin/chown -h "$PAM_USER" "$link" || true
+          fi
+        fi
+      ''}
       exit 0
     '';
 
@@ -206,6 +230,21 @@ let
               default = [ "sshd" "login" ];
               description = "PAM services the per-user-dir session hook is added to.";
             };
+            homeLink = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              example = "scratch";
+              description = ''
+                If set, lay a convenience symlink <user-home>/<homeLink> ->
+                <mountPoint>/<user> on login (e.g. "scratch" → ~/scratch). Requires
+                `enable`. The link lives in the (NFS) home so it appears on every host
+                that mounts that home, while the target is THIS box's local scratch —
+                so on a host that mounts the home but lacks this scratch path it would
+                dangle. NEVER created over an existing real path (a real ~/<homeLink>
+                is left untouched); an existing symlink is refreshed to the right
+                target. Relative path under the home — no leading "/" or ".." segment.
+              '';
+            };
           };
         };
       };
@@ -264,6 +303,16 @@ in {
           assertion = !proj.overflow.enable
             || (proj.overflow.nfsDevice != "" && proj.overflow.coldMountPoint != "");
           message = "krg.scratch.projects.${name}: overflow needs nfsDevice and coldMountPoint.";
+        }
+        {
+          # homeLink only fires from the per-user hook, so it no-ops without perUser.enable.
+          assertion = proj.perUser.homeLink == null || proj.perUser.enable;
+          message = "krg.scratch.projects.${name}: perUser.homeLink requires perUser.enable.";
+        }
+        {
+          # The link is laid under $HOME; reject anything that could escape it.
+          assertion = proj.perUser.homeLink == null || !(relUnsafe proj.perUser.homeLink);
+          message = "krg.scratch.projects.${name}: perUser.homeLink must be a relative path under $HOME (no leading \"/\" or \"..\" segment).";
         }
       ]) cfg.projects);
 

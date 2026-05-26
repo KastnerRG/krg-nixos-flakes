@@ -96,8 +96,13 @@
       dataset = "scratchpool/scratch-krg";
       ownerGroup = "Kastner Research Group";
       # Each krg lab member gets a private /scratch/krg/<user>, auto-created on login
-      # (only for Kastner-Research-Group members, only while /scratch/krg is mounted).
+      # (only for Kastner-Research-Group members, only while /scratch/krg is mounted),
+      # plus a convenience symlink ~/scratch -> /scratch/krg/<user> so people don't have
+      # to memorize the path. The link lives in the NFS home (so it'd appear on any host
+      # mounting that home) but the target is waiter-local scratch; today only waiter
+      # mounts /home so it resolves. A real ~/scratch is never clobbered.
       perUser.enable = true;
+      perUser.homeLink = "scratch";
       overflow = {
         enable = true;
         # fabricant hypervisor IP, same server as krg.nfsHome — pinned by IP so it

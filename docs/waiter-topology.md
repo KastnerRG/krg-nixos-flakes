@@ -152,6 +152,8 @@ Notes:
   work, just over the network); `scratch-restore <path>` pulls a file back. It **fails
   closed**: if the cold NFS area is down the unit won't start, and a local file is never
   unlinked until its NFS copy is verified. See [scratch-greenfield.md](scratch-greenfield.md).
+  Each member also gets a private `/scratch/krg/<user>` and a convenience **`~/scratch`**
+  symlink to it, both laid on login (the symlink never clobbers a real `~/scratch`).
 - **`/home`** is a plain `nofail` NFSv4.2 mount ([`nfs-home.nix`](../nix/modules/nfs-home.nix)),
   pinned to fabricant by IP so it never waits on DNS. A PAM **login gate** denies
   any AD user whose home is under `/home` while that mount is down — closing the
