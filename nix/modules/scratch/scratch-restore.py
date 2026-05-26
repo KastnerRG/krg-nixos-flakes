@@ -95,7 +95,7 @@ def under_any(path, roots):
     return any(path == r or path.startswith(r + os.sep) for r in roots)
 
 
-def restore_one(link, scratch_roots, cold_roots, keep_cold, verbose):
+def restore_one(link, scratch_roots, cold_roots, pairs, keep_cold, verbose):
     """Restore a single archived symlink. Returns True on a successful restore."""
     if not os.path.islink(link):
         if verbose:
@@ -121,6 +121,22 @@ def restore_one(link, scratch_roots, cold_roots, keep_cold, verbose):
         log(f"REFUSE {link}: target {target} is outside the cold area(s) "
             f"{cold_roots} — not an archived scratch file (suspicious symlink?)")
         return False
+    # STRONGER (when we know the scratch->cold pairing): the target must be exactly
+    # THIS link's canonical archive location, cold + relpath(link, scratch). Otherwise
+    # a planted symlink to ANOTHER user's cold file (still under a cold root) could get
+    # that unrelated file unlinked on a root restore.
+    if pairs:
+        link_real = os.path.join(link_parent, os.path.basename(link))
+        expected = None
+        for sroot, croot in pairs:
+            if under_any(link_parent, [sroot]):
+                rel = os.path.relpath(link_real, sroot)
+                expected = os.path.realpath(os.path.join(croot, rel))
+                break
+        if expected is None or target != expected:
+            log(f"REFUSE {link}: target {target} is not this link's archive location "
+                f"(expected {expected}) — not an archived scratch file")
+            return False
     if not os.path.isfile(target):
         log(f"skip {link}: archive target missing or not a file "
             f"({target}) — is NFS mounted?")
@@ -216,6 +232,10 @@ def main():
     ap.add_argument("--scratch-root", action="append", default=[], metavar="DIR",
                     help="allowed scratch root a link must resolve under (repeatable). "
                          "Defaults to $SCRATCH_ROOTS (colon-separated).")
+    ap.add_argument("--overflow-map", action="append", default=[], metavar="SCRATCH=COLD",
+                    help="scratch-root=cold-root pairing used to pin a link's target to "
+                         "its canonical archive location (repeatable). Defaults to "
+                         "$SCRATCH_OVERFLOW_MAP (semicolon-separated).")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -232,19 +252,28 @@ def main():
         return 2
     # Scratch roots (where links must live) are a best-effort extra containment.
     scratch_roots = build(args.scratch_root, "SCRATCH_ROOTS")
+    # scratch->cold pairs ("scratch=cold;..."): when present, restore pins each link's
+    # target to its canonical archive location (the strongest check).
+    raw_pairs = list(args.overflow_map) + [
+        m for m in os.environ.get("SCRATCH_OVERFLOW_MAP", "").split(";") if m]
+    pairs = []
+    for m in raw_pairs:
+        if "=" in m:
+            sroot, croot = m.split("=", 1)
+            pairs.append((os.path.realpath(sroot), os.path.realpath(croot)))
 
     restored = 0
     failed = 0
     for p in args.paths:
         if os.path.isdir(p) and not os.path.islink(p):
             for link in walk_links(p):
-                if restore_one(link, scratch_roots, cold_roots, args.keep_cold, args.verbose):
+                if restore_one(link, scratch_roots, cold_roots, pairs, args.keep_cold, args.verbose):
                     restored += 1
                 else:
                     # every link under the dir is an archived file we meant to restore
                     failed += 1
         else:
-            if restore_one(p, scratch_roots, cold_roots, args.keep_cold, args.verbose):
+            if restore_one(p, scratch_roots, cold_roots, pairs, args.keep_cold, args.verbose):
                 restored += 1
             elif os.path.islink(p):
                 failed += 1

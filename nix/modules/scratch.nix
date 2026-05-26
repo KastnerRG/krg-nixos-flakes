@@ -385,6 +385,12 @@ in {
         # scratch tree (a symlinked dir component can't redirect a root restore out).
         SCRATCH_ROOTS = concatStringsSep ":"
           (map ({ proj, ... }: proj.mountPoint) projectList);
+        # scratch->cold pairing ("scratchMP=coldMP;..."): restore pins a link's target
+        # to its CANONICAL archive location (cold + relpath(link, scratch)), so a
+        # planted symlink to some OTHER cold file can't get that file unlinked.
+        SCRATCH_OVERFLOW_MAP = concatStringsSep ";"
+          (map ({ proj, ... }: "${proj.mountPoint}=${proj.overflow.coldMountPoint}")
+            (filter ({ proj, ... }: proj.overflow.enable) projectList));
       };
 
       # The scratch dataset mount (plain ZFS, nofail so a hiccup never blocks boot)
