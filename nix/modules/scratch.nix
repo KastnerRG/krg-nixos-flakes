@@ -63,6 +63,12 @@ let
   # and not "." / "..". Validated at eval time.
   badHomeLink = p: p == "" || hasInfix "/" p || p == "." || p == "..";
 
+  # mountPoint/coldMountPoint are rendered raw into tmpfiles rules, RequiresMountsFor,
+  # fileSystems keys and the perms script — none of which tolerate whitespace. Reject
+  # it at eval time rather than try to escape every site (the ExecStart argv is escaped
+  # separately). Paths with whitespace are painful across ZFS/systemd anyway.
+  hasWhitespace = s: any (c: hasInfix c s) [ " " "\t" "\n" ];
+
   # scratch-overflow / scratch-restore as stdlib-only Python. writePython3Bin gives a
   # build-time syntax + import check; flakeIgnore drops style-only lints (line length
   # etc.) — the scripts are the real source of truth in nix/modules/scratch/*.py.
@@ -334,6 +340,15 @@ in {
           # The link is laid under $HOME; reject anything that could escape it.
           assertion = proj.perUser.homeLink == null || !(badHomeLink proj.perUser.homeLink);
           message = "krg.scratch.projects.${name}: perUser.homeLink must be a single path segment under $HOME (no \"/\", not \".\"/\"..\").";
+        }
+        {
+          # rendered raw into tmpfiles/RequiresMountsFor/fileSystems/perms — no whitespace.
+          assertion = !(hasWhitespace proj.mountPoint);
+          message = "krg.scratch.projects.${name}: mountPoint must not contain whitespace.";
+        }
+        {
+          assertion = !proj.overflow.enable || !(hasWhitespace proj.overflow.coldMountPoint);
+          message = "krg.scratch.projects.${name}: overflow.coldMountPoint must not contain whitespace.";
         }
       ]) cfg.projects);
 

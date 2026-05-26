@@ -2,8 +2,9 @@
 
 How `/scratch` works on waiter after the autotier rebuild, the decisions behind it,
 and how to operate it. This is the **as-built** record; the options that were weighed
-to get here are in the buy-off proposal (`docs/scratch-architecture-options.md` /
-PR #63).
+to get here are in the buy-off proposal,
+[PR #63](https://github.com/KastnerRG/krg-infra/pull/63) (its
+`docs/scratch-architecture-options.md` lands when that PR merges).
 
 > **Related:** [waiter-topology.md](waiter-topology.md) (diagrams) ·
 > [disaster-recovery.md](disaster-recovery.md) (the destructive rebuild) ·
