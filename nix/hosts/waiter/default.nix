@@ -143,11 +143,12 @@
   # Cap the ZFS ARC so it can't starve a RAM-hungry job, and run earlyoom so real
   # memory pressure is handled gracefully instead of a hard OOM/livelock.
   #
-  # ARC cap: 64 GiB. TUNE ON-BOX to the installed RAM (rule of thumb ~25% of RAM, and
-  # remember the striped L2ARC adds ARC header overhead). 64 GiB is a conservative
-  # floor that leaves the bulk of RAM for ML jobs; raise it if the box has lots of RAM
-  # and the cache hit-rate (arcstat) is starved. Threadripper PRO 7985WX box.
-  krg.zfs.arcMaxBytes = 64 * 1024 * 1024 * 1024;
+  # ARC cap: 96 GiB (~25% of the 377 GiB installed). Leaves ~280 GiB for ML jobs while
+  # giving scratch a solid RAM cache on top of the ~5.6 TiB L2ARC — whose ARC header
+  # overhead is only ~0.4 GB at the 1M scratch recordsize, so the L2ARC is nearly free.
+  # ZFS default would be ~50% (~188 GiB), too much to hand a shared ML box. Tune with
+  # arcstat if the hit-rate is starved or jobs need more RAM. Threadripper PRO 7985WX.
+  krg.zfs.arcMaxBytes = 96 * 1024 * 1024 * 1024;
 
   # earlyoom: kill the worst memory hog early (before the kernel OOM killer livelocks
   # under ZFS ARC + zram pressure). Disable systemd-oomd (PSI-based, fights ARC
