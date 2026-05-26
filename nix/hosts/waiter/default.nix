@@ -109,6 +109,10 @@
         # never waits on DNS.
         nfsDevice = "137.110.161.98:/srv/nfs/scratch-krg";
         coldMountPoint = "/srv/scratch-cold/krg";
+        # TTL: drain anything not touched in 6 months to NFS even when the pool isn't
+        # full — automatic GC of abandoned data (keyed on last-access, so active
+        # datasets are never evicted). The capacity sweep (>85%) still runs on top.
+        maxIdleDays = 180;
       };
     };
   };

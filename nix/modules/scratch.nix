@@ -172,7 +172,18 @@ let
       minAgeDays = mkOption {
         type = types.ints.unsigned;
         default = 14;
-        description = "Never demote a file accessed within this many days (keep the working set local).";
+        description = "Capacity-sweep floor: never demote a file accessed within this many days (keep the working set local).";
+      };
+      maxIdleDays = mkOption {
+        type = types.ints.unsigned;
+        default = 0;
+        example = 180;
+        description = ''
+          TTL sweep: demote ANY file not ACCESSED in this many days, regardless of pool
+          fullness — the automatic GC for genuinely-abandoned data (runs every sweep,
+          not just when full). Keyed on last-access (relatime), so an actively-read file
+          is never evicted. 0 = disabled (capacity sweep only). Must exceed minAgeDays.
+        '';
       };
       interval = mkOption {
         type = types.str;
@@ -305,6 +316,12 @@ in {
           message = "krg.scratch.projects.${name}: overflow needs nfsDevice and coldMountPoint.";
         }
         {
+          # TTL must sit beyond the capacity floor, else the two windows overlap nonsensically.
+          assertion = proj.overflow.maxIdleDays == 0
+            || proj.overflow.maxIdleDays > proj.overflow.minAgeDays;
+          message = "krg.scratch.projects.${name}: overflow.maxIdleDays must exceed minAgeDays (or be 0 to disable).";
+        }
+        {
           # homeLink only fires from the per-user hook, so it no-ops without perUser.enable.
           assertion = proj.perUser.homeLink == null || proj.perUser.enable;
           message = "krg.scratch.projects.${name}: perUser.homeLink requires perUser.enable.";
@@ -370,7 +387,7 @@ in {
             path = [ config.boot.zfs.package pkgs.coreutils ];
             serviceConfig = {
               Type = "oneshot";
-              ExecStart = concatStringsSep " " [
+              ExecStart = concatStringsSep " " ([
                 "${scratchOverflow}/bin/scratch-overflow"
                 "--pool ${ovPool proj}"
                 "--scratch ${proj.mountPoint}"
@@ -378,7 +395,8 @@ in {
                 "--high ${toString proj.overflow.highWatermark}"
                 "--low ${toString proj.overflow.lowWatermark}"
                 "--min-age-days ${toString proj.overflow.minAgeDays}"
-              ];
+              ] ++ optional (proj.overflow.maxIdleDays > 0)
+                "--max-idle-days ${toString proj.overflow.maxIdleDays}");
               # bound resource use of the daily sweep
               Nice = 10;
               IOSchedulingClass = "idle";

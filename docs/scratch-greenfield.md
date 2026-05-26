@@ -70,18 +70,25 @@ Served from the fastest tier that has it. Writes and first/cold reads hit the HD
 (fast for sequential, sharded data); re-reads come from cache. Metadata is always on
 NVMe.
 
-### Capacity overflow (the only custom code, and it's *out* of the read path)
+### Overflow to NFS (the only custom code, and it's *out* of the read path)
 
-`/scratch` has ~29 TiB; current use is a couple of TB, so this rarely fires today.
-When `scratchpool` fills past **85%**, the daily `scratch-overflow` timer
-([`scratch-overflow.py`](../nix/modules/scratch/scratch-overflow.py)):
+The daily `scratch-overflow` timer ([`scratch-overflow.py`](../nix/modules/scratch/scratch-overflow.py))
+demotes files to the cold NFS area on fabricant for **two** reasons, both keyed on
+last-access time (`relatime`):
 
-1. picks the **least-recently-accessed** files (by `relatime`), oldest first, skipping
-   anything touched in the last **14 days**;
-2. copies each to the cold NFS area on fabricant (`/srv/scratch-cold/krg`),
-   **fsyncs and verifies it (size + full sha256)**;
-3. only then **atomically replaces the local file with a symlink** to the NFS copy,
-   freeing the local blocks — until the pool drops below **75%**.
+- **TTL sweep (every run):** any file **not accessed in 6 months** (`maxIdleDays = 180`)
+  is demoted regardless of how full the pool is — automatic GC of genuinely-abandoned
+  data. Because it's keyed on *access*, an actively-read dataset is **never** evicted by
+  this, no matter how old it is.
+- **Capacity sweep (when full):** when `scratchpool` is past **85%**, the
+  least-recently-accessed files (skipping anything touched in the last **14 days**) are
+  demoted, coldest first, until the pool drops below **75%**.
+
+`/scratch` has ~29 TiB and current use is a couple of TB, so the *capacity* sweep rarely
+fires today; the *TTL* sweep is what keeps stale data from accumulating in the meantime.
+For each file the job copies it to `/srv/scratch-cold/krg`, **fsyncs and verifies it
+(size + full sha256)**, and only then **atomically replaces the local file with a
+symlink** to the NFS copy (the manifest records which sweep moved it).
 
 The path keeps working (reads follow the symlink over NFS, just slower). A breadcrumb
 (`WHERE-IS-MY-DATA.txt`) is dropped at the scratch root. To pull a file back to fast
@@ -118,7 +125,8 @@ admin. It's **fail-closed**: if the cold NFS area is down the unit won't even st
 ```bash
 # what would overflow right now, without touching anything:
 sudo scratch-overflow --pool scratchpool --scratch /scratch/krg \
-  --cold /srv/scratch-cold/krg --high 85 --low 75 --min-age-days 14 --dry-run
+  --cold /srv/scratch-cold/krg --high 85 --low 75 \
+  --min-age-days 14 --max-idle-days 180 --dry-run
 
 # pull an archived file (a symlink) back to fast local storage:
 scratch-restore /scratch/krg/<user>/path/to/file        # one file

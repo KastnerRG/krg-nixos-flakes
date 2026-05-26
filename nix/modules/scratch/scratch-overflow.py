@@ -122,11 +122,13 @@ def gather_candidates(scratch, min_atime, skip_prefixes):
     return cands
 
 
-def archive_one(path, scratch, cold, manifest_fp, dry_run):
+def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
     """Copy path -> cold, verify, then atomically replace path with a symlink.
 
-    Returns bytes freed (the file size) on success, 0 on skip/failure. NEVER
-    unlinks the local file unless the cold copy verified.
+    `reason` is recorded in the manifest ("ttl" = idle longer than max-idle-days,
+    "capacity" = demoted to relieve a full pool). Returns bytes freed (the file
+    size) on success, 0 on skip/failure. NEVER unlinks the local file unless the
+    cold copy verified.
     """
     rel = os.path.relpath(path, scratch)
     dest = os.path.join(cold, rel)
@@ -137,7 +139,7 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run):
     size = st.st_size
 
     if dry_run:
-        log(f"would archive {rel} ({size} bytes) -> {dest}")
+        log(f"would archive [{reason}] {rel} ({size} bytes) -> {dest}")
         return size
 
     part = dest + ".part"
@@ -188,6 +190,7 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run):
 
     manifest_fp.write(json.dumps({
         "ts": int(time.time()),
+        "reason": reason,
         "path": path,
         "dest": dest,
         "size": size,
@@ -195,13 +198,14 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run):
         "atime": int(st.st_atime),
     }) + "\n")
     manifest_fp.flush()
-    log(f"archived {rel} ({size} bytes) -> {dest}")
+    log(f"archived [{reason}] {rel} ({size} bytes) -> {dest}")
     return size
 
 
 NOTE_TEXT = """\
-Some files under this scratch directory have been moved to network storage (NFS)
-to free up fast local space. They are the files that had not been read recently.
+Some files under this scratch directory have been moved to network storage (NFS):
+either you had not read them in a long time, or they were the coldest files when
+scratch filled up and space had to be freed.
 
 A moved file now appears as a SYMLINK pointing into {cold}.
 Reading it still works exactly as before — the data is just served over the
@@ -224,7 +228,10 @@ def main():
     ap.add_argument("--high", type=float, default=85.0, help="start moving above this pool %% full")
     ap.add_argument("--low", type=float, default=75.0, help="stop moving below this pool %% full")
     ap.add_argument("--min-age-days", type=float, default=14.0,
-                    help="never move a file accessed within this many days")
+                    help="never move a file accessed within this many days (capacity sweep floor)")
+    ap.add_argument("--max-idle-days", type=float, default=0.0,
+                    help="TTL sweep: move ANY file not accessed in this many days, "
+                         "regardless of pool fullness. 0 = disabled.")
     ap.add_argument("--zpool", default="zpool", help="zpool binary (PATH by default)")
     ap.add_argument("--dry-run", action="store_true", help="report only; touch nothing")
     args = ap.parse_args()
@@ -243,23 +250,29 @@ def main():
 
     size, alloc, free = pool_bytes(args.zpool, args.pool)
     pct = capacity_pct(size, free)
-    log(f"pool {args.pool}: {pct:.1f}% full (high={args.high} low={args.low})")
-    if pct < args.high:
-        log("below high-water mark; nothing to do")
+    ttl_on = args.max_idle_days > 0
+    log(f"pool {args.pool}: {pct:.1f}% full (high={args.high} low={args.low}"
+        f"{f'; ttl={args.max_idle_days}d' if ttl_on else ''})")
+    if pct < args.high and not ttl_on:
+        log("below high-water mark and no TTL set; nothing to do")
         return 0
 
-    # bytes to free to reach the low-water mark
-    target_free = size * (1.0 - args.low / 100.0)
-    to_free = max(0, int(target_free - free))
-    log(f"need to free ~{to_free} bytes to reach {args.low}%")
-
+    # One tree walk -> everything idle longer than the capacity-sweep floor
+    # (min-age-days), coldest first. The TTL and capacity passes both draw from this.
     state_dir = os.path.join(args.scratch, ARCHIVE_DIR)
     skip_prefixes = {state_dir + os.sep, os.path.join(args.scratch, NOTE_NAME)}
-    min_atime = time.time() - args.min_age_days * 86400.0
+    now = time.time()
+    min_atime = now - args.min_age_days * 86400.0
     cands = gather_candidates(args.scratch, min_atime, skip_prefixes)
     if not cands:
-        log("no eligible cold files (all too recent or already archived)")
+        log("no eligible files (all accessed too recently or already archived)")
         return 0
+
+    # Split: TTL = idle past max-idle-days (move unconditionally); the rest are only
+    # eligible for the capacity sweep (idle between min-age and max-idle).
+    ttl_cutoff = (now - args.max_idle_days * 86400.0) if ttl_on else None
+    ttl_list = [c for c in cands if ttl_on and c[0] < ttl_cutoff]
+    cap_list = [c for c in cands if not (ttl_on and c[0] < ttl_cutoff)]
 
     if args.dry_run:
         manifest_fp = open(os.devnull, "w")
@@ -271,13 +284,38 @@ def main():
     freed = 0
     moved = 0
     try:
-        for _atime, _size, path in cands:
-            if freed >= to_free:
-                break
-            got = archive_one(path, args.scratch, args.cold, manifest_fp, args.dry_run)
-            if got:
-                freed += got
-                moved += 1
+        # --- TTL pass: unconditional, runs even when the pool is nowhere near full ---
+        if ttl_list:
+            log(f"TTL sweep: {len(ttl_list)} file(s) idle > {args.max_idle_days}d")
+            for _atime, _size, path in ttl_list:
+                got = archive_one(path, args.scratch, args.cold, manifest_fp,
+                                  args.dry_run, reason="ttl")
+                if got:
+                    freed += got
+                    moved += 1
+
+        # --- capacity pass: only if still over the high-water mark after the TTL pass ---
+        if not args.dry_run:
+            size, alloc, free = pool_bytes(args.zpool, args.pool)
+            pct = capacity_pct(size, free)
+        if pct >= args.high:
+            target_free = size * (1.0 - args.low / 100.0)
+            to_free = max(0, int(target_free - free))
+            log(f"capacity sweep: {pct:.1f}% full, need to free ~{to_free} bytes "
+                f"to reach {args.low}%")
+            cap_freed = 0
+            for _atime, _size, path in cap_list:
+                if cap_freed >= to_free:
+                    break
+                got = archive_one(path, args.scratch, args.cold, manifest_fp,
+                                  args.dry_run, reason="capacity")
+                if got:
+                    cap_freed += got
+                    freed += got
+                    moved += 1
+            if cap_freed < to_free:
+                log("capacity sweep moved every eligible file but is still above "
+                    f"{args.low}% (nothing left older than {args.min_age_days}d)")
     finally:
         manifest_fp.close()
 

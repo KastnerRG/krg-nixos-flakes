@@ -138,7 +138,7 @@ flowchart LR
 
   scratch --> readpath
 
-  scratch -.->|"overflow: daily, cold files only<br/>copy→verify→symlink (scratch-restore brings back)"| cold[("fabricant NFS<br/>137.110.161.98:/srv/nfs/scratch-krg<br/>→ /srv/scratch-cold/krg")]
+  scratch -.->|"overflow: daily — idle &gt;6mo, or coldest when &gt;85% full<br/>copy→verify→symlink (scratch-restore brings back)"| cold[("fabricant NFS<br/>137.110.161.98:/srv/nfs/scratch-krg<br/>→ /srv/scratch-cold/krg")]
   home -.->|"NFSv4.2 (hard,nofail,nconnect=4)"| fab[("fabricant<br/>137.110.161.98<br/>rpool/nfs/home<br/>→ /srv/nfs/home")]
   local --> nvl[("nvmepool/local<br/>(pure NVMe, no FUSE/NFS)")]
 ```
@@ -147,9 +147,11 @@ Notes:
 - **`/scratch/krg`** is a plain ZFS mount ([`scratch.nix`](../nix/modules/scratch.nix))
   on `scratchpool` — no FUSE daemon in the read path. ZFS serves hot reads from RAM
   (ARC) then NVMe (L2ARC); the bytes live on the striped HDD; metadata is on the NVMe
-  special vdev. When the pool fills past 85%, the daily `scratch-overflow` timer demotes
-  the least-recently-accessed files to fabricant NFS and leaves a symlink (reads still
-  work, just over the network); `scratch-restore <path>` pulls a file back. It **fails
+  special vdev. The daily `scratch-overflow` timer demotes files to fabricant NFS for two
+  reasons (both by last-access): a **TTL sweep** moves anything not accessed in 6 months
+  even when there's free space, and a **capacity sweep** moves the coldest files when the
+  pool passes 85% (down to 75%). A demoted file becomes a symlink (reads still work over
+  the network); `scratch-restore <path>` pulls it back. It **fails
   closed**: if the cold NFS area is down the unit won't start, and a local file is never
   unlinked until its NFS copy is verified. See [scratch-greenfield.md](scratch-greenfield.md).
   Each member also gets a private `/scratch/krg/<user>` and a convenience **`~/scratch`**
