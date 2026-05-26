@@ -2,11 +2,13 @@
 
 Greenfield scratch design (docs/scratch-greenfield.md): /scratch lives on a striped
 HDD pool fronted by NVMe ARC/L2ARC, so ZFS handles hot/cold for READS by itself.
-This job handles CAPACITY only: when the pool fills past --high percent, it moves the
-least-recently-accessed files to a cold NFS area, replacing each local file with a
-symlink to its NFS copy (the path keeps working, reads just go over the network),
-until the pool drops below --low percent. A self-service `scratch-restore` pulls a
-file back to fast local storage.
+This job moves the least-recently-accessed files to a cold NFS area for two reasons,
+both keyed on last access: a TTL sweep (--max-idle-days) demotes anything not accessed
+in that long, every run, regardless of fullness (GC of abandoned data); and a capacity
+sweep demotes the coldest files when the pool fills past --high percent, until it drops
+below --low. Each demoted file is replaced with a symlink to its NFS copy (the path
+keeps working, reads just go over the network); a self-service `scratch-restore` pulls
+a file back to fast local storage.
 
 FAIL-CLOSED BY CONSTRUCTION — this is the whole point of writing it carefully:
 a local file is only ever unlinked AFTER its NFS copy is fully written, fsynced,
