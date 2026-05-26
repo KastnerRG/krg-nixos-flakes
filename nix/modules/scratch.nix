@@ -93,8 +93,8 @@ let
     pkgs.writeShellScript "krg-scratch-perms-${name}" ''
       set -u
       mp=${escapeShellArg proj.mountPoint}
-      ${pkgs.coreutils}/bin/chmod 3770 "$mp" || \
-        echo "krg.scratch[${name}]: chmod 3770 $mp failed" >&2
+      # chgrp FIRST, chmod LAST: chgrp can clear the setgid bit, so applying 3770 after
+      # it guarantees the final mode (incl. setgid+sticky) regardless.
       ${optionalString (proj.ownerGroup != null) ''
         if ${pkgs.getent}/bin/getent group ${escapeShellArg proj.ownerGroup} >/dev/null 2>&1; then
           ${pkgs.coreutils}/bin/chgrp ${escapeShellArg proj.ownerGroup} "$mp" || \
@@ -103,6 +103,8 @@ let
           echo "krg.scratch[${name}]: group ${escapeShellArg proj.ownerGroup} not resolvable yet (AD join/group pending?) — $mp left root-owned (admin-only), will apply on next start" >&2
         fi
       ''}
+      ${pkgs.coreutils}/bin/chmod 3770 "$mp" || \
+        echo "krg.scratch[${name}]: chmod 3770 $mp failed" >&2
       exit 0
     '';
 

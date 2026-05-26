@@ -16,6 +16,7 @@ import hashlib
 import os
 import stat
 import sys
+import time
 
 COPY_CHUNK = 8 * 1024 * 1024
 
@@ -155,7 +156,11 @@ def restore_one(link, scratch_roots, cold_roots, pairs, keep_cold, verbose):
                 log(f"FAILED {link}: verification mismatch (left as-is)")
                 return False
             os.fchmod(fd, stat.S_IMODE(tst.st_mode))
-            os.utime(fd, ns=(tst.st_atime_ns, tst.st_mtime_ns))
+            # mtime preserved (it's the data's age); atime set to NOW so the restore
+            # itself counts as a recent access — the cold copy is on a noatime mount so
+            # its atime is stale, and keeping it would make a just-restored file
+            # immediately eligible for the next overflow sweep (TTL/capacity).
+            os.utime(fd, ns=(max(time.time_ns(), tst.st_atime_ns), tst.st_mtime_ns))
             if os.geteuid() == 0:  # admin restore: preserve the original owner
                 os.fchown(fd, tst.st_uid, tst.st_gid)
             os.fsync(fd)
