@@ -118,6 +118,17 @@ admin. It's **fail-closed**: if the cold NFS area is down the unit won't even st
   disks. This fixes capacity + caching, not I/O fairness (a cgroup/scheduler concern
   if it ever bites). Per-user **space** fairness is `zfs userquota@…` (set per user
   on-box as needed; AD uids are dynamic so it's not declarative yet).
+- **Residual restore TOCTOU (follow-up, accepted).** `scratch-restore` validates the
+  link's parent resolves inside a scratch root, the target inside a cold root, and that
+  the target is the link's canonical archive location — but it then re-resolves the path
+  for the publish (temp create + rename), so a symlinked *parent directory component*
+  swapped in **after** those checks could redirect the write. Closing it fully needs
+  per-component `openat`/`dir_fd` traversal, a rewrite that cuts against the tool's
+  small/inspectable design goal. Exposure is narrow: normal restores run as the file's
+  **owner** (no privilege boundary), and only an **admin running restore as root** on an
+  attacker-crafted `/scratch` path while racing the swap is affected — and the bytes
+  written are the user's own archived content. Tracked as a follow-up rather than taking
+  the openat rewrite now.
 
 ---
 
