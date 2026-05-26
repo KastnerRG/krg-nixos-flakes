@@ -35,7 +35,11 @@ def copy_and_hash(src, dst):
     h = hashlib.sha256()
     n = 0
     src_fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
-    dst_fd = os.open(dst, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        dst_fd = os.open(dst, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    except BaseException:
+        os.close(src_fd)  # don't leak src_fd if the dst open fails
+        raise
     try:
         with os.fdopen(src_fd, "rb") as fi:
             while True:
@@ -52,6 +56,13 @@ def copy_and_hash(src, dst):
         os.close(dst_fd)
         raise
     return h.hexdigest(), n, dst_fd
+
+
+def tmp_sibling(path, tag):
+    """Short unique temp path in path's dir (same fs -> atomic os.replace); a fixed
+    short prefix avoids overflowing NAME_MAX when path's basename is near the limit."""
+    return os.path.join(os.path.dirname(path) or ".",
+                        f".{tag}-{os.urandom(6).hex()}.tmp")
 
 
 def fd_sha256(fd):
@@ -112,7 +123,7 @@ def restore_one(link, scratch_roots, cold_roots, keep_cold, verbose):
         return False
 
     tst = os.stat(target)
-    part = link + ".scratch-restoring"
+    part = tmp_sibling(link, "sr")
     try:
         if os.path.lexists(part):
             os.unlink(part)               # clear any stale/planted temp (no follow)

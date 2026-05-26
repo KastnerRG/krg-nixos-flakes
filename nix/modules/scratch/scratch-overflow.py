@@ -73,7 +73,11 @@ def copy_and_hash(src, dst):
     h = hashlib.sha256()
     n = 0
     src_fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
-    dst_fd = os.open(dst, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        dst_fd = os.open(dst, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    except BaseException:
+        os.close(src_fd)  # don't leak src_fd if the dst open fails
+        raise
     try:
         with os.fdopen(src_fd, "rb") as fi:
             while True:
@@ -90,6 +94,15 @@ def copy_and_hash(src, dst):
         os.close(dst_fd)
         raise
     return h.hexdigest(), n, dst_fd
+
+
+def tmp_sibling(path, tag):
+    """A short, unique temp path in the SAME directory as `path` (same filesystem, so
+    os.replace is atomic). Fixed short prefix + random suffix, so it can't overflow
+    NAME_MAX (255) the way `path + ".part"` would when path's basename is at the limit.
+    """
+    return os.path.join(os.path.dirname(path) or ".",
+                        f".{tag}-{os.urandom(6).hex()}.tmp")
 
 
 def fd_sha256(fd):
@@ -269,7 +282,7 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
         log(f"skip {rel}: cold dest escapes {cold} (symlinked path component?) — refusing")
         return 0
 
-    part = dest + ".part"
+    part = tmp_sibling(dest, "so")
     try:
         makedirs_mirror(scratch, cold, rel)  # mirror source dir owner/mode into cold
         if os.path.lexists(part):
@@ -328,7 +341,7 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
         return 0
 
     # cold copy is durable + verified + source unchanged — swap local file for a symlink.
-    link_tmp = path + ".scratch-archived"
+    link_tmp = tmp_sibling(path, "so")
     try:
         if os.path.lexists(link_tmp):
             os.unlink(link_tmp)
