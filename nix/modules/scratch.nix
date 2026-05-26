@@ -1,55 +1,54 @@
-# krg.scratch — tiered /scratch via autotier (FUSE), per independent lab.
+# krg.scratch — per-lab /scratch on a plain ZFS dataset, with automatic NFS overflow.
 #
-# WHAT: each lab (project) gets ONE merged /scratch/<lab> mount that autotier
-# (45Drives, a passthrough FUSE fs) backs with several tiers, fastest-first. New
-# writes land on the fastest tier with room; a periodic pass demotes the least
-# "popular" files down the tiers and promotes hot ones back up — so the working
-# set stays on NVMe and cold data drains to cheaper/larger storage automatically.
+# WHAT: each lab (project) gets ONE /scratch/<lab> directory that is a plain ZFS
+# mount (NOT a FUSE layer). On waiter that dataset lives on `scratchpool` — striped
+# HDD for capacity, fronted by an NVMe metadata (special) vdev + NVMe L2ARC, so ZFS
+# serves hot reads from RAM/NVMe and keeps the bytes on the (large) HDD. There is no
+# tiering daemon in the read path; the kernel ZFS ARC/L2ARC handles hot/cold.
 #
-# WHY autotier and not plain per-pool mounts: the user wanted ONE namespace per
-# lab with automatic hot/cold placement (NVMe -> local HDD -> NFS), not a manual
-# fast/bulk split. The trade-offs accepted: a FUSE layer (overhead + a daemon
-# failure mode) and tier-spanning snapshot semantics. See the design notes below.
+# WHY NOT autotier (the previous design): autotier was a 45Drives FUSE filesystem
+# that moved files NVMe->HDD->NFS by access frequency. It wrote a RocksDB record on
+# every file open/close and ABORTED under concurrent small-file training reads (a
+# multi-worker dataloader), taking /scratch down with it. It is unmaintained (last
+# release Dec 2021) and unfixable by config. See docs/scratch-greenfield.md and the
+# disko-config.nix "WHY THIS LAYOUT" block. The whole FUSE failure class is gone now.
 #
-# WAITER TOPOLOGY (the only consumer today, krg lab only — e4e has no users yet):
-#   /scratch/krg  (autotierfs)
-#     Tier 1  nvmepool/scratch-krg   -> /srv/scratch-tiers/nvme/krg   (NVMe, hot)
-#     Tier 2  hddpool/scratch-krg    -> /srv/scratch-tiers/hdd/krg    (HDD mirror)
-#     Tier 3  fabricant NFS          -> /srv/scratch-tiers/nfs/krg    (cold, network)
+# CAPACITY OVERFLOW (the only mover, and it's OUT of the read hot path): when the
+# pool fills past a high-water mark, the per-lab `overflow` job (scratch-overflow,
+# a daily systemd timer) demotes the least-recently-accessed files to a cold NFS
+# area on fabricant and replaces each with a SYMLINK to the NFS copy — so the path
+# still works (reads just go over the network) and `scratch-restore` pulls a file
+# back to fast storage on demand. It is FAIL-CLOSED: a local file is unlinked only
+# after its NFS copy is fully written, fsynced, and verified (size + sha256); if the
+# cold mount is down the unit won't even start (RequiresMountsFor). This is the
+# automatic, recoverable, no-policing capacity backstop the design calls for.
 #
 # LAB ISOLATION (krg and e4e are INDEPENDENT labs sharing this box): each lab's
-# /scratch and tier roots are chmod 2770, group = that lab's AD group (krg ->
-# "Kastner Research Group"), so one lab cannot read another's data even on shared
-# hardware. allow_other,default_permissions makes the kernel enforce those modes
-# through the FUSE layer. The NFS tier is exported no_root_squash so autotier
-# (root) preserves each file's owner/group when it demotes onto the cold tier.
-# With `perUser.enable`, each lab member also gets a private <mountPoint>/<user>
-# auto-created on login (a pam_exec session hook, the scratch analogue of
-# pam_mkhomedir) — autotier still tiers the whole lab pool underneath.
+# /scratch tree is chmod 3770 (setgid + sticky), group = that lab's AD group (krg -> "Kastner Research
+# Group"), so one lab can't read another's data on shared hardware. Because this is
+# a plain ZFS mount (no FUSE create-impersonation quirk), it's a real 3770 — no o+x
+# hack is needed (that was an autotier-only workaround). With `perUser.enable`, each
+# lab member also gets a private <mountPoint>/<user> auto-created on login (a
+# pam_exec session hook), guarded on the mount being active (fail-closed, same as
+# the modules/nfs-home.nix /home gate).
 #
-# IMPERMANENCE: the two LOCAL tiers are their own ZFS datasets (off nvmepool/root),
-# so they survive the boot rollback untouched. autotier's RocksDB metadata defaults
-# to /var/lib/autotier (on the rolled-back root) — it is persisted in
-# modules/impermanence.nix, and pointed per-lab at /var/lib/autotier/<lab> so two
-# autotier instances never share one RocksDB. If the cold (NFS) tier is down the
-# autotier unit FAILS CLOSED (RequiresMountsFor below) rather than demoting files
-# onto the ephemeral root — the same hazard the modules/nfs-home.nix login gate
-# guards. The local tiers stay durable regardless.
-#
-# GOTCHA — autotierfs daemonizes. It calls libfuse's fuse_main() and exposes no
-# foreground flag, so it double-forks into the background -> the service is
-# Type=forking (NOT simple/oneshot, which would mis-track or hang). Stop unmounts
-# with fusermount3 (libfuse3: the fuse_operations use copy_file_range/lseek).
-{ config, lib, pkgs, ... }:
+# IMPERMANENCE: the scratch dataset is on its own pool (scratchpool, off
+# nvmepool/root), so it survives the boot rollback untouched. The overflow job keeps
+# its manifest ON the scratch dataset (durable, travels with the data) and the
+# symlinks themselves are the source of truth for restore — nothing here needs a
+# /persist bind.
+{ config, lib, pkgs, utils, ... }:
 with lib;
 let
   cfg = config.krg.scratch;
 
-  # Hardened NFS options for a cold tier — identical posture to modules/nfs-home.nix:
-  # _netdev+nofail so a down server never blocks boot, hard so no silent loss once
-  # mounted, nconnect for throughput, bounded mount-timeout so a hung server can't
-  # stall. The autotier unit's RequiresMountsFor makes "tier down" fail closed.
-  nfsTierOptions = [
+  # Hardened NFS options for the cold overflow area — identical posture to
+  # modules/nfs-home.nix: _netdev+nofail so a down server never blocks boot, hard so
+  # no silent loss once mounted, nconnect for throughput, bounded mount-timeout so a
+  # hung server can't stall. The overflow unit's RequiresMountsFor makes "cold down"
+  # fail closed (the mover refuses to run rather than leaving files unarchived-but-
+  # -counted, or worse, deleting locals it couldn't copy).
+  nfsColdOptions = [
     "nfsvers=4.2"
     "hard"
     "noatime"
@@ -59,76 +58,68 @@ let
     "x-systemd.mount-timeout=30s"
   ];
 
-  # Where a tier's backing storage is mounted: <tierMountBase>/<tier.id>/<lab>.
-  tierPath = projName: tier: "${cfg.tierMountBase}/${tier.id}/${projName}";
+  # perUser.homeLink must be a SINGLE path segment: non-empty, no "/" (so its parent
+  # is always $HOME — the hook never has to mkdir a root-owned dir in the user's home),
+  # and not "." / "..". Validated at eval time.
+  badHomeLink = p: p == "" || hasInfix "/" p || p == "." || p == "..";
 
-  # Per-lab RocksDB metadata dir (must differ per instance, see header).
-  metadataPath = projName: "${cfg.metadataBase}/${projName}";
+  # mountPoint/coldMountPoint are rendered raw into tmpfiles rules, RequiresMountsFor,
+  # fileSystems keys and the perms script — none of which tolerate whitespace. Reject
+  # it at eval time rather than try to escape every site (the ExecStart argv is escaped
+  # separately). Paths with whitespace are painful across ZFS/systemd anyway.
+  hasWhitespace = s: any (c: hasInfix c s) [ " " "\t" "\n" ];
 
-  # GOTCHA — this autotier/lib45d build MISPARSES a percent quota written with a
-  # space before "%": `85 %` is read as 8500% (≈85× the tier, so the demotion
-  # watermark never trips), while `85%` parses correctly as 85%. (autotier's own
-  # man page / template use the broken `70 %` form.) Normalize by stripping the
-  # space before "%"; absolute byte quotas (e.g. "5.3 TiB") have no "%" and pass
-  # through untouched. Confirmed on-box 2026-05-22 against autotier 1.2.0.
-  normQuota = q: replaceStrings [ " %" ] [ "%" ] q;
+  # scratch-overflow / scratch-restore as stdlib-only Python. writePython3Bin gives a
+  # build-time syntax + import check; flakeIgnore drops style-only lints (line length
+  # etc.) — the scripts are the real source of truth in nix/modules/scratch/*.py.
+  pyArgs = { libraries = [ ]; flakeIgnore = [ "E501" "E226" "W503" "W504" ]; };
+  scratchOverflow = pkgs.writers.writePython3Bin "scratch-overflow" pyArgs
+    (builtins.readFile ./scratch/scratch-overflow.py);
+  scratchRestore = pkgs.writers.writePython3Bin "scratch-restore" pyArgs
+    (builtins.readFile ./scratch/scratch-restore.py);
 
-  # --- one autotier config file per lab ---------------------------------------
-  # autotier.conf: [Global] + one [<label>] section per tier (order = priority,
-  # fastest first). Quota is the fullness high-water mark that triggers demotion
-  # to the next tier; the last tier is the overflow (Quota = 100 %).
-  mkConfig = projName: proj:
-    pkgs.writeText "autotier-${projName}.conf" (''
-      # Generated by krg.scratch (nix/modules/scratch.nix) — do not edit on-box.
-      [Global]
-      Log Level = ${toString proj.logLevel}
-      Tier Period = ${toString proj.tierPeriod}
-      Metadata Path = ${metadataPath projName}
-      Copy Buffer Size = ${proj.copyBufferSize}
-    ''
-    + concatMapStrings (tier: ''
-
-      [${tier.label}]
-      Path = ${tierPath projName tier}
-      Quota = ${normQuota tier.quota}
-    '') proj.tiers);
-
-  # --- ownership / isolation step (ExecStartPre) ------------------------------
-  # Runs AFTER the tier mounts are active (RequiresMountsFor) and after sssd, so
-  # the AD lab group resolves. Always chmod 2770 the tier roots; chgrp to the lab
-  # group only if it resolves — TOLERANT so /scratch still comes up (root-owned,
-  # admin-only) before the AD join / group creation lands, then tightens on the
-  # next start. The group name has spaces ("Kastner Research Group"), so every
-  # path is chgrp'd individually with the group quoted.
-  mkPermsScript = projName: proj:
-    pkgs.writeShellScript "krg-scratch-perms-${projName}" ''
+  # --- ownership / isolation step (a post-mount oneshot) ----------------------
+  # Runs AFTER the mount is active (RequiresMountsFor) and after sssd, so the AD lab
+  # group resolves. chmod 3770 the scratch root; chgrp to the lab group only if it
+  # resolves — TOLERANT so /scratch still comes up (root-owned, admin-only) before
+  # the AD join / group creation lands, then tightens on the next start. The group
+  # name has spaces ("Kastner Research Group"), so it's quoted.
+  #
+  # 3770 = setgid (new entries inherit the lab group) + STICKY. The sticky bit is what
+  # makes per-user isolation hold at the root: the tree is group-writable so members
+  # can create their own per-user dir, but sticky means a member can only rename/delete
+  # entries they OWN — they can't blow away another user's /scratch/<user> tree.
+  mkPermsScript = name: proj:
+    pkgs.writeShellScript "krg-scratch-perms-${name}" ''
       set -u
-      roots="${concatMapStringsSep " " (tier: tierPath projName tier) proj.tiers}"
-      for d in $roots; do
-        ${pkgs.coreutils}/bin/chmod 2770 "$d" || \
-          echo "krg.scratch[${projName}]: chmod 2770 $d failed" >&2
-      done
+      mp=${escapeShellArg proj.mountPoint}
+      # chgrp FIRST, chmod LAST: chgrp can clear the setgid bit, so applying 3770 after
+      # it guarantees the final mode (incl. setgid+sticky) regardless.
       ${optionalString (proj.ownerGroup != null) ''
         if ${pkgs.getent}/bin/getent group ${escapeShellArg proj.ownerGroup} >/dev/null 2>&1; then
-          for d in $roots; do
-            ${pkgs.coreutils}/bin/chgrp ${escapeShellArg proj.ownerGroup} "$d" || \
-              echo "krg.scratch[${projName}]: chgrp failed on $d" >&2
-          done
+          ${pkgs.coreutils}/bin/chgrp ${escapeShellArg proj.ownerGroup} "$mp" || \
+            echo "krg.scratch[${name}]: chgrp failed on $mp" >&2
         else
-          echo "krg.scratch[${projName}]: group ${escapeShellArg proj.ownerGroup} not resolvable yet (AD join/group pending?) — tier roots left root-owned (admin-only), will apply on next start" >&2
+          echo "krg.scratch[${name}]: group ${escapeShellArg proj.ownerGroup} not resolvable yet (AD join/group pending?) — $mp left root-owned (admin-only), will apply on next start" >&2
         fi
       ''}
+      ${pkgs.coreutils}/bin/chmod 3770 "$mp" || \
+        echo "krg.scratch[${name}]: chmod 3770 $mp failed" >&2
       exit 0
     '';
 
   # --- per-user dir creation (pam_exec session hook) --------------------------
-  # Runs at session open, as root (before the session drops to the user). Creates
-  # <mountPoint>/<PAM_USER> for lab members. GUARDED two ways: (1) only if the
-  # scratch mount is active — never create on the bare/ephemeral root when autotier
-  # is down (fail-closed cold tier); (2) only for members of ownerGroup, compared by
-  # NUMERIC gid since the group name may contain spaces ("Kastner Research Group").
-  mkPerUserScript = projName: proj:
-    pkgs.writeShellScript "krg-scratch-mkuser-${projName}" ''
+  # Runs at session open, as root. Creates <mountPoint>/<PAM_USER> for lab members,
+  # and (if perUser.homeLink is set) a convenience symlink ~/<homeLink> -> that dir.
+  # GUARDED two ways: (1) only if the scratch mount is active — never create on the
+  # bare/ephemeral root when the dataset isn't mounted; (2) only for members of
+  # ownerGroup, compared by NUMERIC gid since the group name may contain spaces.
+  # Does NOT early-exit when the per-user dir already exists, so a RETURNING user
+  # still gets the home symlink (re)laid. The symlink is never created over an
+  # existing REAL path (a real ~/<homeLink> is left untouched); the home is NFS
+  # (no_root_squash) so root can create it + chown it to the user.
+  mkPerUserScript = name: proj:
+    pkgs.writeShellScript "krg-scratch-mkuser-${name}" ''
       set -u
       [ -n "''${PAM_USER:-}" ] || exit 0
       mp=${escapeShellArg proj.mountPoint}
@@ -142,98 +133,120 @@ let
         esac
       ''}
       d="$mp/$PAM_USER"
-      [ -e "$d" ] && exit 0
-      ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
-      ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
-      ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
+      if [ ! -e "$d" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
+        ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
+        ${optionalString (proj.ownerGroup != null) ''
+          # group = the lab group (gid resolved above) so a 2770 mode actually shares
+          # within the lab; chgrp BEFORE chmod so the setgid bit isn't stripped.
+          ${pkgs.coreutils}/bin/chgrp "$gid" "$d" || true
+        ''}
+        ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
+      fi
+      ${optionalString (proj.perUser.homeLink != null) ''
+        # homeLink is a SINGLE path segment (asserted), so the link's parent is $home
+        # itself — we never mkdir (and so never leave a root-owned dir in the home).
+        home=$(${pkgs.getent}/bin/getent passwd "$PAM_USER" | ${pkgs.coreutils}/bin/cut -d: -f6)
+        if [ -n "$home" ] && [ -d "$home" ]; then
+          link="$home/${proj.perUser.homeLink}"
+          # leave a real (non-symlink) path alone; otherwise create/refresh the symlink
+          if [ -e "$link" ] && [ ! -L "$link" ]; then
+            :
+          else
+            ${pkgs.coreutils}/bin/ln -sfn "$d" "$link" || true
+            ${pkgs.coreutils}/bin/chown -h "$PAM_USER" "$link" || true
+          fi
+        fi
+      ''}
       exit 0
     '';
 
-  tierType = types.submodule ({ ... }: {
+  overflowType = types.submodule {
     options = {
-      id = mkOption {
+      enable = mkEnableOption "automatic cold-file overflow to NFS for this lab";
+      pool = mkOption {
         type = types.str;
-        example = "nvme";
-        description = "Short slug for the tier mount path (<tierMountBase>/<id>/<lab>). Must be unique within a lab.";
+        default = "";
+        description = "ZFS pool whose capacity drives overflow. Empty = derive from the dataset's pool.";
       };
-      label = mkOption {
+      nfsDevice = mkOption {
         type = types.str;
-        example = "NVMe";
-        description = "autotier section name (shown by `autotier status`, used by `autotier pin`). May contain spaces.";
+        example = "137.110.161.98:/srv/nfs/scratch-krg";
+        description = "NFS export (server:/path) used as the cold overflow area.";
       };
-      fsType = mkOption {
-        type = types.enum [ "zfs" "nfs" ];
-        description = "How the tier's backing storage is mounted: a local legacy-mountpoint ZFS dataset, or an NFS export.";
-      };
-      device = mkOption {
+      coldMountPoint = mkOption {
         type = types.str;
-        example = "nvmepool/scratch-krg";
-        description = "fileSystems device: ZFS dataset name (fsType=zfs) or `server:/export` (fsType=nfs).";
+        example = "/srv/scratch-cold/krg";
+        description = "Where the cold NFS export is mounted (symlink targets land here).";
       };
-      quota = mkOption {
-        type = types.str;
-        default = "100%";
-        example = "85%";
+      highWatermark = mkOption {
+        type = types.ints.between 1 100;
+        default = 85;
+        description = "Start demoting cold files when the pool is at least this %% full.";
+      };
+      lowWatermark = mkOption {
+        type = types.ints.between 1 100;
+        default = 75;
+        description = "Stop demoting once the pool drops below this %% full.";
+      };
+      minAgeDays = mkOption {
+        type = types.ints.unsigned;
+        default = 14;
+        description = "Capacity-sweep floor: never demote a file accessed within this many days (keep the working set local).";
+      };
+      maxIdleDays = mkOption {
+        type = types.ints.unsigned;
+        default = 0;
+        example = 180;
         description = ''
-          autotier tier fullness cap that triggers demotion to the next tier; give the
-          last (overflow) tier `100%`. Percent (`85%` or `0.85`) or absolute (`5.3 TiB`).
-          NOTE: write percentages WITHOUT a space (`85%`, not `85 %`) — this autotier
-          build misparses the spaced form as 100× (the module also normalizes it; see
-          normQuota). Avoid leading-dot decimals (`.85` misparses to 100%).
+          TTL sweep: demote ANY file not ACCESSED in this many days, regardless of pool
+          fullness — the automatic GC for genuinely-abandoned data (runs every sweep,
+          not just when full). Keyed on last-access (relatime), so an actively-read file
+          is never evicted. 0 = disabled (capacity sweep only). Must exceed minAgeDays.
         '';
+      };
+      interval = mkOption {
+        type = types.str;
+        default = "daily";
+        description = "systemd OnCalendar for the overflow sweep.";
       };
       mountOptions = mkOption {
         type = types.listOf types.str;
         default = [ ];
-        description = "Extra mount options appended to the per-fsType defaults.";
+        description = "Extra mount options appended to the hardened NFS defaults for the cold area.";
       };
     };
-  });
+  };
 
-  # `attrsOf (submodule …)` binds `name` to the attribute key (the lab name), so
-  # mountPoint defaults to /scratch/<lab>. (config below reads the same key via
-  # mapAttrsToList, which is why tier paths / metadata / unit names were already right.)
-  projectType = types.submodule ({ name, ... }: {
+  projectType = types.submodule ({ name, config, ... }: {
     options = {
       mountPoint = mkOption {
         type = types.str;
         default = "/scratch/${name}";
-        description = "The merged FUSE mountpoint users see.";
+        description = "Where this lab's scratch dataset mounts (what users see).";
+      };
+      dataset = mkOption {
+        type = types.str;
+        example = "scratchpool/scratch-krg";
+        description = "The ZFS dataset (mountpoint=legacy in disko) mounted at mountPoint.";
       };
       ownerGroup = mkOption {
         type = types.nullOr types.str;
         default = null;
         example = "Kastner Research Group";
         description = ''
-          Lab group that owns this scratch tree (mode 2770, setgid) so other labs
-          are denied. An AD/SSSD group (may contain spaces). null = leave root-owned
-          (admin-only). When set, the unit orders after sssd so the group resolves.
+          Lab group that owns this scratch tree (mode 3770, setgid+sticky) so other labs are
+          denied. An AD/SSSD group (may contain spaces). null = leave root-owned
+          (admin-only). When set, the perms step orders after sssd so it resolves.
         '';
-      };
-      tierPeriod = mkOption {
-        type = types.ints.unsigned;
-        default = 86400;
-        description = "Seconds between autotier demotion/promotion passes. Daily by default — scratch doesn't need aggressive churn, and it keeps NFS-tier traffic down.";
-      };
-      copyBufferSize = mkOption {
-        type = types.str;
-        default = "16 MiB";
-        description = "autotier inter-tier copy buffer (bulk 1M-recordsize data moves faster with a larger buffer).";
-      };
-      logLevel = mkOption {
-        type = types.enum [ 0 1 2 ];
-        default = 1;
-        description = "autotier log level (0 none, 1 normal, 2 debug).";
       };
       perUser = mkOption {
         default = { };
         description = ''
           Auto-create a private per-user directory <mountPoint>/<user> on login — a
           pam_exec session hook, the scratch analogue of pam_mkhomedir. Created only
-          for members of `ownerGroup`, and only while the scratch mount is actually
-          active (never on the bare/ephemeral root). Non-blocking: a failure here
-          never denies login (scratch is not critical). autotier still tiers the whole
-          lab pool underneath — these dirs just give each user their own namespace.
+          for members of `ownerGroup`, and only while the scratch mount is active.
+          Non-blocking: a failure here never denies login.
         '';
         type = types.submodule {
           options = {
@@ -241,73 +254,59 @@ let
             mode = mkOption {
               type = types.str;
               default = "0700";
-              description = "Mode for each per-user dir. 0700 = private to the user; 2770 = shared within the lab (setgid).";
+              description = "Mode for each per-user dir. 0700 = private; 2770 = shared within the lab.";
             };
             loginServices = mkOption {
               type = types.listOf types.str;
               default = [ "sshd" "login" ];
-              description = "PAM services the per-user-dir session hook is added to (mirror krg.nfsHome.loginServices; add xrdp etc. as needed).";
+              description = "PAM services the per-user-dir session hook is added to.";
+            };
+            homeLink = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              example = "scratch";
+              description = ''
+                If set, lay a convenience symlink <user-home>/<homeLink> ->
+                <mountPoint>/<user> on login (e.g. "scratch" → ~/scratch). Requires
+                `enable`. The link lives in the (NFS) home so it appears on every host
+                that mounts that home, while the target is THIS box's local scratch —
+                so on a host that mounts the home but lacks this scratch path it would
+                dangle. NEVER created over an existing real path (a real ~/<homeLink>
+                is left untouched); an existing symlink is refreshed to the right
+                target. Must be a SINGLE path segment (no "/") so the link sits
+                directly in $HOME — the hook then never creates (root-owned) parent
+                dirs in the user's home.
+              '';
             };
           };
         };
       };
-      tiers = mkOption {
-        type = types.listOf tierType;
-        description = "Tiers fastest-first. At least two required.";
+      overflow = mkOption {
+        type = overflowType;
+        default = { };
+        description = "Automatic cold-file overflow to NFS (see scratch-overflow / scratch-restore).";
       };
     };
   });
 in {
   options.krg.scratch = {
-    enable = mkEnableOption "tiered /scratch via autotier (per-lab, FUSE)";
-
-    package = mkOption {
-      type = types.package;
-      default = pkgs.autotier;
-      defaultText = literalExpression "pkgs.autotier";
-      description = "The autotier package providing autotierfs.";
-    };
-
-    tierMountBase = mkOption {
-      type = types.str;
-      default = "/srv/scratch-tiers";
-      description = "Parent dir under which each tier's backing storage is mounted (admin-facing; users use the merged mountPoint).";
-    };
-
-    metadataBase = mkOption {
-      type = types.str;
-      default = "/var/lib/autotier";
-      description = ''
-        Parent dir for autotier's per-lab RocksDB metadata (<metadataBase>/<lab>).
-        On an impermanent host this must be persisted (see modules/impermanence.nix);
-        losing it only costs popularity history (autotier rebuilds), not data.
-      '';
-    };
-
-    fuseOptions = mkOption {
-      type = types.listOf types.str;
-      default = [ "allow_other" "default_permissions" ];
-      description = ''
-        FUSE mount options. default_permissions makes the kernel enforce the
-        underlying 2770/file modes (the lab-isolation gate); allow_other lets users
-        other than the mounting root (i.e. everyone, gated by those modes) access it.
-        allow_other needs programs.fuse.userAllowOther (set below).
-      '';
-    };
+    enable = mkEnableOption "per-lab /scratch on plain ZFS with automatic NFS overflow";
 
     projects = mkOption {
       type = types.attrsOf projectType;
       default = { };
-      description = "Per-lab tiered scratch instances, keyed by lab name.";
+      description = "Per-lab scratch instances, keyed by lab name.";
       example = literalExpression ''
         {
           krg = {
+            dataset = "scratchpool/scratch-krg";
             ownerGroup = "Kastner Research Group";
-            tiers = [
-              { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85%"; }
-              { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90%"; }
-              { id = "nfs";  label = "NFS (fabricant)"; fsType = "nfs"; device = "137.110.161.98:/srv/nfs/scratch-krg"; quota = "100%"; }
-            ];
+            perUser.enable = true;
+            overflow = {
+              enable = true;
+              nfsDevice = "137.110.161.98:/srv/nfs/scratch-krg";
+              coldMountPoint = "/srv/scratch-cold/krg";
+            };
           };
         }
       '';
@@ -317,89 +316,175 @@ in {
   config = mkIf (cfg.enable && cfg.projects != { }) (
     let
       projectList = mapAttrsToList (name: proj: { inherit name proj; }) cfg.projects;
+      anyOverflow = any ({ proj, ... }: proj.overflow.enable) projectList;
+      # the pool driving overflow for a project (overflow.pool override, else the
+      # dataset's own pool)
+      ovPool = proj: if proj.overflow.pool != "" then proj.overflow.pool
+                     else head (splitString "/" proj.dataset);
     in {
-      assertions = concatLists (mapAttrsToList (name: proj:
-        let
-          ids = map (t: t.id) proj.tiers;
-          labels = map (t: t.label) proj.tiers;
-        in [
-          {
-            assertion = length proj.tiers >= 2;
-            message = "krg.scratch.projects.${name}: autotier needs at least two tiers.";
-          }
-          {
-            # Duplicate ids -> colliding backing mountpoints (<tierMountBase>/<id>/<lab>)
-            # -> the generated fileSystems entries clash. `unique` preserves order, so
-            # equality holds iff there were no dupes.
-            assertion = ids == unique ids;
-            message = "krg.scratch.projects.${name}: tier `id`s must be unique (they form the backing mountpoints): ${toString ids}";
-          }
-          {
-            # Duplicate labels -> two autotier [section] headers with the same name.
-            assertion = labels == unique labels;
-            message = "krg.scratch.projects.${name}: tier `label`s must be unique (autotier section headers): ${toString labels}";
-          }
-        ]
-      ) cfg.projects);
+      assertions = concatLists (mapAttrsToList (name: proj: [
+        {
+          assertion = proj.dataset != "";
+          message = "krg.scratch.projects.${name}: dataset must be set.";
+        }
+        {
+          assertion = !proj.overflow.enable
+            || proj.overflow.lowWatermark < proj.overflow.highWatermark;
+          message = "krg.scratch.projects.${name}: overflow.lowWatermark must be < highWatermark.";
+        }
+        {
+          assertion = !proj.overflow.enable
+            || (proj.overflow.nfsDevice != "" && proj.overflow.coldMountPoint != "");
+          message = "krg.scratch.projects.${name}: overflow needs nfsDevice and coldMountPoint.";
+        }
+        {
+          # TTL must sit beyond the capacity floor, else the two windows overlap nonsensically.
+          assertion = proj.overflow.maxIdleDays == 0
+            || proj.overflow.maxIdleDays > proj.overflow.minAgeDays;
+          message = "krg.scratch.projects.${name}: overflow.maxIdleDays must exceed minAgeDays (or be 0 to disable).";
+        }
+        {
+          # homeLink only fires from the per-user hook, so it no-ops without perUser.enable.
+          assertion = proj.perUser.homeLink == null || proj.perUser.enable;
+          message = "krg.scratch.projects.${name}: perUser.homeLink requires perUser.enable.";
+        }
+        {
+          # The per-user hook gates creation on ownerGroup membership; without an
+          # ownerGroup it would create dirs for every user, contradicting the isolation
+          # model the option documents. Require a group when perUser is on.
+          assertion = !proj.perUser.enable || proj.ownerGroup != null;
+          message = "krg.scratch.projects.${name}: perUser.enable requires ownerGroup (per-user dirs are gated on lab-group membership).";
+        }
+        {
+          # The link is laid under $HOME; reject anything that could escape it.
+          assertion = proj.perUser.homeLink == null || !(badHomeLink proj.perUser.homeLink);
+          message = "krg.scratch.projects.${name}: perUser.homeLink must be a single path segment under $HOME (no \"/\", not \".\"/\"..\").";
+        }
+        {
+          # rendered raw into tmpfiles/RequiresMountsFor/fileSystems/perms — no whitespace.
+          assertion = !(hasWhitespace proj.mountPoint);
+          message = "krg.scratch.projects.${name}: mountPoint must not contain whitespace.";
+        }
+        {
+          assertion = !proj.overflow.enable || !(hasWhitespace proj.overflow.coldMountPoint);
+          message = "krg.scratch.projects.${name}: overflow.coldMountPoint must not contain whitespace.";
+        }
+      ]) cfg.projects);
 
-      # allow_other requires user_allow_other in /etc/fuse.conf (even though
-      # autotierfs runs as root, libfuse checks it).
-      programs.fuse.userAllowOther = true;
+      # scratch-restore (self-service) + scratch-overflow (admin --dry-run) on PATH,
+      # only when some lab uses overflow.
+      environment.systemPackages = optionals anyOverflow [ scratchRestore scratchOverflow ];
 
-      # Admins want `autotier status -c …`, `which-tier`, `pin`, etc. on PATH.
-      environment.systemPackages = [ cfg.package ];
+      # Tell scratch-restore which cold areas are legitimate, so it refuses to follow
+      # or delete a symlink target outside them (a lab member could plant a malicious
+      # symlink under /scratch and trick a root restore into unlinking an arbitrary
+      # file). Colon-separated, mirrors each overflow lab's coldMountPoint.
+      environment.variables = mkIf anyOverflow {
+        SCRATCH_COLD_ROOTS = concatStringsSep ":"
+          (map ({ proj, ... }: proj.overflow.coldMountPoint)
+            (filter ({ proj, ... }: proj.overflow.enable) projectList));
+        # scratch mountpoints — restore uses this to keep the link itself inside a
+        # scratch tree (a symlinked dir component can't redirect a root restore out).
+        SCRATCH_ROOTS = concatStringsSep ":"
+          (map ({ proj, ... }: proj.mountPoint) projectList);
+        # scratch->cold pairing ("scratchMP=coldMP;..."): restore pins a link's target
+        # to its CANONICAL archive location (cold + relpath(link, scratch)), so a
+        # planted symlink to some OTHER cold file can't get that file unlinked.
+        SCRATCH_OVERFLOW_MAP = concatStringsSep ";"
+          (map ({ proj, ... }: "${proj.mountPoint}=${proj.overflow.coldMountPoint}")
+            (filter ({ proj, ... }: proj.overflow.enable) projectList));
+      };
 
-      # One backing mount per tier, per lab. Local ZFS tiers mirror disko's legacy
-      # mounts (fsType=zfs, "defaults"); we add "nofail" so a scratch hiccup never
-      # blocks boot (the autotier unit depends on the mounts via RequiresMountsFor,
-      # so it just won't start). The NFS tier uses the hardened nfs-home posture.
+      # The scratch dataset mount (plain ZFS, nofail so a hiccup never blocks boot)
+      # plus, per overflow-enabled lab, the cold NFS area (hardened posture).
       fileSystems = mkMerge (concatMap ({ name, proj }:
-        map (tier: {
-          ${tierPath name tier} =
-            if tier.fsType == "zfs" then {
-              device = tier.device;
-              fsType = "zfs";
-              options = [ "defaults" "nofail" ] ++ tier.mountOptions;
-            } else {
-              device = tier.device;
-              fsType = "nfs";
-              options = nfsTierOptions ++ tier.mountOptions;
-            };
-        }) proj.tiers
-      ) projectList);
-
-      # Ensure the merged FUSE mountpoints exist (no .mount unit creates them, unlike
-      # the tier backings). 0755 here is just the bare mountpoint; once autotier is
-      # mounted the root's perms come from tier 1 (2770, set by the perms step).
-      systemd.tmpfiles.rules =
-        [ "d /scratch 0755 root root -" ]
-        ++ map ({ name, proj }: "d ${proj.mountPoint} 0755 root root -") projectList;
-
-      systemd.services = listToAttrs (map ({ name, proj }:
-        nameValuePair "autotier-${name}" {
-          description = "autotier tiered scratch for lab '${name}' (${proj.mountPoint})";
-          wantedBy = [ "multi-user.target" ];
-          # network-online for the NFS tier; sssd so the lab group resolves in the
-          # perms step. RequiresMountsFor pulls in + orders after every tier mount,
-          # so a down cold tier keeps this unit from starting (fail closed) rather
-          # than letting autotier demote onto the (impermanent) root.
-          after = [ "network-online.target" ]
-            ++ optional (proj.ownerGroup != null) "sssd.service";
-          wants = [ "network-online.target" ]
-            ++ optional (proj.ownerGroup != null) "sssd.service";
-          unitConfig.RequiresMountsFor = map (tier: tierPath name tier) proj.tiers;
-
-          serviceConfig = {
-            Type = "forking"; # autotierfs daemonizes via fuse_main() (see header)
-            ExecStartPre = mkPermsScript name proj;
-            # Single-line on purpose: systemd unit values are one line, and an
-            # indented Nix '' string would leave a trailing newline in ExecStart=.
-            ExecStart = "${cfg.package}/bin/autotierfs -c ${mkConfig name proj} ${proj.mountPoint} -o ${concatStringsSep "," cfg.fuseOptions}";
-            ExecStop = "${pkgs.fuse3}/bin/fusermount3 -u ${proj.mountPoint}";
-            Restart = "on-failure";
-            RestartSec = "30s"; # don't hot-loop while a tier (e.g. NFS) is down
+        [{
+          ${proj.mountPoint} = {
+            device = proj.dataset;
+            fsType = "zfs";
+            options = [ "defaults" "nofail" ];
+          };
+        }]
+        ++ optional proj.overflow.enable {
+          ${proj.overflow.coldMountPoint} = {
+            device = proj.overflow.nfsDevice;
+            fsType = "nfs";
+            options = nfsColdOptions ++ proj.overflow.mountOptions;
           };
         }
+      ) projectList);
+
+      # /scratch parent + each lab mountpoint must exist before the mounts. 0755 is
+      # the bare mountpoint; the perms step tightens the mounted root to 3770.
+      # /scratch + each lab mountpoint, plus each overflow lab's cold mountpoint (and
+      # its parent) so the NFS mount target exists at boot with admin-only perms. The
+      # NFS mount overlays it; the local dir only shows through when NFS is down (and
+      # then overflow is fail-closed anyway). `unique` dedupes a shared parent.
+      systemd.tmpfiles.rules = unique (
+        [ "d /scratch 0755 root root -" ]
+        ++ map ({ name, proj }: "d ${proj.mountPoint} 0755 root root -") projectList
+        ++ concatMap ({ name, proj }:
+          optionals proj.overflow.enable [
+            "d ${dirOf proj.overflow.coldMountPoint} 0755 root root -"
+            "d ${proj.overflow.coldMountPoint} 0700 root root -"
+          ]) projectList);
+
+      systemd.services = listToAttrs (concatMap ({ name, proj }:
+        # ---- ownership/isolation: chmod 3770 + chgrp lab group, after the mount ----
+        [ (nameValuePair "krg-scratch-perms-${name}" {
+            description = "Set ownership/mode on ${proj.mountPoint} (lab isolation)";
+            wantedBy = [ "multi-user.target" ];
+            after = optional (proj.ownerGroup != null) "sssd.service";
+            wants = optional (proj.ownerGroup != null) "sssd.service";
+            unitConfig.RequiresMountsFor = [ proj.mountPoint ];
+            serviceConfig = {
+              Type = "oneshot";
+              RemainAfterExit = true;
+              ExecStart = mkPermsScript name proj;
+            };
+          }) ]
+        # ---- capacity overflow: demote cold files to NFS (fail-closed) ----
+        ++ optional proj.overflow.enable
+          (nameValuePair "scratch-overflow-${name}" {
+            description = "Demote cold ${proj.mountPoint} files to NFS (${ovPool proj} capacity)";
+            # RequiresMountsFor pulls in + orders after BOTH the scratch mount and the
+            # cold NFS area, so a down cold tier keeps this from starting (fail closed)
+            # rather than deleting locals it can't archive.
+            unitConfig.RequiresMountsFor = [ proj.mountPoint proj.overflow.coldMountPoint ];
+            path = [ config.boot.zfs.package pkgs.coreutils ];
+            serviceConfig = {
+              Type = "oneshot";
+              # argv list + escapeSystemdExecArgs so any special characters in the args
+              # are handled safely by systemd's parser. (Whitespace in mountPoint/
+              # coldMountPoint is separately rejected at eval time by assertions above.)
+              ExecStart = utils.escapeSystemdExecArgs ([
+                "${scratchOverflow}/bin/scratch-overflow"
+                "--pool" (ovPool proj)
+                "--scratch" proj.mountPoint
+                "--cold" proj.overflow.coldMountPoint
+                "--high" (toString proj.overflow.highWatermark)
+                "--low" (toString proj.overflow.lowWatermark)
+                "--min-age-days" (toString proj.overflow.minAgeDays)
+              ] ++ optionals (proj.overflow.maxIdleDays > 0)
+                [ "--max-idle-days" (toString proj.overflow.maxIdleDays) ]);
+              # bound resource use of the daily sweep
+              Nice = 10;
+              IOSchedulingClass = "idle";
+            };
+          })
+      ) projectList);
+
+      systemd.timers = listToAttrs (concatMap ({ name, proj }:
+        optional proj.overflow.enable
+          (nameValuePair "scratch-overflow-${name}" {
+            description = "Periodic cold-file overflow sweep for ${proj.mountPoint}";
+            wantedBy = [ "timers.target" ];
+            timerConfig = {
+              OnCalendar = proj.overflow.interval;
+              Persistent = true;
+              RandomizedDelaySec = "10m";
+            };
+          })
       ) projectList);
 
       # Per-user dir auto-creation: a session pam_exec hook on the configured login
@@ -410,7 +495,7 @@ in {
           ${svc}.rules.session."krgScratchMkdir_${name}" = {
             control = "optional";
             modulePath = "${pkgs.pam}/lib/security/pam_exec.so";
-            args = [ "${mkPerUserScript name proj}" ]; # coerce derivation -> store-path string
+            args = [ "${mkPerUserScript name proj}" ];
             order = 13000; # session open, after pam_mkhomedir
           };
         }) proj.perUser.loginServices)

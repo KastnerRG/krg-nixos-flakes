@@ -9,6 +9,7 @@
     ../../modules/impermanence.nix
     ../../modules/nfs-home.nix
     ../../modules/scratch.nix
+    ../../modules/local-cache.nix
   ];
 
   # Physical host — keep the NixOS firewall enabled (this is the default).
@@ -56,59 +57,129 @@
     server = "137.110.161.98";   # fabricant (the hypervisor serving rpool/nfs)
   };
 
-  # hddpool's datasets are all mountpoint=none with no fileSystems entry, so nothing
-  # else triggers its import at boot — list it explicitly. (nvmepool is imported
-  # because / lives on it.) NOTE: krg.scratch below now mounts hddpool/scratch-krg,
-  # so a fileSystems entry references hddpool too — but keep this for the e4e
-  # datasets, which remain unmounted scaffolding.
-  krg.zfs.extraPools = [ "hddpool" ];
+  # scratchpool (HDD data + NVMe special/cache) holds the /scratch dataset, imported
+  # via krg.scratch's fileSystems entry for /scratch/krg. List it explicitly too so
+  # the (unmounted) e4e scaffolding dataset's pool still imports at boot. (nvmepool is
+  # imported because / lives on it.) The old hddpool is gone — its disks are now the
+  # scratchpool data vdev (see disko-config.nix).
+  krg.zfs.extraPools = [ "scratchpool" ];
 
-  # Tiered /scratch for the krg lab (autotier FUSE, modules/scratch.nix): one merged
-  # /scratch/krg over hot NVMe -> warm HDD -> cold NFS on fabricant. autotier demotes
-  # cold files down and promotes hot ones back automatically (daily pass).
+  # /scratch for the krg lab — PLAIN ZFS now (modules/scratch.nix), not autotier/FUSE.
+  # /scratch/krg is scratchpool/scratch-krg: bytes on the striped HDD, hot reads served
+  # by the NVMe special (metadata) vdev + L2ARC. ZFS does the hot/cold caching in-kernel,
+  # so the autotier FUSE daemon — which crashed under concurrent training reads — is gone.
+  # See docs/scratch-greenfield.md and the disko-config.nix "WHY THIS LAYOUT" block.
   #
-  # LAB ISOLATION: krg and e4e are INDEPENDENT labs sharing this box, so the tree is
-  # owned by the "Kastner Research Group" AD group, mode 2770 (allow_other +
-  # default_permissions enforce it through FUSE). The group must exist in Samba AD;
-  # until the per-host domain join + group creation land, the perms step is tolerant
-  # (tier roots stay root-owned/admin-only, then tighten on the next start).
+  # LAB ISOLATION: krg and e4e are INDEPENDENT labs sharing this box, so /scratch/krg is
+  # owned by the "Kastner Research Group" AD group, mode 3770 (setgid+sticky — a real
+  # ZFS-mount mode now; the old autotier o+x hack is gone; sticky stops a member
+  # deleting another member's per-user dir). The "Kastner Research Group" group already
+  # exists in Samba AD (it backed the prior deploy), so the perms step applies 3770
+  # as soon as SSSD resolves it after the domain re-join; it stays tolerant
+  # (/scratch/krg root-owned/admin-only) if the group can't yet resolve, so /scratch
+  # always comes up — then tightens on the next start.
   #
-  # E4E IS NOT WIRED: no e4e users/machines yet, so its scratch-e4e datasets stay
-  # mountpoint=none (disko) reserved scaffolding. e4e will later get e4e-nas as BOTH
-  # its cold tier and its NFS homes (separate work). Add a `projects.e4e` here then.
+  # E4E IS NOT WIRED: no e4e users/machines yet, so scratchpool/scratch-e4e stays
+  # mountpoint=none (disko) reserved scaffolding. e4e will later get e4e-nas as its NFS
+  # overflow target (separate work). Add a `projects.e4e` here then.
   #
-  # COLD TIER: fabricant exports rpool/nfs/scratch-krg -> /srv/nfs/scratch-krg to
-  # waiter with no_root_squash (ansible nfs_server), so autotier (root) preserves
-  # each file's owner/group when demoting onto the network tier. If fabricant is down
-  # the autotier unit fails CLOSED (RequiresMountsFor) — it will NOT demote onto the
-  # impermanent root (cf. the modules/nfs-home.nix login gate). The two local tiers
-  # are their own datasets, durable across the boot rollback regardless.
+  # OVERFLOW (capacity backstop, NOT in the read path): fabricant exports
+  # rpool/nfs/scratch-krg with no_root_squash (ansible nfs_server), mounted here at
+  # /srv/scratch-cold/krg. When scratchpool fills past the high-water mark, the daily
+  # scratch-overflow timer demotes the least-recently-accessed files there and leaves a
+  # symlink (reads still work over NFS); `scratch-restore` pulls a file back. FAIL-CLOSED:
+  # if the cold mount is down the unit won't start (RequiresMountsFor) and a local file is
+  # never unlinked until its NFS copy is verified. Plenty of headroom today (~29 TiB), so
+  # this rarely fires — it's the automatic, recoverable, no-policing backstop for later.
   krg.scratch = {
     enable = true;
     projects.krg = {
+      dataset = "scratchpool/scratch-krg";
       ownerGroup = "Kastner Research Group";
       # Each krg lab member gets a private /scratch/krg/<user>, auto-created on login
-      # (created only for Kastner-Research-Group members, only while /scratch/krg is
-      # mounted). autotier still tiers the whole lab pool underneath.
+      # (only for Kastner-Research-Group members, only while /scratch/krg is mounted),
+      # plus a convenience symlink ~/scratch -> /scratch/krg/<user> so people don't have
+      # to memorize the path. The link lives in the NFS home (so it'd appear on any host
+      # mounting that home) but the target is waiter-local scratch; today only waiter
+      # mounts /home so it resolves. A real ~/scratch is never clobbered.
       perUser.enable = true;
-      tiers = [
-        { id = "nvme"; label = "NVMe"; fsType = "zfs"; device = "nvmepool/scratch-krg"; quota = "85%"; }
-        { id = "hdd";  label = "HDD";  fsType = "zfs"; device = "hddpool/scratch-krg";  quota = "90%"; }
-        # Overflow / cold tier (Quota defaults to 100 %). fabricant hypervisor IP,
-        # same server as krg.nfsHome — pinned by IP so it never waits on DNS.
-        { id = "nfs";  label = "NFS (fabricant)"; fsType = "nfs"; device = "137.110.161.98:/srv/nfs/scratch-krg"; }
-      ];
+      perUser.homeLink = "scratch";
+      overflow = {
+        enable = true;
+        # fabricant hypervisor IP, same server as krg.nfsHome — pinned by IP so it
+        # never waits on DNS.
+        nfsDevice = "137.110.161.98:/srv/nfs/scratch-krg";
+        coldMountPoint = "/srv/scratch-cold/krg";
+        # TTL: drain anything not touched in 6 months to NFS even when the pool isn't
+        # full — automatic GC of abandoned data (keyed on last-access, so active
+        # datasets are never evicted). The capacity sweep (>85%) still runs on top.
+        maxIdleDays = 180;
+      };
     };
+  };
+
+  # Node-local fast per-user cache at /local/<user> (modules/local-cache.nix). The
+  # counterpart to scratch above: where /scratch/krg overflows cold data to fabricant
+  # NFS when it fills, /local is a plain durable NVMe dataset that never overflows
+  # (nvmepool/local, off the @blank rollback) for the regenerable, hot, NODE-local
+  # state that should NOT live on the NFS /home — the IDE remote servers
+  # (~/.vscode-server, ~/.cursor-server, symlinked in on login) and the cache class
+  # (XDG_CACHE_HOME, Hugging Face / torch / conda-pkgs / npm). On a CUDA box this is
+  # the big NFS-offload win: HF model downloads and vscode-server's small-file/watch
+  # traffic stay on local NVMe instead of hammering fabricant.
+  #
+  # Defaults (modules/local-cache.nix) cover the symlinks + cache env vars, so just
+  # enabling perUser is enough. MIGRATION: an existing real ~/.vscode-server on NFS is
+  # never clobbered — a user opts in once with `rm -rf ~/.vscode-server`, then the next
+  # login creates the symlink. On-box: `zfs create -o mountpoint=legacy -o quota=1T \
+  # -o com.sun:auto-snapshot=false nvmepool/local` before deploying (disko isn't re-run
+  # live; same as the scratch datasets).
+  krg.localCache = {
+    enable = true;
+    perUser.enable = true;
   };
 
   # Swap = zram (no on-disk swap; ZFS swap zvols are deadlock-prone under memory
   # pressure). zstd-compressed RAM cushion for OOM bursts. memoryPercent is a cap on
-  # the zram device size, not a reservation. Interacts with the deferred earlyoom
-  # change and the krg.zfs.arcMaxBytes ARC knob.
+  # the zram device size, not a reservation. Interacts with earlyoom + the ARC cap below.
   zramSwap = {
     enable        = true;
     algorithm     = "zstd";
     memoryPercent = 50;
+  };
+
+  # --- Concurrency & memory contention (greenfield scratch redesign) ----------
+  # Multiple mixed workloads (GPU/CPU/FPGA) share this box and one finite NVMe cache.
+  # Cap the ZFS ARC so it can't starve a RAM-hungry job, and run earlyoom so real
+  # memory pressure is handled gracefully instead of a hard OOM/livelock.
+  #
+  # ARC cap: 96 GiB (~25% of the 377 GiB installed). Leaves ~280 GiB for ML jobs while
+  # giving scratch a solid RAM cache on top of the ~5.6 TiB L2ARC — whose ARC header
+  # overhead is only ~0.4 GB at the 1M scratch recordsize, so the L2ARC is nearly free.
+  # ZFS default would be ~50% (~188 GiB), too much to hand a shared ML box. Tune with
+  # arcstat if the hit-rate is starved or jobs need more RAM. Threadripper PRO 7985WX.
+  krg.zfs.arcMaxBytes = 96 * 1024 * 1024 * 1024;
+
+  # earlyoom: kill the worst memory hog early (before the kernel OOM killer livelocks
+  # under ZFS ARC + zram pressure). Disable systemd-oomd (PSI-based, fights ARC
+  # accounting) in favour of it. This is the deferred base.nix earlyoom item, landed
+  # here for waiter (the box that actually needs it) as part of this redesign.
+  services.earlyoom = {
+    enable = true;
+    freeMemThreshold = 5;   # act when <5% RAM free
+    freeSwapThreshold = 10;
+  };
+  systemd.oomd.enable = false;
+
+  # smartd: monitor the physical disks (the redesign's striped scratchpool has NO
+  # redundancy, so advance warning of a failing disk matters — esp. the historically
+  # flaky sdb). No MTA here, so escalate via wall + the journal; the zpool-health
+  # textfile collector (modules/zfs.nix) covers pool-level state for Prometheus.
+  services.smartd = {
+    enable = true;
+    autodetect = true;
+    notifications.wall.enable = true;
+    defaults.monitored = "-a -o on -s (S/../.././02|L/../../6/03)"; # short daily 02:00, long weekly Sat 03:00
   };
 
   # FPGA/EDA toolchain (Vivado/Vitis/Questa/Verilator) stays OFF pending sign-off from
@@ -140,6 +211,10 @@
       ipv4.addresses = [{ address = "137.110.161.67"; prefixLength = 24; }];
     };
     defaultGateway = "137.110.161.1";
+    # The AD DC (krg-ldap) is prepended as the PRIMARY resolver by krg.adClient
+    # (modules/sssd-ad-client.nix) for every domain member — so SSSD can resolve the
+    # internal krg.local zone instead of flapping offline. These are just waiter's
+    # site fallbacks, used after the DC.
     nameservers    = [ "132.239.0.252" "8.8.8.8" "1.1.1.1" ];
 
     # ZFS requires a unique hostId — generate with:

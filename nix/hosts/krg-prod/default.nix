@@ -1,8 +1,9 @@
 { ... }:
 let
-  # Referencing the directory (not individual files) ensures Docker Compose
-  # `include:` directives can resolve sibling compose files from the same
-  # Nix store path, and lets us symlink config subdirs from the working dir.
+  # Referencing the directory (not individual files) puts the entire
+  # docker-compose/krg-prod/ subtree into a single Nix store path so that
+  # relative symlinks and config bind-mounts below all point into the same
+  # store derivation.
   composeDir = ../../docker-compose/krg-prod;
 in {
   imports = [
@@ -22,6 +23,13 @@ in {
   networking = {
     hostName = "krg-prod";
     domain   = "ucsd.edu";
+    useDHCP  = false;
+    interfaces.ens18.ipv4.addresses = [{
+      address      = "137.110.161.106";
+      prefixLength = 24;
+    }];
+    defaultGateway = "137.110.161.1";
+    nameservers    = [ "132.239.0.252" "8.8.8.8" "1.1.1.1" ];
   };
 
   # label_studio_admin group (from the old fabricant-prod label_studio.yaml)
@@ -34,6 +42,15 @@ in {
 
     # ── Working directory layout under /var/lib/krg/krg-prod/ ─────────────
     # (the compose-stack module already creates /var/lib/krg/krg-prod/ and .secrets/)
+
+    # Docker Compose `include:` resolves relative to the project directory, not
+    # the compose file's Nix store path, so symlink each sub-stack into the
+    # working dir where compose.yml can find them by name.
+    "L+ /var/lib/krg/krg-prod/compose.authentik.yml    - - - - ${composeDir}/compose.authentik.yml"
+    "L+ /var/lib/krg/krg-prod/compose.grafana.yml      - - - - ${composeDir}/compose.grafana.yml"
+    "L+ /var/lib/krg/krg-prod/compose.label-studio.yml - - - - ${composeDir}/compose.label-studio.yml"
+    "L+ /var/lib/krg/krg-prod/compose.outline.yml      - - - - ${composeDir}/compose.outline.yml"
+    "L+ /var/lib/krg/krg-prod/compose.mlflow.yml       - - - - ${composeDir}/compose.mlflow.yml"
 
     # Read-only config dirs: symlink from working dir → Nix store.
     # Docker bind-mount follows symlinks so ./prometheus resolves to the store path.
@@ -85,8 +102,16 @@ in {
     # Traefik TLS certificate storage
     "d  /var/lib/krg/krg-prod/traefik-data                  0750 root docker -"
     "d  /var/lib/krg/krg-prod/traefik-data/letsencrypt      0750 root docker -"
+
+    # E4E Roster V3 — uncomment when ready to deploy.
+    # After deploy: git clone git@github.com:UCSD-E4E/E4E-Roster-V3.git /var/lib/krg/e4e-roster
+    # then create /var/lib/krg/e4e-roster/.env (see compose.yml for required vars).
+    # "d  /var/lib/krg/e4e-roster                             0750 root docker -"
   ];
 
+
+
+  # TODO Automate secrets
   # krg-prod runs as a single compose project (compose.yml uses `include:` to
   # bring in authentik, grafana, label-studio, mlflow, and outline stacks).
   #
@@ -110,6 +135,18 @@ in {
     # External networks declared in compose.yml and compose.grafana.yml
     networks         = [ "traefik_proxy" "authentik" "prometheus_network" ];
   };
+
+  # E4E Roster V3 — uncomment when ready to deploy.
+  # Source lives at /var/lib/krg/e4e-roster (git-managed, not nix store).
+  # To deploy: git clone git@github.com:UCSD-E4E/E4E-Roster-V3.git /var/lib/krg/e4e-roster
+  # To update: git -C /var/lib/krg/e4e-roster pull && docker compose -f /var/lib/krg/e4e-roster/docker-compose.yml build && systemctl restart e4e-roster
+  # Required: /var/lib/krg/e4e-roster/.env (SESSION_SECRET, DB_PASSWORD, OIDC_*, ROSTER_HOST, GITHUB_APP_HOST, UDM_*)
+  # krg.composeStacks.e4e-roster = {
+  #   description      = "E4E Roster V3 — roster, GitHub app, Slackbot";
+  #   composeFiles     = [ "/var/lib/krg/e4e-roster/docker-compose.yml" ];
+  #   workingDirectory = "/var/lib/krg/e4e-roster";
+  #   networks         = [ "traefik_proxy" ];
+  # };
 
   # Provide the OEC installer archive path once the file is available locally.
   # krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;

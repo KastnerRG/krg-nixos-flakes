@@ -1,9 +1,11 @@
 include:
   - compose.authentik.yml
-  - compose.grafana.yml
-  - compose.label-studio.yml
-  - compose.outline.yml
-  - compose.mlflow.yml
+  # Temporarily disabled — only Authentik is being brought up right now.
+  # Re-enable each as it's verified (the per-stack fixes are already applied).
+  # - compose.grafana.yml
+  # - compose.label-studio.yml
+  # - compose.outline.yml
+  # - compose.mlflow.yml
 
 services:
   traefik:
@@ -11,14 +13,20 @@ services:
     container_name: traefik
     restart: always
     ports:
-      - 80:80
-      - 443:443
-      - 8080:8080
+      # Public ingress — bound to all interfaces explicitly. The krg.docker daemon
+      # default binds unspecified publishes to loopback (so DBs/exporters don't leak
+      # past the firewall); 80/443 must override that to serve the perimeter.
+      - 0.0.0.0:80:80
+      - 0.0.0.0:443:443
+      # 8080 (Traefik API/metrics) intentionally NOT published: it exposed /metrics
+      # on the host's external interface. Prometheus scrapes traefik:8080 over the
+      # docker network instead (add prometheus to traefik_proxy when re-enabled).
+      # - 8080:8080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik-data/letsencrypt:/letsencrypt:z
     command:
-      - "--log.level=DEBUG"
+      - "--log.level=INFO"
       # - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
@@ -39,15 +47,17 @@ services:
       authentik:
       traefik_proxy:
         aliases:
-          - s3.fabricant.ucsd.edu
           - auth.fabricant.ucsd.edu
-          - labeler.e4e.ucsd.edu
-          - orchestrator.fishsense.e4e.ucsd.edu
-          - data.smartfin.e4e.ucsd.edu
-          - wiki.fabricant.ucsd.edu
-          - roster.e4e.ucsd.edu
-          - github-sync.e4e.ucsd.edu
-          - mlflow.krg.ucsd.edu
+          # Aliases for the temporarily-disabled stacks — re-enable alongside their
+          # compose includes above:
+          # - s3.fabricant.ucsd.edu
+          # - labeler.e4e.ucsd.edu
+          # - orchestrator.fishsense.e4e.ucsd.edu
+          # - data.smartfin.e4e.ucsd.edu
+          # - wiki.fabricant.ucsd.edu
+          # - roster.e4e.ucsd.edu
+          # - github-sync.e4e.ucsd.edu
+          # - mlflow.krg.ucsd.edu
 
   # minio:
   #   image: quay.io/minio/minio

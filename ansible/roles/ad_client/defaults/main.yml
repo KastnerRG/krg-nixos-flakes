@@ -24,6 +24,15 @@ ad_sudo_groups:               # AD groups granted sudo (password required); brea
 ad_id_mapping: true           # auto uid/gid from SID; false = read RFC2307 attrs
 ad_ssh_keys_from_ad: true     # serve authorized keys from AD via sss_ssh_authorizedkeys
 ad_default_shell: /bin/bash   # exists on Debian (unlike NixOS)
+# Per-user AD loginShell, fail-safe. SSSD honours a user's loginShell only where
+# that path is in /etc/shells on this host; a shell allowed here but not installed
+# degrades to ad_shell_fallback instead of nologin. "*" = any installed shell.
+# Mirrors the nix krg.adClient allowedShells/shellFallback so a single AD loginShell
+# works across NixOS + Debian members (zsh where present, bash elsewhere). Empty
+# list = omit allowed_shells (raw loginShell returned verbatim). docs/creating-a-user.md.
+ad_allowed_shells:
+  - "*"
+ad_shell_fallback: /bin/bash  # substituted when the user's shell isn't installed here
 # GPO-based access control. SSSD's default (enforcing) fetches Group Policy from
 # sysvol every login; against a Samba AD DC that errors out and an error under
 # enforcing becomes a denial ("Access denied … System error"). We gate access with

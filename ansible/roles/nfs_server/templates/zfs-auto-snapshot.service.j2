@@ -1,0 +1,20 @@
+{# Managed by Ansible (krg-infra nfs_server). Edit the role, not here. #}
+# Take {{ item.label }} ZFS snapshots of the opted-in datasets, then prune to --keep.
+#
+# --default-exclude is LOAD-BEARING here: rpool is a SHARED Proxmox pool (PVE root,
+# VM zvols), and unlike waiter's dedicated pools its root carries no
+# com.sun:auto-snapshot property. Without --default-exclude, zfs-auto-snapshot would
+# treat "unset" as included and snapshot every PVE/VM dataset. --default-exclude
+# flips that to opt-IN: snapshot ONLY datasets explicitly set com.sun:auto-snapshot=
+# true — i.e. just the nfs_exports that opt in (host_vars: home; scratch-krg). The
+# per-label com.sun:auto-snapshot:{{ item.label }} property is still honored
+# (scratch-krg sets :frequent/:hourly=false, so it's skipped at those cadences).
+[Unit]
+Description=ZFS auto-snapshot ({{ item.label }}, keep {{ item.keep }})
+Documentation=man:zfs-auto-snapshot(8)
+After=zfs.target
+Wants=zfs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/zfs-auto-snapshot --quiet --syslog --label={{ item.label }} --keep={{ item.keep }} --default-exclude //
