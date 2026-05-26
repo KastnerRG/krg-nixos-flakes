@@ -129,6 +129,11 @@ let
       if [ ! -e "$d" ]; then
         ${pkgs.coreutils}/bin/mkdir -p "$d" || exit 0
         ${pkgs.coreutils}/bin/chown "$PAM_USER" "$d" || true
+        ${optionalString (proj.ownerGroup != null) ''
+          # group = the lab group (gid resolved above) so a 2770 mode actually shares
+          # within the lab; chgrp BEFORE chmod so the setgid bit isn't stripped.
+          ${pkgs.coreutils}/bin/chgrp "$gid" "$d" || true
+        ''}
         ${pkgs.coreutils}/bin/chmod ${proj.perUser.mode} "$d" || true
       fi
       ${optionalString (proj.perUser.homeLink != null) ''

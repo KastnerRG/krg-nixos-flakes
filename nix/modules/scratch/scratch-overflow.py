@@ -155,11 +155,16 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
         st = os.stat(path)  # re-stat (TOCTOU): the walk may be stale
     except OSError:
         return 0
-    size = st.st_size
+    size = st.st_size           # logical size — for the manifest + human-facing logs
+    # ALLOCATED bytes (st_blocks * 512) is what actually frees from the pool. Pool
+    # fullness is measured by `zpool list` (physical), and with zstd compression the
+    # logical size can differ a lot — so accounting toward the low-water target must
+    # use allocated, not logical, or the capacity sweep stops early / overshoots.
+    freed_bytes = st.st_blocks * 512
 
     if dry_run:
         log(f"would archive [{reason}] {rel} ({size} bytes) -> {dest}")
-        return size
+        return freed_bytes
 
     # Path-traversal guard: the cold tree is on a no_root_squash export and we run as
     # root, so a stray symlink in a path component must not let a write escape `cold`.
@@ -247,7 +252,7 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
     }) + "\n")
     manifest_fp.flush()
     log(f"archived [{reason}] {rel} ({size} bytes) -> {dest}")
-    return size
+    return freed_bytes
 
 
 NOTE_TEXT = """\

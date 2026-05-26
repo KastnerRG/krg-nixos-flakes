@@ -103,6 +103,18 @@ def restore_one(link, allowed_roots, keep_cold, verbose):
         shutil.copystat(target, part)
         if os.geteuid() == 0:  # admin restore: preserve the original owner
             os.chown(part, tst.st_uid, tst.st_gid)
+        # the temp reflects the cold copy as it was; if the target changed during the
+        # copy/verify, don't swap in a now-stale local file — leave the symlink as-is.
+        try:
+            tcur = os.stat(target)
+        except OSError:
+            tcur = None
+        if tcur is None or (tcur.st_ino, tcur.st_size, tcur.st_mtime_ns,
+                            tcur.st_ctime_ns) != (tst.st_ino, tst.st_size,
+                                                  tst.st_mtime_ns, tst.st_ctime_ns):
+            os.unlink(part)
+            log(f"skip {link}: cold target changed during restore — left the symlink")
+            return False
         os.replace(part, link)  # atomically replace the symlink with the real file
         fsync_dir(os.path.dirname(link))  # make the local rename durable
     except OSError as e:
