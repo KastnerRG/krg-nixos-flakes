@@ -20,6 +20,12 @@
 }:
 with lib; let
   cfg = config.krg.impermanence;
+
+  # A VALID but empty MIT keytab is just the 2-byte format-version header (0x05 0x02).
+  # Used to pre-seed the persisted /etc/krb5.keytab so it isn't a dangling symlink the
+  # AD join can't write through. A 0-byte file does NOT work — krb5 rejects it with
+  # "Unsupported key table format version number"; it needs this header to append to.
+  emptyKeytab = pkgs.runCommand "empty-krb5-keytab" { } ''printf '\005\002' > $out'';
 in {
   imports = [inputs.impermanence.nixosModules.impermanence];
 
@@ -103,6 +109,18 @@ in {
     # pull state out of it are established — impermanence asserts this. disko's
     # generated fileSystems entry doesn't set it, so merge it in here.
     fileSystems.${cfg.persistPath}.neededForBoot = true;
+
+    # Seed a VALID empty machine keytab at the persist source. /etc/krb5.keytab is
+    # persisted as a symlink into /persist, and on a fresh /persist (greenfield rebuild
+    # / DR) that target doesn't exist — a DANGLING symlink. The domain-join (adcli/krb5)
+    # creates the keytab with open(O_CREAT|O_EXCL), which fails EEXIST on a dangling
+    # symlink; and a plain 0-byte file is rejected as "Unsupported key table format
+    # version number". So copy a header-only (but valid) keytab into place — `C` copies
+    # ONLY if the target is absent, so it never clobbers a populated keytab. /persist/etc
+    # already exists (other persisted /etc files).
+    systemd.tmpfiles.rules = [
+      "C ${cfg.persistPath}/etc/krb5.keytab 0600 root root - ${emptyKeytab}"
+    ];
 
     environment.persistence.${cfg.persistPath} = {
       enable = true;
