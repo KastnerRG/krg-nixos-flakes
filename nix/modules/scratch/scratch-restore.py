@@ -14,7 +14,7 @@ orphans); pass --keep-cold to leave it.
 import argparse
 import hashlib
 import os
-import shutil
+import stat
 import sys
 
 COPY_CHUNK = 8 * 1024 * 1024
@@ -25,30 +25,43 @@ def log(msg):
 
 
 def copy_and_hash(src, dst):
-    # Both ends opened O_NOFOLLOW: a symlink swapped in at either path after our
-    # earlier realpath/stat (restore may run as root) is refused, not followed.
+    """Stream src -> dst computing src's sha256. Returns (sha, nbytes, dst_fd).
+
+    dst is created O_CREAT|O_EXCL|O_NOFOLLOW and its fd is LEFT OPEN so the caller
+    verifies + sets metadata THROUGH the fd — a user controlling the temp's dir can't
+    swap it for a symlink between steps to redirect a root-run restore. src (the
+    already-realpath'd cold file) is O_NOFOLLOW too. The caller owns closing dst_fd.
+    """
     h = hashlib.sha256()
     n = 0
     src_fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
-    dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(src_fd, "rb") as fi, os.fdopen(dst_fd, "wb") as fo:
-        while True:
-            buf = fi.read(COPY_CHUNK)
-            if not buf:
-                break
-            fo.write(buf)
-            h.update(buf)
-            n += len(buf)
-        fo.flush()
-        os.fsync(fo.fileno())
-    return h.hexdigest(), n
+    dst_fd = os.open(dst, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        with os.fdopen(src_fd, "rb") as fi:
+            while True:
+                buf = fi.read(COPY_CHUNK)
+                if not buf:
+                    break
+                mv = memoryview(buf)
+                while mv:                       # os.write may short-write; drain it
+                    mv = mv[os.write(dst_fd, mv):]
+                h.update(buf)
+                n += len(buf)
+        os.fsync(dst_fd)
+    except BaseException:
+        os.close(dst_fd)
+        raise
+    return h.hexdigest(), n, dst_fd
 
 
-def sha256_of(path):
+def fd_sha256(fd):
+    os.lseek(fd, 0, os.SEEK_SET)
     h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for buf in iter(lambda: f.read(COPY_CHUNK), b""):
-            h.update(buf)
+    while True:
+        b = os.read(fd, COPY_CHUNK)
+        if not b:
+            break
+        h.update(b)
     return h.hexdigest()
 
 
@@ -102,27 +115,37 @@ def restore_one(link, scratch_roots, cold_roots, keep_cold, verbose):
     part = link + ".scratch-restoring"
     try:
         if os.path.lexists(part):
-            os.unlink(part)
-        src_sha, n = copy_and_hash(target, part)
-        if n != tst.st_size or sha256_of(part) != src_sha:
-            os.unlink(part)
-            log(f"FAILED {link}: verification mismatch (left as-is)")
-            return False
-        shutil.copystat(target, part)
-        if os.geteuid() == 0:  # admin restore: preserve the original owner
-            os.chown(part, tst.st_uid, tst.st_gid)
-        # the temp reflects the cold copy as it was; if the target changed during the
-        # copy/verify, don't swap in a now-stale local file — leave the symlink as-is.
+            os.unlink(part)               # clear any stale/planted temp (no follow)
+        src_sha, n, fd = copy_and_hash(target, part)
         try:
-            tcur = os.stat(target)
-        except OSError:
-            tcur = None
-        if tcur is None or (tcur.st_ino, tcur.st_size, tcur.st_mtime_ns,
-                            tcur.st_ctime_ns) != (tst.st_ino, tst.st_size,
-                                                  tst.st_mtime_ns, tst.st_ctime_ns):
-            os.unlink(part)
-            log(f"skip {link}: cold target changed during restore — left the symlink")
-            return False
+            # verify + set metadata THROUGH the fd (never re-resolving `part`).
+            if n != tst.st_size or fd_sha256(fd) != src_sha:
+                os.unlink(part)
+                log(f"FAILED {link}: verification mismatch (left as-is)")
+                return False
+            os.fchmod(fd, stat.S_IMODE(tst.st_mode))
+            os.utime(fd, ns=(tst.st_atime_ns, tst.st_mtime_ns))
+            if os.geteuid() == 0:  # admin restore: preserve the original owner
+                os.fchown(fd, tst.st_uid, tst.st_gid)
+            os.fsync(fd)
+            # if the cold target changed during copy/verify, don't swap in a stale
+            # local copy — leave the symlink as-is.
+            try:
+                tcur = os.stat(target)
+            except OSError:
+                tcur = None
+            if tcur is None or (tcur.st_ino, tcur.st_size, tcur.st_mtime_ns,
+                                tcur.st_ctime_ns) != (tst.st_ino, tst.st_size,
+                                                      tst.st_mtime_ns, tst.st_ctime_ns):
+                os.unlink(part)
+                log(f"skip {link}: cold target changed during restore — left the symlink")
+                return False
+            # ensure `part` is still our fd's inode (not swapped) before publishing.
+            lp = os.lstat(part)
+            if stat.S_ISLNK(lp.st_mode) or lp.st_ino != os.fstat(fd).st_ino:
+                raise OSError(f"{part} was swapped before publish")
+        finally:
+            os.close(fd)
         os.replace(part, link)  # atomically replace the symlink with the real file
         fsync_dir(os.path.dirname(link))  # make the local rename durable
     except OSError as e:

@@ -22,7 +22,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import stat
 import subprocess
 import sys
@@ -63,33 +62,45 @@ def capacity_pct(size, free):
 
 
 def copy_and_hash(src, dst):
-    """Stream src -> dst computing src's sha256 in one pass. Returns (sha, nbytes).
+    """Stream src -> dst computing src's sha256. Returns (sha, nbytes, dst_fd).
 
-    Both ends are opened O_NOFOLLOW so a symlink swapped in at either path (the job
-    runs as root on a no_root_squash export) is refused rather than followed.
+    dst is created O_CREAT|O_EXCL|O_NOFOLLOW (no pre-existing/symlinked temp) and its
+    fd is LEFT OPEN so the caller verifies + sets metadata THROUGH the fd, never
+    re-resolving the path. A user who can write in the dir then can't swap the temp for
+    a symlink between steps to redirect a root-run chown/chmod/verify. src is O_NOFOLLOW
+    too. The caller owns closing dst_fd.
     """
     h = hashlib.sha256()
     n = 0
     src_fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
-    dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(src_fd, "rb") as fi, os.fdopen(dst_fd, "wb") as fo:
-        while True:
-            buf = fi.read(COPY_CHUNK)
-            if not buf:
-                break
-            fo.write(buf)
-            h.update(buf)
-            n += len(buf)
-        fo.flush()
-        os.fsync(fo.fileno())
-    return h.hexdigest(), n
+    dst_fd = os.open(dst, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        with os.fdopen(src_fd, "rb") as fi:
+            while True:
+                buf = fi.read(COPY_CHUNK)
+                if not buf:
+                    break
+                mv = memoryview(buf)
+                while mv:                       # os.write may short-write; drain it
+                    mv = mv[os.write(dst_fd, mv):]
+                h.update(buf)
+                n += len(buf)
+        os.fsync(dst_fd)
+    except BaseException:
+        os.close(dst_fd)
+        raise
+    return h.hexdigest(), n, dst_fd
 
 
-def sha256_of(path):
+def fd_sha256(fd):
+    """sha256 of an open fd's contents (rewinds first)."""
+    os.lseek(fd, 0, os.SEEK_SET)
     h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for buf in iter(lambda: f.read(COPY_CHUNK), b""):
-            h.update(buf)
+    while True:
+        b = os.read(fd, COPY_CHUNK)
+        if not b:
+            break
+        h.update(b)
     return h.hexdigest()
 
 
@@ -107,8 +118,10 @@ def open_manifest(state_dir):
     The scratch root is group-writable by lab members, so a user could plant a
     symlink at .scratch-overflow or manifest.jsonl to redirect this root-run write.
     Refuse to use a state dir that isn't a real root-owned directory, and open the
-    file O_NOFOLLOW. Returns an fp, or None (manifest skipped — it's an audit log,
-    non-critical; the archive symlinks are the source of truth for restore).
+    file O_NOFOLLOW. The dir is 0700 and the file 0600, ROOT-ONLY: the manifest lists
+    paths from users' private (0700) per-user subtrees, so it must not be readable by
+    the (setgid) lab group. Returns an fp, or None (manifest skipped — it's an audit
+    log, non-critical; the archive symlinks are the source of truth for restore).
     """
     try:
         ds = os.lstat(state_dir)
@@ -116,15 +129,16 @@ def open_manifest(state_dir):
             log(f"WARNING: {state_dir} is not a root-owned dir (symlink/planted?) — "
                 "skipping manifest this run")
             return None
+        os.chmod(state_dir, 0o700)  # enforce root-only even if it pre-existed group-readable
     except FileNotFoundError:
         try:
-            os.mkdir(state_dir, 0o750)
+            os.mkdir(state_dir, 0o700)
         except OSError as e:
             log(f"WARNING: cannot create {state_dir}: {e} — skipping manifest")
             return None
     try:
         fd = os.open(os.path.join(state_dir, "manifest.jsonl"),
-                     os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o640)
+                     os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
         return os.fdopen(fd, "a")
     except OSError as e:
         log(f"WARNING: cannot open manifest: {e} — skipping manifest")
@@ -258,26 +272,36 @@ def archive_one(path, scratch, cold, manifest_fp, dry_run, reason="capacity"):
     part = dest + ".part"
     try:
         makedirs_mirror(scratch, cold, rel)  # mirror source dir owner/mode into cold
-        src_sha, nbytes = copy_and_hash(path, part)
-        if nbytes != size:
-            # source changed under us mid-copy — bail, leave local untouched
-            os.unlink(part)
-            log(f"skip {rel}: size changed during copy ({size}->{nbytes})")
-            return 0
-        # verify the cold copy independently by re-reading it
-        if sha256_of(part) != src_sha:
-            os.unlink(part)
-            log(f"skip {rel}: checksum mismatch after copy (NOT removed locally)")
-            return 0
-        # preserve owner/group (root + no_root_squash) and mode/times
-        os.chown(part, st.st_uid, st.st_gid)
-        shutil.copystat(path, part)
+        if os.path.lexists(part):
+            os.unlink(part)                  # clear any stale/planted temp (no follow)
+        src_sha, nbytes, fd = copy_and_hash(path, part)
+        try:
+            if nbytes != size:
+                os.unlink(part)
+                log(f"skip {rel}: size changed during copy ({size}->{nbytes})")
+                return 0
+            # verify + set metadata THROUGH the fd (never re-resolving `part`), so a
+            # swapped-in symlink can't redirect the checksum/chown/chmod/utime.
+            if fd_sha256(fd) != src_sha:
+                os.unlink(part)
+                log(f"skip {rel}: checksum mismatch after copy (NOT removed locally)")
+                return 0
+            os.fchown(fd, st.st_uid, st.st_gid)            # owner (root + no_root_squash)
+            os.fchmod(fd, stat.S_IMODE(st.st_mode))        # mode
+            os.utime(fd, ns=(st.st_atime_ns, st.st_mtime_ns))
+            os.fsync(fd)
+            # ensure `part` still IS our fd's inode (not swapped) right before publish.
+            lp = os.lstat(part)
+            if stat.S_ISLNK(lp.st_mode) or lp.st_ino != os.fstat(fd).st_ino:
+                raise OSError(f"{part} was swapped before publish")
+        finally:
+            os.close(fd)
         os.replace(part, dest)  # atomic publish of the verified cold copy
         fsync_dir(os.path.dirname(dest))
     except OSError as e:
         # any failure: clean the partial, leave the local file in place
         try:
-            if os.path.exists(part):
+            if os.path.lexists(part):
                 os.unlink(part)
         except OSError:
             pass
