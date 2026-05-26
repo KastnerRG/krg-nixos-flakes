@@ -77,12 +77,16 @@ def fd_sha256(fd):
 
 
 def fsync_dir(path):
+    # Best-effort: never raises. Called AFTER the rename/unlink has committed, so a
+    # fsync failure is a warning, not a reason to mis-report the op as failed.
     try:
         fd = os.open(path, os.O_DIRECTORY)
     except OSError:
         return
     try:
         os.fsync(fd)
+    except OSError as e:
+        log(f"warning: fsync of {path} failed: {e} (operation already committed)")
     finally:
         os.close(fd)
 

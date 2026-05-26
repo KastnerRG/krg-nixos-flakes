@@ -347,6 +347,13 @@ in {
           message = "krg.scratch.projects.${name}: perUser.homeLink requires perUser.enable.";
         }
         {
+          # The per-user hook gates creation on ownerGroup membership; without an
+          # ownerGroup it would create dirs for every user, contradicting the isolation
+          # model the option documents. Require a group when perUser is on.
+          assertion = !proj.perUser.enable || proj.ownerGroup != null;
+          message = "krg.scratch.projects.${name}: perUser.enable requires ownerGroup (per-user dirs are gated on lab-group membership).";
+        }
+        {
           # The link is laid under $HOME; reject anything that could escape it.
           assertion = proj.perUser.homeLink == null || !(badHomeLink proj.perUser.homeLink);
           message = "krg.scratch.projects.${name}: perUser.homeLink must be a single path segment under $HOME (no \"/\", not \".\"/\"..\").";
