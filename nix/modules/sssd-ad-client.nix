@@ -262,8 +262,9 @@ in {
         cfg.sudoGroups}
     '';
 
-    # kinit/klist for domain users.
-    environment.systemPackages = [ pkgs.krb5 ];
+    # kinit/klist for domain users; adcli for the one-time domain JOIN (and re-join
+    # after a rebuild/DR) — without it the documented `adcli join` is "command not found".
+    environment.systemPackages = [ pkgs.krb5 pkgs.adcli ];
 
     # Resolve the DC without depending on it for DNS (member hosts). On the DC this
     # is its own name→IP, harmless. mkDefault so a host can override.
