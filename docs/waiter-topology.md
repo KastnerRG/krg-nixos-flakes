@@ -120,7 +120,7 @@ flowchart LR
 
   subgraph waiter["waiter (local)"]
     home["/home/&lt;user&gt;<br/>(NFS mount, AD home)"]
-    scratch["/scratch/krg<br/><b>plain ZFS mount</b> (no FUSE)<br/>owned by 'Kastner Research Group' (2770)<br/>per-user /scratch/krg/&lt;user&gt;"]
+    scratch["/scratch/krg<br/><b>plain ZFS mount</b> (no FUSE)<br/>owned by 'Kastner Research Group' (3770 setgid+sticky)<br/>per-user /scratch/krg/&lt;user&gt;"]
     local["/local/&lt;user&gt;<br/>node-local NVMe cache (0700)<br/>~/.vscode-server, ~/.cursor-server (symlinks)<br/>XDG_CACHE_HOME, HF_HOME, torch, conda-pkgs, npm"]
   end
 

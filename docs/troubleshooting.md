@@ -138,13 +138,13 @@ within the last 14 days (`--min-age-days`), so nothing is eligible to demote.
 couldn't **resolve** `Kastner Research Group`, so it left the tree root-owned/admin-only
 (tolerant, by design). The group already exists in AD; the usual reason it doesn't
 resolve is SSSD/AD lookup not being healthy yet (host not joined, DNS can't reach the
-DC, or `sssd.service` down — see the SSSD/DNS-flap note above). (This is a **real 2770**
+DC, or `sssd.service` down — see the SSSD/DNS-flap note above). (This is a **real 3770**
 now — the old autotier `2771`/`o+x` workaround is gone.)
 **Fix:** make sure the group resolves — `getent group 'Kastner Research Group'` returns
 a line (host joined, DNS to the DC working, `sssd.service` active) — then
 `systemctl restart krg-scratch-perms-krg`; verify:
 ```bash
-stat -c '%a %G' /scratch/krg                 # want 2770 'Kastner Research Group'
+stat -c '%a %G' /scratch/krg                 # want 3770 'Kastner Research Group'
 ```
 
 ---

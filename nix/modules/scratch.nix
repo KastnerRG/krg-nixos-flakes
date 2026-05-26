@@ -24,9 +24,9 @@
 # automatic, recoverable, no-policing capacity backstop the design calls for.
 #
 # LAB ISOLATION (krg and e4e are INDEPENDENT labs sharing this box): each lab's
-# /scratch tree is chmod 2770, group = that lab's AD group (krg -> "Kastner Research
+# /scratch tree is chmod 3770 (setgid + sticky), group = that lab's AD group (krg -> "Kastner Research
 # Group"), so one lab can't read another's data on shared hardware. Because this is
-# a plain ZFS mount (no FUSE create-impersonation quirk), it's a real 2770 — no o+x
+# a plain ZFS mount (no FUSE create-impersonation quirk), it's a real 3770 — no o+x
 # hack is needed (that was an autotier-only workaround). With `perUser.enable`, each
 # lab member also gets a private <mountPoint>/<user> auto-created on login (a
 # pam_exec session hook), guarded on the mount being active (fail-closed, same as
@@ -80,16 +80,21 @@ let
 
   # --- ownership / isolation step (a post-mount oneshot) ----------------------
   # Runs AFTER the mount is active (RequiresMountsFor) and after sssd, so the AD lab
-  # group resolves. chmod 2770 the scratch root; chgrp to the lab group only if it
+  # group resolves. chmod 3770 the scratch root; chgrp to the lab group only if it
   # resolves — TOLERANT so /scratch still comes up (root-owned, admin-only) before
   # the AD join / group creation lands, then tightens on the next start. The group
   # name has spaces ("Kastner Research Group"), so it's quoted.
+  #
+  # 3770 = setgid (new entries inherit the lab group) + STICKY. The sticky bit is what
+  # makes per-user isolation hold at the root: the tree is group-writable so members
+  # can create their own per-user dir, but sticky means a member can only rename/delete
+  # entries they OWN — they can't blow away another user's /scratch/<user> tree.
   mkPermsScript = name: proj:
     pkgs.writeShellScript "krg-scratch-perms-${name}" ''
       set -u
       mp=${escapeShellArg proj.mountPoint}
-      ${pkgs.coreutils}/bin/chmod 2770 "$mp" || \
-        echo "krg.scratch[${name}]: chmod 2770 $mp failed" >&2
+      ${pkgs.coreutils}/bin/chmod 3770 "$mp" || \
+        echo "krg.scratch[${name}]: chmod 3770 $mp failed" >&2
       ${optionalString (proj.ownerGroup != null) ''
         if ${pkgs.getent}/bin/getent group ${escapeShellArg proj.ownerGroup} >/dev/null 2>&1; then
           ${pkgs.coreutils}/bin/chgrp ${escapeShellArg proj.ownerGroup} "$mp" || \
@@ -228,7 +233,7 @@ let
         default = null;
         example = "Kastner Research Group";
         description = ''
-          Lab group that owns this scratch tree (mode 2770, setgid) so other labs are
+          Lab group that owns this scratch tree (mode 3770, setgid+sticky) so other labs are
           denied. An AD/SSSD group (may contain spaces). null = leave root-owned
           (admin-only). When set, the perms step orders after sssd so it resolves.
         '';
@@ -395,7 +400,7 @@ in {
       ) projectList);
 
       # /scratch parent + each lab mountpoint must exist before the mounts. 0755 is
-      # the bare mountpoint; the perms step tightens the mounted root to 2770.
+      # the bare mountpoint; the perms step tightens the mounted root to 3770.
       # /scratch + each lab mountpoint, plus each overflow lab's cold mountpoint (and
       # its parent) so the NFS mount target exists at boot with admin-only perms. The
       # NFS mount overlays it; the local dir only shows through when NFS is down (and
@@ -410,7 +415,7 @@ in {
           ]) projectList);
 
       systemd.services = listToAttrs (concatMap ({ name, proj }:
-        # ---- ownership/isolation: chmod 2770 + chgrp lab group, after the mount ----
+        # ---- ownership/isolation: chmod 3770 + chgrp lab group, after the mount ----
         [ (nameValuePair "krg-scratch-perms-${name}" {
             description = "Set ownership/mode on ${proj.mountPoint} (lab isolation)";
             wantedBy = [ "multi-user.target" ];

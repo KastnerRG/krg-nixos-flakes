@@ -71,9 +71,10 @@
   # See docs/scratch-greenfield.md and the disko-config.nix "WHY THIS LAYOUT" block.
   #
   # LAB ISOLATION: krg and e4e are INDEPENDENT labs sharing this box, so /scratch/krg is
-  # owned by the "Kastner Research Group" AD group, mode 2770 (a real ZFS-mount 2770 now;
-  # the old autotier o+x hack is gone). The "Kastner Research Group" group already
-  # exists in Samba AD (it backed the prior deploy), so the perms step applies 2770
+  # owned by the "Kastner Research Group" AD group, mode 3770 (setgid+sticky — a real
+  # ZFS-mount mode now; the old autotier o+x hack is gone; sticky stops a member
+  # deleting another member's per-user dir). The "Kastner Research Group" group already
+  # exists in Samba AD (it backed the prior deploy), so the perms step applies 3770
   # as soon as SSSD resolves it after the domain re-join; it stays tolerant
   # (/scratch/krg root-owned/admin-only) if the group can't yet resolve, so /scratch
   # always comes up — then tightens on the next start.
