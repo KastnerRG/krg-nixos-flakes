@@ -341,6 +341,16 @@ in {
       # only when some lab uses overflow.
       environment.systemPackages = optionals anyOverflow [ scratchRestore scratchOverflow ];
 
+      # Tell scratch-restore which cold areas are legitimate, so it refuses to follow
+      # or delete a symlink target outside them (a lab member could plant a malicious
+      # symlink under /scratch and trick a root restore into unlinking an arbitrary
+      # file). Colon-separated, mirrors each overflow lab's coldMountPoint.
+      environment.variables = mkIf anyOverflow {
+        SCRATCH_COLD_ROOTS = concatStringsSep ":"
+          (map ({ proj, ... }: proj.overflow.coldMountPoint)
+            (filter ({ proj, ... }: proj.overflow.enable) projectList));
+      };
+
       # The scratch dataset mount (plain ZFS, nofail so a hiccup never blocks boot)
       # plus, per overflow-enabled lab, the cold NFS area (hardened posture).
       fileSystems = mkMerge (concatMap ({ name, proj }:

@@ -101,8 +101,12 @@ def fsync_dir(path):
         os.close(fd)
 
 
-def gather_candidates(scratch, min_atime, skip_prefixes):
+def gather_candidates(scratch, min_atime, skip_dir_prefixes, skip_exact):
     """Regular, non-symlink files under scratch not accessed since min_atime.
+
+    `skip_dir_prefixes` are directory paths (each ending in os.sep) whose subtrees are
+    excluded; `skip_exact` are individual file paths excluded by exact match (so e.g.
+    the breadcrumb note isn't a prefix that also hides "WHERE-IS-MY-DATA.txt.bak").
 
     Builds one in-memory list of (atime, size, path) and sorts it. That's bounded in
     practice: sharding is the data-layout standard here (a few large shards, not
@@ -112,12 +116,14 @@ def gather_candidates(scratch, min_atime, skip_prefixes):
     """
     cands = []
     for root, dirs, files in os.walk(scratch, topdown=True):
-        # never descend into the state dir
+        # never descend into an excluded subtree (e.g. the state dir)
         dirs[:] = [d for d in dirs if os.path.join(root, d) + os.sep
-                   not in skip_prefixes]
+                   not in skip_dir_prefixes]
         for name in files:
             p = os.path.join(root, name)
-            if any(p.startswith(pref) for pref in skip_prefixes):
+            if p in skip_exact:
+                continue
+            if any(p.startswith(pref) for pref in skip_dir_prefixes):
                 continue
             try:
                 st = os.lstat(p)
@@ -302,10 +308,11 @@ def main():
     # One tree walk -> everything idle longer than the capacity-sweep floor
     # (min-age-days), coldest first. The TTL and capacity passes both draw from this.
     state_dir = os.path.join(args.scratch, ARCHIVE_DIR)
-    skip_prefixes = {state_dir + os.sep, os.path.join(args.scratch, NOTE_NAME)}
+    skip_dir_prefixes = {state_dir + os.sep}
+    skip_exact = {os.path.join(args.scratch, NOTE_NAME)}
     now = time.time()
     min_atime = now - args.min_age_days * 86400.0
-    cands = gather_candidates(args.scratch, min_atime, skip_prefixes)
+    cands = gather_candidates(args.scratch, min_atime, skip_dir_prefixes, skip_exact)
     if not cands:
         log("no eligible files (all accessed too recently or already archived)")
         return 0
@@ -339,6 +346,11 @@ def main():
         # --- capacity pass: only if still over the high-water mark after the TTL pass ---
         if not args.dry_run:
             size, alloc, free = pool_bytes(args.zpool, args.pool)
+            pct = capacity_pct(size, free)
+        else:
+            # nothing was actually moved; estimate the post-TTL fullness so the dry-run
+            # capacity decision reflects what the TTL sweep WOULD have freed.
+            free += freed
             pct = capacity_pct(size, free)
         if pct >= args.high:
             target_free = size * (1.0 - args.low / 100.0)

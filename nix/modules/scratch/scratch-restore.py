@@ -25,12 +25,13 @@ def log(msg):
 
 
 def copy_and_hash(src, dst):
-    # dst opened O_NOFOLLOW so a symlink swapped in at the temp path is refused, not
-    # followed (restore may run as root); src is the already-realpath'd cold file.
+    # Both ends opened O_NOFOLLOW: a symlink swapped in at either path after our
+    # earlier realpath/stat (restore may run as root) is refused, not followed.
     h = hashlib.sha256()
     n = 0
+    src_fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
     dst_fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
-    with open(src, "rb") as fi, os.fdopen(dst_fd, "wb") as fo:
+    with os.fdopen(src_fd, "rb") as fi, os.fdopen(dst_fd, "wb") as fo:
         while True:
             buf = fi.read(COPY_CHUNK)
             if not buf:
@@ -62,7 +63,11 @@ def fsync_dir(path):
         os.close(fd)
 
 
-def restore_one(link, keep_cold, verbose):
+def under_any(path, roots):
+    return any(path == r or path.startswith(r + os.sep) for r in roots)
+
+
+def restore_one(link, allowed_roots, keep_cold, verbose):
     """Restore a single archived symlink. Returns True on a successful restore."""
     if not os.path.islink(link):
         if verbose:
@@ -72,6 +77,14 @@ def restore_one(link, keep_cold, verbose):
     if not os.path.isabs(target):
         target = os.path.join(os.path.dirname(link), target)
     target = os.path.realpath(target)
+    # Containment: /scratch is writable by lab members, so a planted symlink could
+    # point anywhere. We copy FROM and (by default) unlink the target — running as
+    # root that could delete an arbitrary file. Only act on targets that resolve
+    # inside a configured cold area.
+    if not under_any(target, allowed_roots):
+        log(f"REFUSE {link}: target {target} is outside the cold area(s) "
+            f"{allowed_roots} — not an archived scratch file (suspicious symlink?)")
+        return False
     if not os.path.isfile(target):
         log(f"skip {link}: archive target missing or not a file "
             f"({target}) — is NFS mounted?")
@@ -139,21 +152,33 @@ def main():
     ap.add_argument("paths", nargs="+", help="archived file(s) or directories to restore")
     ap.add_argument("--keep-cold", action="store_true",
                     help="keep the NFS copy after restoring (default: remove it)")
+    ap.add_argument("--cold-root", action="append", default=[], metavar="DIR",
+                    help="allowed cold-area root a symlink target must resolve under "
+                         "(repeatable). Defaults to $SCRATCH_COLD_ROOTS (colon-separated).")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
+
+    # Build the set of allowed cold roots (flags + env), realpath'd for comparison.
+    roots = list(args.cold_root)
+    roots += [r for r in os.environ.get("SCRATCH_COLD_ROOTS", "").split(":") if r]
+    allowed_roots = sorted({os.path.realpath(r) for r in roots})
+    if not allowed_roots:
+        log("no cold-area root configured — set $SCRATCH_COLD_ROOTS or pass "
+            "--cold-root DIR (refusing to follow/delete arbitrary symlink targets)")
+        return 2
 
     restored = 0
     failed = 0
     for p in args.paths:
         if os.path.isdir(p) and not os.path.islink(p):
             for link in walk_links(p):
-                if restore_one(link, args.keep_cold, args.verbose):
+                if restore_one(link, allowed_roots, args.keep_cold, args.verbose):
                     restored += 1
                 else:
                     # every link under the dir is an archived file we meant to restore
                     failed += 1
         else:
-            if restore_one(p, args.keep_cold, args.verbose):
+            if restore_one(p, allowed_roots, args.keep_cold, args.verbose):
                 restored += 1
             elif os.path.islink(p):
                 failed += 1
