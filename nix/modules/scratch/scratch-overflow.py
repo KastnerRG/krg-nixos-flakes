@@ -158,11 +158,24 @@ def makedirs_mirror(scratch, cold, rel):
             continue
         cur_src = os.path.join(cur_src, part)
         cur_cold = os.path.join(cur_cold, part)
-        if not os.path.isdir(cur_cold):
+        # Refuse a symlink at any cold component: a symlinked dir (even one resolving
+        # back INSIDE cold) would let our root-run chown/chmod/write land in the wrong
+        # place and break per-user isolation. lstat (no follow) + S_ISLNK check.
+        try:
+            cst = os.lstat(cur_cold)
+            exists = True
+        except FileNotFoundError:
+            exists = False
+        if exists:
+            if stat.S_ISLNK(cst.st_mode):
+                raise OSError(f"cold path component is a symlink: {cur_cold}")
+            if not stat.S_ISDIR(cst.st_mode):
+                raise OSError(f"cold path component is not a directory: {cur_cold}")
+        else:
             os.mkdir(cur_cold)
         try:
             sst = os.stat(cur_src)
-            os.chown(cur_cold, sst.st_uid, sst.st_gid)
+            os.chown(cur_cold, sst.st_uid, sst.st_gid, follow_symlinks=False)
             os.chmod(cur_cold, stat.S_IMODE(sst.st_mode))
         except OSError:
             pass

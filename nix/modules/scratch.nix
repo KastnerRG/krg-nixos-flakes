@@ -369,6 +369,10 @@ in {
         SCRATCH_COLD_ROOTS = concatStringsSep ":"
           (map ({ proj, ... }: proj.overflow.coldMountPoint)
             (filter ({ proj, ... }: proj.overflow.enable) projectList));
+        # scratch mountpoints — restore uses this to keep the link itself inside a
+        # scratch tree (a symlinked dir component can't redirect a root restore out).
+        SCRATCH_ROOTS = concatStringsSep ":"
+          (map ({ proj, ... }: proj.mountPoint) projectList);
       };
 
       # The scratch dataset mount (plain ZFS, nofail so a hiccup never blocks boot)

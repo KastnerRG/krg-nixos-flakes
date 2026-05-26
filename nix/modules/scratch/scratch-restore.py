@@ -67,23 +67,31 @@ def under_any(path, roots):
     return any(path == r or path.startswith(r + os.sep) for r in roots)
 
 
-def restore_one(link, allowed_roots, keep_cold, verbose):
+def restore_one(link, scratch_roots, cold_roots, keep_cold, verbose):
     """Restore a single archived symlink. Returns True on a successful restore."""
     if not os.path.islink(link):
         if verbose:
             log(f"skip {link}: not an archived file (not a symlink)")
         return False
+    # Containment on the LINK itself: a symlinked DIRECTORY component in the link's
+    # parent could make os.replace(part, link) (run as root) write outside /scratch.
+    # Resolve the parent and require it to stay within a configured scratch root.
+    link_parent = os.path.realpath(os.path.dirname(link))
+    if scratch_roots and not under_any(link_parent, scratch_roots):
+        log(f"REFUSE {link}: resolves outside the scratch area(s) {scratch_roots} "
+            f"(symlinked path component?) — not restoring")
+        return False
     target = os.readlink(link)
     if not os.path.isabs(target):
         target = os.path.join(os.path.dirname(link), target)
     target = os.path.realpath(target)
-    # Containment: /scratch is writable by lab members, so a planted symlink could
-    # point anywhere. We copy FROM and (by default) unlink the target — running as
-    # root that could delete an arbitrary file. Only act on targets that resolve
-    # inside a configured cold area.
-    if not under_any(target, allowed_roots):
+    # Containment on the TARGET: /scratch is writable by lab members, so a planted
+    # symlink could point anywhere. We copy FROM and (by default) unlink the target —
+    # running as root that could delete an arbitrary file. Only act on targets that
+    # resolve inside a configured cold area.
+    if not under_any(target, cold_roots):
         log(f"REFUSE {link}: target {target} is outside the cold area(s) "
-            f"{allowed_roots} — not an archived scratch file (suspicious symlink?)")
+            f"{cold_roots} — not an archived scratch file (suspicious symlink?)")
         return False
     if not os.path.isfile(target):
         log(f"skip {link}: archive target missing or not a file "
@@ -167,30 +175,38 @@ def main():
     ap.add_argument("--cold-root", action="append", default=[], metavar="DIR",
                     help="allowed cold-area root a symlink target must resolve under "
                          "(repeatable). Defaults to $SCRATCH_COLD_ROOTS (colon-separated).")
+    ap.add_argument("--scratch-root", action="append", default=[], metavar="DIR",
+                    help="allowed scratch root a link must resolve under (repeatable). "
+                         "Defaults to $SCRATCH_ROOTS (colon-separated).")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
-    # Build the set of allowed cold roots (flags + env), realpath'd for comparison.
-    roots = list(args.cold_root)
-    roots += [r for r in os.environ.get("SCRATCH_COLD_ROOTS", "").split(":") if r]
-    allowed_roots = sorted({os.path.realpath(r) for r in roots})
-    if not allowed_roots:
+    def build(flag_vals, env_name):
+        vals = list(flag_vals) + [r for r in os.environ.get(env_name, "").split(":") if r]
+        return sorted({os.path.realpath(r) for r in vals})
+
+    # Cold roots (where targets must live) are mandatory: without them we can't tell a
+    # legit archive from a planted symlink, and refusing to follow/delete is fail-safe.
+    cold_roots = build(args.cold_root, "SCRATCH_COLD_ROOTS")
+    if not cold_roots:
         log("no cold-area root configured — set $SCRATCH_COLD_ROOTS or pass "
             "--cold-root DIR (refusing to follow/delete arbitrary symlink targets)")
         return 2
+    # Scratch roots (where links must live) are a best-effort extra containment.
+    scratch_roots = build(args.scratch_root, "SCRATCH_ROOTS")
 
     restored = 0
     failed = 0
     for p in args.paths:
         if os.path.isdir(p) and not os.path.islink(p):
             for link in walk_links(p):
-                if restore_one(link, allowed_roots, args.keep_cold, args.verbose):
+                if restore_one(link, scratch_roots, cold_roots, args.keep_cold, args.verbose):
                     restored += 1
                 else:
                     # every link under the dir is an archived file we meant to restore
                     failed += 1
         else:
-            if restore_one(p, allowed_roots, args.keep_cold, args.verbose):
+            if restore_one(p, scratch_roots, cold_roots, args.keep_cold, args.verbose):
                 restored += 1
             elif os.path.islink(p):
                 failed += 1
