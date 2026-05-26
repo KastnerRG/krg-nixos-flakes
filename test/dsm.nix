@@ -66,12 +66,6 @@ in
     text = ''
       ${prep}
 
-      # Writable UEFI varstore (OVMF).
-      if [ ! -f "$work/OVMF_VARS.fd" ]; then
-        cp ${pkgs.OVMFFull.fd}/FV/OVMF_VARS.fd "$work/OVMF_VARS.fd"
-        chmod u+w "$work/OVMF_VARS.fd"
-      fi
-
       accel=tcg; cpu=max
       if [ -w /dev/kvm ]; then
         accel=kvm; cpu=host
@@ -81,14 +75,14 @@ in
         echo "    users.users.<you>.extraGroups = [ \"kvm\" ];"
       fi
 
-      echo "Booting '$name' (accel=$accel). DSM wizard: http://localhost:5000 | VNC: 127.0.0.1:5900"
+      # SeaBIOS (QEMU default), NOT OVMF/UEFI: RR/redpill loaders page-fault OVMF on
+      # the GRUB→kernel handoff (X64 #PF) — they boot in legacy BIOS mode.
+      echo "Booting '$name' (accel=$accel, SeaBIOS). DSM wizard: http://localhost:5000 | VNC: 127.0.0.1:5900"
       echo "RR menu: DS3622xs+ / DSM 7.3, install from $work/DSM_DS3622xs+_86009.pat"
       exec qemu-system-x86_64 \
         -name "$name" \
         -machine q35,accel="$accel" \
         -cpu "$cpu" -smp 2 -m 4096 \
-        -drive if=pflash,format=raw,unit=0,readonly=on,file=${pkgs.OVMFFull.fd}/FV/OVMF_CODE.fd \
-        -drive if=pflash,format=raw,unit=1,file="$work/OVMF_VARS.fd" \
         -device ich9-ahci,id=ahci \
         -drive id=loader,file="$work/rr.img",format=raw,if=none \
         -device ide-hd,bus=ahci.0,drive=loader,bootindex=1 \

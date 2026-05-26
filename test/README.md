@@ -66,7 +66,7 @@ nix run ./test#dsm-vm [vm-name]        # default name: dsm-prod-mirror
 ```
 
 Both materialize a writable copy of the pinned RR loader + a 32 GB data disk and stage
-the pinned `.pat`. `dsm-vm-qemu` boots QEMU directly (OVMF + e1000e user-mode net with
+the pinned `.pat`. `dsm-vm-qemu` boots QEMU directly (SeaBIOS + e1000e user-mode net with
 a `:5000` host-forward + VNC + serial); `dsm-vm` renders `domains/dsm-vm.xml` and
 `virsh define`/`start`s it on `qemu:///system`. Either way: drive the RR menu
 (DS3622xs+ / DSM 7.3, install from the staged `.pat`), run the DSM wizard, and snapshot

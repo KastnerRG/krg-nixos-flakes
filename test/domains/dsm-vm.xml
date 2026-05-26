@@ -1,14 +1,14 @@
 <!-- libvirt domain template for an XPEnology DSM rig VM (DS3622xs+/broadwellnk, DSM 7.3).
      Placeholders (@VM_NAME@/@BOOT_IMG@/@DATA_IMG@) are substituted by the dsm-vm app.
-     UEFI (OVMF, firmware autoselect) + emulated TPM 2.0 (swtpm). Disk bus + NIC model
-     are the usual XPEnology-friendly choices (SATA disks, e1000e NIC); tune per RR docs
-     if the loader doesn't detect them. -->
+     Legacy BIOS (SeaBIOS) — RR/redpill loaders page-fault OVMF/UEFI on the GRUB→kernel
+     handoff. Disk bus + NIC are the usual XPEnology-friendly choices (SATA disks,
+     e1000e NIC); tune per RR docs if the loader doesn't detect them. -->
 <domain type="kvm">
   <name>@VM_NAME@</name>
   <memory unit="GiB">4</memory>
   <vcpu>2</vcpu>
 
-  <os firmware="efi">
+  <os>
     <type arch="x86_64" machine="q35">hvm</type>
     <boot dev="hd"/>
   </os>
@@ -44,11 +44,6 @@
       <source network="default"/>
       <model type="e1000e"/>
     </interface>
-
-    <!-- emulated TPM 2.0 via swtpm (enabled in the libvirt-host module) -->
-    <tpm model="tpm-crb">
-      <backend type="emulator" version="2.0"/>
-    </tpm>
 
     <serial type="pty"><target port="0"/></serial>
     <console type="pty"><target type="serial" port="0"/></console>
