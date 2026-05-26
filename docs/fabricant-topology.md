@@ -46,7 +46,7 @@ flowchart TB
   nfs --> e_home & e_scr
 
   e_home -->|"mounted as /home (rw,sync,no_root_squash)"| waiterN[["waiter 137.110.161.67<br/>NFS client"]]
-  e_scr -->|"autotier cold tier (rw,sync,no_root_squash)"| waiterN
+  e_scr -->|"scratch cold overflow (rw,sync,no_root_squash)"| waiterN
   data -->|"backs the VM vdisk (zvol)"| ldap[["krg-ldap VM · VMID 100<br/>137.110.161.109"]]
 ```
 
@@ -57,11 +57,11 @@ flowchart TB
 | `rpool/var-lib-vz` | `/var/lib/vz` | ISOs / templates / backups | (uncapped; optional 1T) |
 | `rpool/nfs` | `/srv/nfs` | NFS export parent | **reservation 20T**, no quota |
 | `rpool/nfs/home` | `/srv/nfs/home` | AD user homes (fsid 11) | inherits; autosnap on |
-| `rpool/nfs/scratch-krg` | `/srv/nfs/scratch-krg` | waiter autotier cold tier (fsid 12) | recordsize 1M |
+| `rpool/nfs/scratch-krg` | `/srv/nfs/scratch-krg` | waiter scratch cold overflow (fsid 12) | recordsize 1M |
 
 > `no_root_squash` on both exports is deliberate: waiter's `pam_mkhomedir` (home)
-> and `autotier` (scratch) run as **root** on the client and must create/chown
-> files preserving owner/group. Both exports are scoped to waiter's IP only. The
+> and the `scratch-overflow` job (scratch) run as **root** on the client and must
+> create/chown files preserving owner/group. Both exports are scoped to waiter's IP only. The
 > former generic `bulk` export is retired (`zfs destroy rpool/nfs/bulk` once
 > confirmed empty — done out-of-band).
 

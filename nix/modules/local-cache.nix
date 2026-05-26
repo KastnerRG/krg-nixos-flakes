@@ -15,10 +15,11 @@
 # many-small-file workloads — exactly what NFS is worst at (latency per stat/open,
 # and inotify doesn't propagate over NFS so file watchers fall back to polling).
 # They're also regenerable, so they don't deserve durable, network-served home
-# space. WHY not /scratch (krg.scratch / autotier): that namespace is FUSE + tiered
-# and DEMOTES cold files onto the NFS tier — the opposite of what a dev cache wants,
-# and it fails closed on the NFS tier. This module is the deliberately boring
-# counterpart: one local NVMe dataset, fastest path, no network dependency.
+# space. WHY not /scratch (krg.scratch): that namespace DEMOTES cold files onto NFS
+# when the pool fills (and reads of demoted files then go over the network) — the
+# opposite of what a dev cache wants. This module is the deliberately boring
+# counterpart: one local NVMe dataset, fastest path, no network dependency, never
+# overflows.
 #
 # WAITER TOPOLOGY (the only consumer today): nvmepool/local -> /local (legacy mount,
 # disko-config.nix). It is OFF the @blank rollback (its own dataset, like
