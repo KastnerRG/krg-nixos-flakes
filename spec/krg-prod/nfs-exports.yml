@@ -1,22 +1,36 @@
-# NFS exports on e4e-nas — declarative source of truth.
-# Consumed by the `synology_nfs` Ansible role; exporter reads the live rules back.
-# Seeded from the build sheet (docs/e4e-nas-dsm.md): one export today.
+# NFS on e4e-nas (the krg-prod NAS) — declarative source of truth.
+# Consumed by the `synology_nfs` Ansible role (synowebapi); the exporter reads the live
+# state back into this shape. Git is truth; UI = drift (ADR 0001).
 #
-# ⚠️ uid MISMATCH CAVEAT (runbook §2): DSM/winbind maps AD identities with RID
-# mapping; the rest of the fleet (SSSD) uses algorithmic mapping → the same AD user
-# gets different uid/gid on the NAS vs Linux clients. SMB is SID-based (fine); NFS
-# is uid-based and will NOT line up. Verify uids on the fabricant side before
-# trusting this export.
+# Two parts: global service settings (`nfs:`) + per-share export rules (`exports:`). Rule
+# objects are DSM-NATIVE — i.e. the exact shape `SYNO.Core.FileServ.NFS.SharePrivilege`
+# load/save uses — so the exporter round-trips them verbatim. Validated on the DSM 7.3 rig.
+#
+# ⚠️ uid MISMATCH CAVEAT (runbook §2): DSM/winbind RID-maps AD identities; the rest of the
+# fleet (SSSD) uses algorithmic mapping → the same AD user gets a different uid/gid on the
+# NAS vs Linux clients. SMB is SID-based (fine); NFS is uid-based and will NOT line up.
+# Verify uids on the fabricant side before trusting this export.
+#
+# Rule fields (validated): client; privilege rw|ro; root_squash (DSM short enum — "root"
+# renders as no_root_squash, i.e. root NOT squashed); async; insecure (allow non-priv
+# source ports); crossmnt; security_flavor {sys,kerberos,kerberos_integrity,kerberos_privacy}.
+# ⚠️ Confirm the exact root_squash/security/async values against the LIVE box's rule
+# (`--tags export` → load) BEFORE the reset — the live box is authoritative, this is a seed.
+
+nfs:
+  enable: true
+  nfsv4: true
+  v4_domain: ""        # set only if using NFSv4 idmap
 
 exports:
+  # fabricant-prod-share = /volume2/fabricant-prod-share (created by synology_shares).
+  # Part of the cross-backup plan (fabricant <-> e4e-nas), so root is not squashed.
   - share: fabricant-prod-share
-    path: /volume2/fabricant-prod-share
-    clients:
-      - host: fabricant-prod.ucsd.edu
-        # TODO confirm exact options against the live rule (squash / security / async).
-        # Build sheet shows rw enabled; fill the rest from `synonfs`/the live export.
-        options:
-          rw: true
-          # squash: root_squash | no_root_squash   # TODO confirm
-          # security: sys                            # TODO confirm
-          async: false
+    rules:
+      - client: fabricant-prod.ucsd.edu
+        privilege: rw
+        root_squash: root          # "root" => no_root_squash on the wire
+        async: false
+        insecure: false
+        crossmnt: true
+        security_flavor: { sys: true, kerberos: false, kerberos_integrity: false, kerberos_privacy: false }
