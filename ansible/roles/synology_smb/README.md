@@ -48,5 +48,6 @@ gates to a read-only GET.
 Validated on the test rig (`test/`, DSM 7.3.2-86009): forced drift → `--check`
 (`WOULD-CHANGE`) → apply (`CHANGED`, `smb.conf` renders `SMB3`/`SMB3`) → re-run (`OK
 no-change`). A clean full `ansible-playbook` run awaits the rig getting key auth + NOPASSWD
-sudo (password-become over DSM's old sshd is flaky). A unit test for `apply_smb.py`'s pure
-helpers (`desired_from_args`, set-arg building) is a tracked follow-up.
+sudo (password-become over DSM's old sshd is flaky). `apply_smb.py` has pytest unit tests
+([`files/test_apply_smb.py`](files/test_apply_smb.py)) covering the type mapping, full-object
+set-arg building, and the OK/WOULD-CHANGE/CHANGED/FAIL contract (`pytest files/`, no DSM needed).

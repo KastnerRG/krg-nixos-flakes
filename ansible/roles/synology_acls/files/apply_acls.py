@@ -29,15 +29,18 @@ def _run(*args):
     return subprocess.run([SYNOSHARE, *args], capture_output=True, text=True)
 
 
-def current_tiers(share):
-    """Parse `synoshare --list_acl` -> {RW,RO,NA: set(principals)} (groups are @name)."""
-    out = _run("--list_acl", share).stdout
+def parse_list_acl(out):
+    """Parse `synoshare --list_acl` output -> {RW,RO,NA: set(principals)} (@name = group)."""
     tiers = {}
     for t in ("RW", "RO", "NA"):
-        m = re.search(r"ACL " + t + r" List\s*\.*\[(.*?)\]", out)
-        items = m.group(1).split(",") if (m and m.group(1)) else []
+        match = re.search(r"ACL " + t + r" List\s*\.*\[(.*?)\]", out)
+        items = match.group(1).split(",") if (match and match.group(1)) else []
         tiers[t] = {x for x in items if x}
     return tiers
+
+
+def current_tiers(share):
+    return parse_list_acl(_run("--list_acl", share).stdout)
 
 
 def desired_tiers(grants):

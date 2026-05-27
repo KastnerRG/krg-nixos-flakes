@@ -46,5 +46,7 @@ ansible-playbook playbooks/synology.yml --tags export   # snapshot → <host>-nf
 Validated on the test rig (DSM 7.3.2-86009): `global` and `share-rules` each
 drift → `--check` (`WOULD-CHANGE`) → apply (`CHANGED`, `/etc/exports` rendered) → re-run
 (`OK no-change`). A clean full `ansible-playbook` run awaits the rig getting key auth +
-NOPASSWD sudo. Per-share rule **values** for the real export await the live box. Unit tests
-for `apply_nfs.py` helpers are a tracked follow-up.
+NOPASSWD sudo. Per-share rule **values** for the real export await the live box.
+`apply_nfs.py` has pytest unit tests ([`files/test_apply_nfs.py`](files/test_apply_nfs.py))
+covering `_args_from`/`_norm`, the global full-object set, and the share-rules load/diff/save
+flow (`pytest files/`, no DSM needed).

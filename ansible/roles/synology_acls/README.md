@@ -54,5 +54,6 @@ capture the runbook calls for.
 Validated on the test rig (DSM 7.3.2-86009): check → apply → idempotent re-run, a
 tier-swap, and clear-all, each confirmed via `--list_acl`. A clean full `ansible-playbook`
 run awaits the rig getting key auth + NOPASSWD sudo; the real grant matrix awaits the live
-box. Unit tests for `apply_acls.py` (`desired_tiers`, `current_tiers` parsing) are a
-tracked follow-up.
+box. `apply_acls.py` has pytest unit tests ([`files/test_apply_acls.py`](files/test_apply_acls.py))
+covering `desired_tiers`, `parse_list_acl` (against the exact rig `--list_acl` output), and
+the only-reset-drifted-tiers apply flow (`pytest files/`, no DSM needed).
