@@ -18,3 +18,4 @@
     - synology_shares # shared folders (per-share user ACLs → future synology_acls)
     - synology_smb # SMB global service settings (synowebapi full-object set)
     - synology_nfs # NFS service + per-share export rules (synowebapi)
+    - synology_acls # share -> principal grant matrix (synoshare --setuser)

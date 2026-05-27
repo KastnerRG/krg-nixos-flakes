@@ -1,26 +1,31 @@
-# Per-share ACLs (the share -> group grant matrix) on e4e-nas — source of truth.
-# Consumed by the `synology_shares`/`synology_acls` role (wraps `synoacltool`);
-# exporter reads `synoacltool -get <path>` back per share.
+# Per-share ACLs (the share -> principal grant matrix) on e4e-nas — source of truth.
+# Consumed by the `synology_acls` role, which wraps `synoshare --setuser` (validated on
+# the DSM 7.3 rig). Git is truth; UI = drift (ADR 0001).
 #
-# TODO (needs your input — capture from the LIVE NAS *before* the Mode-2 reset):
-#   for each share:  synoacltool -get /volumeX/<share>
-# The binary ACL blobs in the DSM config export reference the DEAD old-domain SIDs,
-# so they are NOT a usable source — the live box (or your knowledge) is. The
-# `governs:` hints in groups.yml are inferred name-correlations to start from, not
-# the authoritative matrix.
+# Each grant names a `group` (applied @-prefixed; a bare group name silently no-ops on DSM)
+# or a `user`, with `access: rw | ro | no` (-> DSM tiers RW/RO/NA). The grant list is
+# AUTHORITATIVE: a principal omitted from a share's grants is REMOVED — so include
+# `administrators` explicitly where it should keep access (a fresh share defaults to
+# `@administrators` RW).
 #
-# Remember the gotcha (runbook): preserved data carries dead-SID on-disk ACLs, so
-# each share needs a recursive "apply to sub-folders and files" pass after the
-# KRG.LOCAL join.
+# Schema:
+#   acls:
+#     - share: maya
+#       grants:
+#         - { group: maya, access: rw }
+#         - { group: leads, access: ro }
+#         - { user: someuser, access: rw }
 #
-# Schema (proposed):
-# acls:
-#   - share: maya
-#     grants:
-#       - { group: maya, access: rw }       # access: ro | rw | no
-#       - { group: leads, access: rw }
-#   - share: admin
-#     grants:
-#       - { group: administrators, access: rw }
+# TODO — capture the real matrix from the LIVE NAS *before* the Mode-2 reset:
+#   ansible-playbook playbooks/synology.yml --tags export   # -> <host>-acls.yml
+# (the `--list_acl` output drops into the grant shape above; @name -> group:). The DSM
+# config export's binary ACL blobs reference the DEAD old-domain SIDs, so they are NOT a
+# usable source — the live box is. The `governs:` hints in groups.yml are inferred
+# name-correlations to start from, not the authoritative matrix.
+#
+# DEAD-SID gotcha (runbook): preserved data carries dead-SID on-disk ACLs, so each share
+# also needs a recursive `synoacltool` "apply to sub-folders and files" pass AFTER the
+# KRG.LOCAL join (a post-join step, not this role yet). The exporter captures
+# `synoacltool -get` per share so that on-disk state is recorded before the reset.
 
-acls: []   # TODO — capture from the live box before reset
+acls: [] # TODO — capture from the live box before reset

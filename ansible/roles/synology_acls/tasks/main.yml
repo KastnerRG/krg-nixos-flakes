@@ -1,0 +1,40 @@
+---
+# synology_acls — manage the DSM share -> principal ACL grant matrix from
+# spec/krg-prod/acls.yml by wrapping `synoshare --setuser` (groups are @-prefixed; a bare
+# group name silently no-ops). Logic lives in files/apply_acls.py, shipped via the `script`
+# module (DSM's Python 3.8). Idempotent: read `--list_acl` tiers, diff, only re-set the
+# tiers that drift with the `=` operator (sets each tier EXACTLY — the grant list is
+# authoritative; a principal omitted from the spec is REMOVED). Git is truth; UI = drift
+# (ADR 0001). Validated on the DSM 7.3.2-86009 rig. Cross-ref: docs/krg-prod-iac.md.
+#
+# SCOPE: SHARE-level grants (DSM also writes them to the share-root filesystem ACL). The
+# recursive filesystem-ACL re-apply for *preserved data* carrying dead old-domain SIDs
+# (`synoacltool`) is a separate post-AD-join concern (runbook) — the exporter CAPTURES the
+# live `synoacltool -get` per share (the pre-reset capture the runbook needs), but this
+# role does not yet APPLY recursive filesystem ACLs.
+
+- name: Load the ACL grant spec
+  ansible.builtin.include_vars:
+    file: "{{ synology_acls_spec }}"
+    name: acls_spec
+
+- name: Apply share-level ACL grants (synoshare --setuser; groups @-prefixed)
+  ansible.builtin.script: >-
+    apply_acls.py
+    --share {{ item.share | quote }}
+    --grants {{ item.grants | default([]) | to_json | quote }}
+    {{ '--check' if ansible_check_mode else '' }}
+  loop: "{{ acls_spec.acls | default([]) }}"
+  loop_control:
+    label: "{{ item.share }}"
+  register: acl_apply
+  changed_when: "'CHANGED' in acl_apply.stdout or 'WOULD-CHANGE' in acl_apply.stdout"
+  failed_when: "acl_apply.rc != 0 or 'FAIL' in acl_apply.stdout"
+  check_mode: false # run in --check too; apply_acls.py --check self-gates (read-only)
+  # acls.yml is seeded empty (acls: []) — capture the real matrix from the LIVE box first
+  # (`--tags export`), since dead-SID config blobs are not a usable source.
+
+# --- Drift export / pre-reset live capture — only with `--tags export` ----------
+- name: Export live ACL state for drift detection
+  ansible.builtin.import_tasks: export.yml
+  tags: [export, never]
