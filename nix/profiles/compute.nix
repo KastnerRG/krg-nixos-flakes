@@ -24,6 +24,16 @@
   krg.docker = {
     enable              = true;
     enableNvidiaRuntime = true;
+    # Bridge the "Docker Users" AD group into the local `docker` group so lab members
+    # can use the Docker daemon (the boot+timer AD-group sync from modules/docker.nix
+    # → modules/ad-group-sync.nix, the same mechanism as cudaAccessGroups below).
+    # Login (krg.adClient.allowedGroups) gates SSH; this gates Docker. NOTE: docker
+    # membership is effectively root on the host, so keep "Docker Users" tightly
+    # scoped in AD. The group must exist under CN=Users with members (see
+    # docs/creating-a-user.md); break-glass krg-admin keeps Docker via
+    # krg.users.defaultGroups. Service hosts (krg-prod/e4e-prod) deliberately do NOT
+    # get this — it's a compute-profile grant, mirroring GPU Users.
+    accessGroups = [ "Docker Users" ];
   };
 
   krg.zfs = {

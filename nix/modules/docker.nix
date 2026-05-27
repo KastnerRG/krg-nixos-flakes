@@ -3,8 +3,30 @@ with lib;
 let
   cfg = config.krg.docker;
 in {
+  imports = [ ./ad-group-sync.nix ];
+
   options.krg.docker = {
     enable = mkEnableOption "KRG Docker CE configuration";
+
+    # AD groups bridged into the local `docker` group so their members can use the
+    # Docker daemon. This mirrors krg.nvidia.cudaAccessGroups: SSSD algorithmic ID
+    # mapping derives an AD group's GID from its SID, so a new AD group can never BE
+    # the local `docker` group; instead a boot+timer unit (the shared
+    # modules/ad-group-sync.nix) re-derives the local docker group's members from
+    # these AD groups (getent → gpasswd -M). Login (krg.adClient.allowedGroups) gates
+    # who may SSH in; this gates who may use Docker.
+    accessGroups = mkOption {
+      type    = types.listOf types.str;
+      default = [];
+      example = [ "Docker Users" ];
+      description = ''
+        AD groups whose members are bridged into the local `docker` group (Docker
+        daemon access). Matched by name via getent (so the group must resolve through
+        SSSD). Empty = no AD group gets Docker (only members the flake puts in `docker`
+        directly, e.g. the local break-glass admin via defaultGroups). NOTE: docker
+        group membership is effectively root on the host — scope the AD group tightly.
+      '';
+    };
 
     enableNvidiaRuntime = mkOption {
       type        = types.bool;
@@ -74,5 +96,13 @@ in {
         # path we want for the fleet roll-out.
       ];
     };
+
+    # Bridge the accessGroups AD groups into the local docker group (Docker daemon
+    # access). The boot+timer sync engine + its fail-safe/union semantics live in the
+    # shared modules/ad-group-sync.nix (imported above); this just wires this module's
+    # public option into it, producing the `docker-group-sync` unit. (After a switch
+    # there's a <=10min window until the timer re-syncs; run `systemctl start
+    # docker-group-sync` to apply immediately.)
+    krg.adGroupSync.docker.adGroups = cfg.accessGroups;
   };
 }
