@@ -10,7 +10,7 @@
 # to Vault or OpenBao — it just speaks the API.
 #
 # Run from krg-deploy. Before applying, export:
-#   export VAULT_ADDR="http://krg-vault.ucsd.edu:8200"
+#   export TF_VAR_vault_addr="https://krg-vault.ucsd.edu:8200"
 #   export VAULT_TOKEN="<root or admin token>"
 
 terraform {
