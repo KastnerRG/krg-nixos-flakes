@@ -89,7 +89,7 @@ in
         -drive id=data,file="$work/data.qcow2",format=qcow2,if=none \
         -device ide-hd,bus=ahci.1,drive=data \
         -netdev user,id=net0,hostfwd=tcp::5000-:5000 \
-        -device e1000e,netdev=net0 \
+        -device virtio-net-pci,netdev=net0 \
         -vnc 127.0.0.1:0 \
         -serial mon:stdio
     '';
