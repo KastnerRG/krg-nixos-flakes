@@ -26,7 +26,7 @@ resource "vault_auth_backend" "approle" {
 resource "vault_approle_auth_backend_role" "krg_deploy" {
   backend        = vault_auth_backend.approle.path
   role_name      = "krg-deploy"
-  token_policies = ["krg-deploy"]
+  token_policies = [vault_policy.krg_deploy.name]
   token_ttl      = 3600
   token_max_ttl  = 86400
 }
@@ -37,7 +37,7 @@ resource "vault_approle_auth_backend_role" "krg_deploy" {
 resource "vault_approle_auth_backend_role" "krg_prod" {
   backend        = vault_auth_backend.approle.path
   role_name      = "krg-prod"
-  token_policies = ["krg-prod"]
+  token_policies = [vault_policy.krg_prod.name]
   token_ttl      = 3600
   token_max_ttl  = 86400
 }

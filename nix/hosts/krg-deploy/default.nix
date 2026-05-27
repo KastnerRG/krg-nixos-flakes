@@ -53,12 +53,12 @@
     serviceConfig = {
       Type            = "oneshot";
       User            = "krg-admin";
-      WorkingDirectory = "/home/krg-admin/krg-infra/ansible";
+      WorkingDirectory = "/var/lib/krg-admin/krg-infra/ansible";
       ExecStart = pkgs.writeShellScript "ansible-apply" ''
-        ${pkgs.git}/bin/git -C /home/krg-admin/krg-infra pull --ff-only
+        ${pkgs.git}/bin/git -C /var/lib/krg-admin/krg-infra pull --ff-only
         ${pkgs.ansible}/bin/ansible-playbook \
-          --inventory /home/krg-admin/krg-infra/ansible/inventory \
-          /home/krg-admin/krg-infra/ansible/playbooks/site.yml
+          --inventory /var/lib/krg-admin/krg-infra/ansible/inventory \
+          /var/lib/krg-admin/krg-infra/ansible/playbooks/site.yml
       '';
     };
   };
