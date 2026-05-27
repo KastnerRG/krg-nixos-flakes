@@ -1,4 +1,4 @@
-{ inputs, ... }: {
+{ inputs, pkgs, ... }: {
   imports = [
     ../../profiles/compute.nix
     ./hardware-configuration.nix
@@ -229,6 +229,9 @@
   # credentials never enter the Nix store — place it there out-of-band:
   #   scp oec-qualystrellixinstallers-linux.tgz waiter:/var/lib/krg/oec/
   # then rebuild; the oec-install service enrolls the agents on next boot.
+
+  # GNU Make for researchers building from source on this workstation.
+  environment.systemPackages = [ pkgs.gnumake ];
 
   system.stateVersion = "25.11";
 }
