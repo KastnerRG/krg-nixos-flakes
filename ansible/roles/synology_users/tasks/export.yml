@@ -16,13 +16,13 @@
   run_once: true
 
 - name: Enumerate local groups
-  ansible.builtin.command: "synogroup --enum local" # VALIDATE enum syntax on the rig
+  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synogroup --enum local" # VALIDATE enum syntax/output on rig
   register: synogroup_enum
   changed_when: false
   check_mode: false
 
 - name: Enumerate local users
-  ansible.builtin.command: "synouser --enum local"
+  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --enum local"
   register: synouser_enum
   changed_when: false
   check_mode: false

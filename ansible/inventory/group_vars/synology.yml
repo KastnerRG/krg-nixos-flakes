@@ -1,15 +1,27 @@
-# Synology DSM hosts (e4e-nas = the krg-prod NAS). DSM is not Debian — the
-# synology_* roles wrap the DSM CLI (synouser/synogroup/synoshare/...) over SSH.
-# Identities/shares are declared in spec/krg-prod/*.yml (git is truth; UI = drift —
-# ADR 0001). See playbooks/synology.yml.
+# Synology DSM hosts (e4e-nas = the krg-prod NAS). DSM is not Debian — the synology_*
+# roles wrap the DSM CLI (synouser/synogroup/synoshare/...) over SSH with `raw`
+# (DSM's python 3.8 is too old for ansible's modules — validated on the rig). Identities/
+# shares are declared in spec/krg-prod/*.yml (git is truth; UI = drift — ADR 0001).
+# See playbooks/synology.yml.
 #
-# PREREQS on the box (runbook): SSH enabled; an administrators-group account that is
-# NOT the built-in `admin`, with key auth + NOPASSWD sudo for automation; and the
-# DSM **Python3** package installed so ansible modules can run.
+# PREREQS on the box (validated on the rig 2026-05-27):
+#   * SSH enabled (Control Panel → Terminal & SNMP).
+#   * an administrators-group account (NOT built-in `admin`) with the automation
+#     SSH key AND **NOPASSWD sudo** — password-prompt `become` over DSM's old sshd is
+#     flaky (intermittent connection drops); key auth + NOPASSWD sudo is robust (and
+#     is the prod design anyway).
+#   * Enable the **User Home service** (else `-tt`/become sessions hit
+#     "Could not chdir to home" and can fail).
+#   * No python package needed — roles use `raw` (DSM's python 3.8 < ansible's floor).
+# DSM's old sshd also makes the OpenSSH client emit a post-quantum-kex WARNING that
+# can confuse ansible; quiet it with ANSIBLE_SSH_EXTRA_ARGS='-o LogLevel=ERROR'.
 ansible_user: krg-admin
 ansible_become: true
 ansible_become_method: ansible.builtin.sudo
-ansible_python_interpreter: /usr/bin/python3
+
+# DSM CLI tools live under /usr/syno/{sbin,bin}, which are NOT in root's PATH; the
+# synology_* roles prepend this in their raw commands.
+syno_path: "/usr/syno/sbin:/usr/syno/bin"
 
 # Declarative spec (repo root /spec/krg-prod) consumed by the synology_* roles.
 krg_spec_dir: "{{ playbook_dir }}/../../spec/krg-prod"
