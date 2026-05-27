@@ -32,8 +32,10 @@
 # /local is actually mounted (never seed onto a bare mountpoint), and a symlink is
 # created ONLY if the home path doesn't already exist — so an existing real
 # ~/.vscode-server is never clobbered (such a user opts in once with `rm -rf
-# ~/.vscode-server`, then the next login creates the symlink). Non-blocking: a failure
-# here never denies login.
+# ~/.vscode-server`, then the next login creates the symlink). It ALSO self-heals a
+# symlink we manage that has gone dangling (target lost when /local was reprovisioned)
+# by recreating just the target — otherwise VS Code/Cursor wedge on a dangling
+# ~/.vscode-server. Non-blocking: a failure here never denies login.
 #
 # CACHE ENV VARS: set via environment.shellInit (cross-shell: bash + zsh), computed
 # with `id -un` at shell start (robust where $USER expansion in sessionVariables is
@@ -76,6 +78,18 @@ let
         ${pkgs.coreutils}/bin/chown "$PAM_USER" "$target" || true
         ${pkgs.coreutils}/bin/ln -s "$target" "$link" || continue
         ${pkgs.coreutils}/bin/chown -h "$PAM_USER" "$link" || true
+      # Self-heal a dangling managed symlink: the symlink lives in the persistent
+      # (NFS) home, but its target is on the node-local dataset — lost whenever /local
+      # is reprovisioned/wiped, leaving ~/.vscode-server pointing at nothing. VS Code
+      # then dies on `mkdir ~/.vscode-server` ("File exists" + "dangling symlink") and
+      # the `if` above can't help (the symlink trips its `! -L`). If `link` is exactly
+      # the symlink WE manage (readlink == target) and the target is gone, just
+      # recreate the target so it resolves again. The exact-match keeps us from
+      # touching a real dir or a symlink the user pointed elsewhere.
+      elif [ -L "$link" ] && [ ! -d "$target" ] \
+        && [ "$(${pkgs.coreutils}/bin/readlink -- "$link")" = "$target" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p "$target" || continue
+        ${pkgs.coreutils}/bin/chown "$PAM_USER" "$target" || true
       fi
     done
     exit 0
@@ -138,7 +152,9 @@ in {
       description = ''
         Home-relative paths symlinked into <mountPoint>/<user> on login (e.g.
         ~/.vscode-server -> /local/<user>/.vscode-server). Created only if the home
-        path does not already exist (an existing real dir is never clobbered).
+        path does not already exist (an existing real dir is never clobbered). A
+        symlink we previously created that has gone dangling — its node-local target
+        lost to a /local reprovision — is self-healed by recreating the target.
       '';
     };
 
