@@ -59,7 +59,7 @@ libvirt domain**, and the *first* boot is a one-time manual step:
 
 ```bash
 # Portable — direct QEMU, no libvirtd (use this if your machine isn't managed by this repo):
-nix run ./test#dsm-vm-qemu [vm-name]   # DSM wizard → http://localhost:5000 | VNC → 127.0.0.1:5900
+nix run ./test#dsm-vm-qemu [vm-name]   # DSM http://localhost:5000 → https://localhost:5001 | SSH :2222 | VNC :5900
 
 # Via libvirt (needs the krg.dsmRig module):
 nix run ./test#dsm-vm [vm-name]        # default name: dsm-prod-mirror

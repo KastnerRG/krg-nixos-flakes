@@ -77,8 +77,10 @@ in
 
       # SeaBIOS (QEMU default), NOT OVMF/UEFI: RR/redpill loaders page-fault OVMF on
       # the GRUB→kernel handoff (X64 #PF) — they boot in legacy BIOS mode.
-      echo "Booting '$name' (accel=$accel, SeaBIOS). DSM wizard: http://localhost:5000 | VNC: 127.0.0.1:5900"
-      echo "RR menu: DS3622xs+ / DSM 7.3, install from $work/DSM_DS3622xs+_86009.pat"
+      echo "Booting '$name' (accel=$accel, SeaBIOS)."
+      echo "  DSM:  http://localhost:5000  (redirects to https://localhost:5001, self-signed cert)"
+      echo "  SSH:  ssh -p 2222 ...@localhost   |   VNC: 127.0.0.1:5900   |   RR menu: VNC console"
+      echo "  RR install .pat: $work/DSM_DS3622xs+_86009.pat"
       exec qemu-system-x86_64 \
         -name "$name" \
         -machine q35,accel="$accel" \
@@ -88,7 +90,7 @@ in
         -device ide-hd,bus=ahci.0,drive=loader,bootindex=1 \
         -drive id=data,file="$work/data.qcow2",format=qcow2,if=none \
         -device ide-hd,bus=ahci.1,drive=data \
-        -netdev user,id=net0,hostfwd=tcp::5000-:5000 \
+        -netdev user,id=net0,hostfwd=tcp::5000-:5000,hostfwd=tcp::5001-:5001,hostfwd=tcp::2222-:22 \
         -device virtio-net-pci,netdev=net0 \
         -vnc 127.0.0.1:0 \
         -serial mon:stdio
