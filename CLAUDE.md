@@ -45,7 +45,7 @@ sudo nixos-rebuild switch --flake ./nix#krg-prod
 
 # Deploy remotely (new nixos-rebuild: --sudo, not --use-remote-sudo)
 nixos-rebuild switch --flake ./nix#krg-prod --target-host krg-admin@krg-prod.ucsd.edu --sudo --ask-sudo-password
-nixos-rebuild switch --flake ./nix#waiter   --target-host waiter-admin@137.110.161.67 --sudo --ask-sudo-password
+nixos-rebuild switch --flake ./nix#waiter   --target-host krg-admin@137.110.161.67 --sudo --ask-sudo-password
 
 # Update flake inputs (run inside nix/)
 cd nix && nix flake update          # or: nix flake update nixpkgs
