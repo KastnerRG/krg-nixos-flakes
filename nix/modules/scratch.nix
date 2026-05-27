@@ -415,7 +415,10 @@ in {
       ) projectList);
 
       # /scratch parent + each lab mountpoint must exist before the mounts. 0755 is
-      # the bare mountpoint; the perms step tightens the mounted root to 3770.
+      # the bare mountpoint; the perms step tightens the mounted root to 3770. NOTE:
+      # systemd-tmpfiles-resetup re-applies these `d` rules to the *mounted* root on
+      # every `nixos-rebuild switch`, reverting that 3770 — so krg-scratch-perms-* is
+      # bound to re-fire after resetup (see systemd.services below).
       # /scratch + each lab mountpoint, plus each overflow lab's cold mountpoint (and
       # its parent) so the NFS mount target exists at boot with admin-only perms. The
       # NFS mount overlays it; the local dir only shows through when NFS is down (and
@@ -431,11 +434,21 @@ in {
 
       systemd.services = listToAttrs (concatMap ({ name, proj }:
         # ---- ownership/isolation: chmod 3770 + chgrp lab group, after the mount ----
+        # MUST re-run on every activation, not just at boot: a `nixos-rebuild switch`
+        # restarts systemd-tmpfiles-resetup.service, whose `systemd-tmpfiles --create`
+        # re-applies the `d ${mountPoint} 0755 root root` rule to the *mounted* dataset
+        # root — silently reverting this 3770+lab-group hardening to world-traversable
+        # 0755 root:root until the next reboot (lab isolation off in the meantime).
+        # `after` orders this oneshot AFTER that resetup clobber; `partOf` propagates
+        # resetup's activation restart to here, so it re-fires and re-tightens the
+        # mode/group every switch. mkPermsScript is idempotent, so re-running is safe.
         [ (nameValuePair "krg-scratch-perms-${name}" {
             description = "Set ownership/mode on ${proj.mountPoint} (lab isolation)";
             wantedBy = [ "multi-user.target" ];
-            after = optional (proj.ownerGroup != null) "sssd.service";
+            after = [ "systemd-tmpfiles-resetup.service" ]
+              ++ optional (proj.ownerGroup != null) "sssd.service";
             wants = optional (proj.ownerGroup != null) "sssd.service";
+            partOf = [ "systemd-tmpfiles-resetup.service" ];
             unitConfig.RequiresMountsFor = [ proj.mountPoint ];
             serviceConfig = {
               Type = "oneshot";
