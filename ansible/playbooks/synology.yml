@@ -9,9 +9,10 @@
 #
 # Deliberately a SEPARATE play from site.yml's Debian/PVE baseline — DSM shares none
 # of that (no apt, no systemd baseline, no OEC). Validate on the test rig first.
-- name: Synology DSM — users & groups
+- name: Synology DSM — identity & shares
   hosts: synology
   become: true
   gather_facts: false # DSM fact-gathering is unreliable; roles use explicit commands
   roles:
-    - synology_users
+    - synology_users # local users/groups (humans come from AD)
+    - synology_shares # shared folders (per-share user ACLs → future synology_acls)
