@@ -32,10 +32,5 @@ resource "vault_kv_secret_v2" "mlflow_oidc" {
   })
 }
 
-resource "vault_kv_secret_v2" "outpost_token" {
-  mount = "secret"
-  name  = "krg-prod/authentik-outpost-token"
-  data_json = jsonencode({
-    token = authentik_token.proxy_outpost.key
-  })
-}
+# outpost token: retrieved manually from Admin → Outposts → View token after apply.
+# Store with: bao kv put secret/krg-prod/authentik-outpost-token token=<value>
