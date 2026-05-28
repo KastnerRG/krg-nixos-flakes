@@ -40,11 +40,15 @@ auto_block:
   within_mins: 1440
   expire_day: 0                   # 0 = never; safer: 7-30 to age noisy entries
 
-  # Allow-list (never block) + deny-list (always block). Deny/allow downloads errored
-  # 5100 — wrong method/param; defer the static list capture.
-  # Recommendation: source allow-list by REFERENCE from nix/networks/trusted.json
-  # rather than re-listing IPs here (same DRY pattern as in-guest firewall).
-  allow_list_ref: nix/networks/trusted.json   # IPSets: ucsd, sealab, monitoring
+  # Allow-list (never block) + deny-list (always block). The allow-list is
+  # COMPUTED in the role from nix/networks/trusted.json (`krg_trusted` —
+  # loaded by group_vars/all.yml), so a change to the single source of truth
+  # flows here automatically. Same DRY pattern as the Debian fail2ban
+  # `ignoreip` and nix `krg.firewall.trustedNets`. See synology_security
+  # tasks/main.yml — the role debug-surfaces the resolved IP list.
+  # Push to DSM is DEFERRED: SYNO.Core.Security.AutoBlock.Rules errored 5100
+  # in 2026-05-28 captures (wrong method/param shape); add a subcommand once
+  # the rig is back up and we can probe the right form.
   deny_list: []                                # TODO: confirm via follow-up capture
 
 # --- Hardening notes (drift the role will fix on apply) ---

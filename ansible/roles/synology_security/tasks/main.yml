@@ -1,13 +1,47 @@
 ---
 # synology_security — manage DSM firewall + auto-block from spec/krg-prod/security.yml
 # via synowebapi (full-object set; logic in files/apply_security.py via `script`).
-# Per-rule firewall + auto-block allow/deny lists are TODO (capture errored).
+#
+# CROSS-REFERENCE: counterpart of nix `krg.firewall` (`nix/modules/security/firewall.nix`)
+# and ansible `roles/proxmox_firewall` + the in-guest fail2ban allow-list pattern.
+# All three layers read `nix/networks/trusted.json` (single source of truth) for
+# allow-listed source nets — edit there, not here.
+#
+# Per-rule firewall list (Firewall.Profile + Firewall.Rules load/save_start) and
+# AutoBlock allow/deny lists are CURRENTLY OUT OF SCOPE — the captures errored
+# (120, 5100) on those param shapes; see "Deferred items" in plan.md. The role
+# emits a DEBUG of the intended allow-list IPs so a drift detector / operator can
+# verify against the UI until the API is in.
 
 - name: Load the security spec
   ansible.builtin.include_vars:
     file: "{{ synology_security_spec }}"
     name: security_spec
 
+# --- Shared trusted-nets data (group_vars/all.yml already loaded krg_trusted) ---
+# This is the SAME object the Debian fail2ban role uses for ignoreip. Mirror the
+# nix `krg.firewall.trustedNets` pattern here so any change to trusted.json
+# flows to every layer.
+- name: Compute autoblock allow-list from nix/networks/trusted.json (sealab + monitoring)
+  ansible.builtin.set_fact:
+    autoblock_allow_ips: >-
+      {{
+        (krg_trusted.ipsets.sealab | map(attribute='cidr') | list)
+        + [krg_trusted.monitoring_host]
+      }}
+
+- name: Surface the intended autoblock allow-list (drift-detector / operator visibility)
+  ansible.builtin.debug:
+    msg: |
+      autoblock_allow_ips (from nix/networks/trusted.json) =
+      {{ autoblock_allow_ips }}
+      Note: pushing this list to DSM's AutoBlock allow-list is DEFERRED until
+      SYNO.Core.Security.AutoBlock.Rules param shape is empirically probed
+      (capture errored 5100). Until then, this is informational — set the
+      allow-list manually in the DSM UI to match.
+  changed_when: false
+
+# --- Globals (full-object SETs) -----------------------------------------------
 - name: Apply firewall (Firewall set — enable + active profile)
   ansible.builtin.script: >-
     apply_security.py firewall
