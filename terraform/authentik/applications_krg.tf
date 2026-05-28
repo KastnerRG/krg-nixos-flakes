@@ -3,9 +3,9 @@
 
 locals {
   std_scopes = [
-    data.authentik_scope_mapping.openid.id,
-    data.authentik_scope_mapping.email.id,
-    data.authentik_scope_mapping.profile.id,
+    data.authentik_property_mapping_provider_scope.openid.id,
+    data.authentik_property_mapping_provider_scope.email.id,
+    data.authentik_property_mapping_provider_scope.profile.id,
   ]
 }
 
