@@ -24,5 +24,5 @@ data "vault_kv_secret_v2" "grafana_admin" {
 
 provider "grafana" {
   url  = var.grafana_url
-  auth = "admin:${data.vault_kv_secret_v2.grafana_admin.data["password"]}"
+  auth = "e4eadmin:${data.vault_kv_secret_v2.grafana_admin.data["password"]}"
 }
