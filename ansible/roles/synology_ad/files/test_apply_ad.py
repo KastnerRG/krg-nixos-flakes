@@ -162,11 +162,17 @@ def test_join_failure(monkeypatch, capsys):
     assert capsys.readouterr().out.startswith("FAIL")
 
 
-def test_join_requires_password():
-    try:
-        m.main([
-            "join", "--realm", "KRG.LOCAL", "--dc-host", "krg-ldap.krg.local",
-            "--join-user", "Administrator", "--join-password", "",
-        ])
-    except SystemExit:
-        pass  # argparse may exit before our check; either form is acceptable
+def test_join_requires_password(monkeypatch, capsys):
+    """Empty --join-password must FAIL fast (rc=1, 'FAIL' in stdout) without
+    issuing a join call. We monkeypatch _exec to detect any unexpected call."""
+    called = []
+    monkeypatch.setattr(m, "_exec", lambda *a, **k: called.append(a) or {"success": True})
+    rc = m.main([
+        "join", "--realm", "KRG.LOCAL", "--dc-host", "krg-ldap.krg.local",
+        "--join-user", "Administrator", "--join-password", "",
+    ])
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert out.startswith("FAIL")
+    assert "join requires --join-password" in out
+    assert called == [], "join must not call synowebapi when password is empty"
