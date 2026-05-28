@@ -33,6 +33,11 @@ in {
   # Not yet domain-joined — disable AD client until keytab is provisioned.
   krg.adClient.enable = false;
 
+  # Ensure the bao CLI always talks to the local instance over TLS.
+  # Without this it defaults to https://127.0.0.1:8200 which fails cert
+  # validation (the Let's Encrypt cert covers the hostname, not the IP).
+  environment.variables.VAULT_ADDR = "https://krg-vault.ucsd.edu:8200";
+
   krg.firewall = {
     # 80: public, ACME HTTP-01 challenge only (nginx handles it)
     allowedTCPPorts = [ 22 80 ];
