@@ -83,12 +83,14 @@ ansible-playbook playbooks/site.yml
 
 ## Not done yet (next)
 
-The roles are all built and wired in; what remains is real inputs + on-box
-validation, not new code:
+The roles are all built and wired in. **Inputs are now filled** — `inventory/hosts.yml`
+has `fabricant` (running in `ansible_connection: local` mode on the PVE host itself),
+real ed25519 keys are in `nix/keys/admins.json`, and `nix/networks/trusted.json` has
+real CIDRs/IPSets (read by `krg_trusted_nets`). What remains is on-box validation, not
+new code:
 
-- **Inputs**: fill `inventory/hosts.yml`, set the real ops key(s) in
-  `nix/keys/admins.json` and `krg_trusted_nets`, and point `oec_installer` at the
-  local vendor archive (no archive → the OEC step no-ops rather than failing).
+- **`oec_installer`**: point at the local vendor archive on fabricant (no archive →
+  the OEC step no-ops rather than failing).
 - **On-box validation**: confirm `monitoring` (node + ipmi exporters) and
   `oec_qualys_trellix` (Qualys + Trellix enroll/run) on a real PVE host.
 - `proxmox_firewall`: `cluster.fw` (IPSets `public`/`sealab`/`ucsd`) + per-guest
