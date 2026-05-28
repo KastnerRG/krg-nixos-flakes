@@ -23,3 +23,54 @@
 #   # task type "recycle" (Empty all Recycle Bins) — daily 00:00, owner=root, enabled.
 #   # Equivalent shell action: `/usr/syno/bin/synocli --recycle-bin --clean`
 # }
+
+# ---------------------------------------------------------------------------
+# Periodic DSM config-backup export (.dss) — runbook §7 "automate via a
+# synology_core_event scheduled task if desired".
+#
+# The .dss IS the config-as-artifact source-of-truth for the parts no API
+# touches (display order, package metadata, etc.). Scheduling an automatic
+# export means a fresh DR artifact is always available. Weekly cadence, off-hours.
+#
+# Destination MUST be off-box and MUST NOT be in this repo — the .dss can
+# contain hashed credentials + PII. Per memory rule `krg-infra-no-live-captures`
+# and `*.dss` is gitignored under terraform/. Options:
+#   (a) Hyper Backup target on krg-prod (NFS path) — simplest, no extra creds.
+#   (b) S3 (Garage) bucket once Garage is up — needs a key.
+#   (c) External NAS via Hyper Backup destination.
+# Open decision in plan.md.
+#
+# variable "dss_dest_path" {} below; set in terraform.tfvars (untracked).
+# ---------------------------------------------------------------------------
+
+# variable "dss_dest_path" {
+#   description = "Off-box destination for the weekly DSM .dss export (e.g. /mnt/krg-prod-backup/e4e-nas/configs)."
+#   type        = string
+# }
+
+# resource "synology_core_event" "weekly_config_backup_export" {
+#   # Provider attribute names — verify against the registry docs before un-commenting.
+#   # name       = "krg-config-backup-weekly"
+#   # type       = "custom"             # scripted task
+#   # owner      = "root"
+#   # enabled    = true
+#   # schedule {
+#   #   weekly  = true
+#   #   day     = "Sunday"
+#   #   hour    = 2
+#   #   minute  = 30
+#   # }
+#   # # Action: export the .dss to the off-box destination. The DSM-side command
+#   # # form for the export is what synowebapi.SYNO.Core.ConfigBackup invokes —
+#   # # using the supported CLI wrapper keeps this simpler than calling synowebapi
+#   # # from a shell task. Verify on the rig:
+#   # script = <<-EOT
+#   #   set -euo pipefail
+#   #   DEST="${var.dss_dest_path}"
+#   #   DATE=$(date +%Y%m%d-%H%M%S)
+#   #   FNAME="e4e-nas-config-$${DATE}.dss"
+#   #   /usr/syno/bin/synoconfbkp export --filepath "$DEST/$FNAME"
+#   #   # rotate: keep the most recent 12 (~3 months at weekly cadence)
+#   #   ls -1t "$DEST"/e4e-nas-config-*.dss 2>/dev/null | tail -n +13 | xargs -r rm -f
+#   # EOT
+# }
