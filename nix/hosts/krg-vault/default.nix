@@ -46,7 +46,8 @@ in {
     sourcedPorts = [{
       port    = 8200;
       sources = map (e: e.cidr) trusted.ipsets.sealab
-             ++ map (e: e.cidr) trusted.ipsets.ops;
+             ++ map (e: e.cidr) trusted.ipsets.ops
+             ++ map (e: e.cidr) trusted.ipsets.machines;
     }];
   };
 
