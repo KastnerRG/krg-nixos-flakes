@@ -57,7 +57,7 @@
     serviceConfig = {
       Type             = "oneshot";
       User             = "krg-admin";
-      WorkingDirectory = "/var/lib/krg-admin";   # always exists; ansible subdir may not yet
+      WorkingDirectory = "/var/lib/krg-admin";
       ExecStart = pkgs.writeShellScript "ansible-apply" ''
         # Bootstrap: clone on first run if the repo isn't present yet.
         # Uses HTTPS so no deploy key is needed for the initial pull.
@@ -68,9 +68,9 @@
             /var/lib/krg-admin/krg-infra
         fi
         ${pkgs.git}/bin/git -C /var/lib/krg-admin/krg-infra pull --ff-only
-        ${pkgs.ansible}/bin/ansible-playbook \
-          --inventory /var/lib/krg-admin/krg-infra/ansible/inventory \
-          /var/lib/krg-admin/krg-infra/ansible/playbooks/site.yml
+        # cd into ansible/ so ansible.cfg is found and roles_path = roles resolves correctly.
+        cd /var/lib/krg-admin/krg-infra/ansible
+        ${pkgs.ansible}/bin/ansible-playbook playbooks/site.yml
       '';
     };
   };
