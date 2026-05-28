@@ -41,6 +41,22 @@
   loop_control:
     label: "{{ item.name }}"
 
+# --- WOULD-CREATE report under --check -----------------------------------------
+# `raw:` doesn't honor ansible_check_mode (the module has no check-mode support;
+# under --check it silently skips). The probe above ran and we know exactly which
+# shares would be created — surface that as a CHANGED debug task so a dry-run
+# emits actionable output instead of nothing.
+- name: WOULD-CREATE the missing shares (--check only)
+  ansible.builtin.debug:
+    msg: "WOULD-CREATE share {{ item.item.name }} at {{ item.item.path }}"
+  when:
+    - ansible_check_mode
+    - (item.rc | default(255)) != 0
+  loop: "{{ synoshare_probe.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  changed_when: true   # reflect intent in --check --diff output
+
 - name: Create missing shares
   # synoshare --add <name> <desc> <path> <na> <rw> <ro> <browsable 0|1> <adv_privilege 0~7>
   # na/rw/ro left empty ('') -> per-share user ACLs are applied by synology_acls (--setuser).
@@ -52,7 +68,9 @@
     '' '' ''
     {{ (item.item.browseable | default(shares_spec.defaults.browseable | default(true))) | bool | ternary(1, 0) }}
     0
-  when: (item.rc | default(255)) != 0
+  when:
+    - not ansible_check_mode            # raw doesn't honor check_mode; gate explicitly
+    - (item.rc | default(255)) != 0
   changed_when: true
   loop: "{{ synoshare_probe.results }}"
   loop_control:
