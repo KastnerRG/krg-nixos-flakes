@@ -86,8 +86,16 @@
     label: "{{ item.item.name }}"
 
 # --- Disable built-in attack-surface accounts (admin, guest) — runbook §1 -------
-# synouser --disable / --enable manipulates the account's enabled bit. We probe
-# first so a missing account is a no-op (some DSM installs lack `guest`).
+# `synouser --enum disabled` lists already-disabled accounts so re-runs are
+# no-ops (no CHANGED spam on a converged box). `synouser --get` confirms
+# existence (some DSM installs lack `guest`).
+- name: Enumerate already-disabled accounts (so re-runs are no-ops)
+  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --enum disabled"
+  register: disabled_enum
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
 - name: Probe each built-in account before disabling
   ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --get {{ item | quote }}"
   register: builtin_probe
@@ -98,18 +106,30 @@
   loop_control:
     label: "{{ item }}"
 
-- name: Disable built-in accounts (admin/guest)
+# Normalize `synouser --enum disabled` output to a flat list. The DSM CLI
+# prints `User name ...` as a header then one name per line (best-known); we
+# strip blanks + the header. If parsing produces an empty list on a box that
+# DOES have disabled accounts, we'll re-disable them — DSM treats that as a
+# no-op, so safe direction. The drift exporter is the right tool to catch a
+# format change.
+- name: Parse already-disabled account list
+  ansible.builtin.set_fact:
+    disabled_accounts: >-
+      {{ (disabled_enum.stdout_lines | default([]))
+         | map('trim')
+         | reject('equalto', '')
+         | reject('match', '^User\\s+name')
+         | list }}
+
+- name: Disable built-in accounts (admin/guest) — only when present and currently enabled
   ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --disable {{ item.item | quote }}"
-  when: (item.rc | default(1)) == 0   # only if the account exists
+  when:
+    - (item.rc | default(1)) == 0             # account exists
+    - item.item not in disabled_accounts       # not already disabled (idempotent)
   changed_when: true
   loop: "{{ builtin_probe.results }}"
   loop_control:
     label: "{{ item.item }}"
-  # NOTE: synouser --disable is the documented disable path on DSM 7.x. It's
-  # idempotent at the DSM level (disabling an already-disabled account is a
-  # no-op), but ansible's `changed_when: true` reports CHANGED on every run for
-  # accounts that exist. A drift exporter that reads enabled-bit per-user would
-  # let us suppress that — follow-up. Not safety-critical.
 
 # --- DSM Home Service (required for SSH + AD homes) — runbook §1 step 5 + §2 ----
 - name: Apply DSM Home Service (User.Home set — full-object; partial = err 2001)
