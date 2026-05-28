@@ -22,7 +22,10 @@
 # anti-lockout, synology_users authorized_keys) picks up the right keys.
 ansible_user: e4e-admin
 ansible_become: true
-ansible_become_method: ansible.builtin.sudo
+# Short name (the canonical form for the connection variable). Don't use the
+# FQCN `ansible.builtin.sudo` — older ansible-core versions don't recognize it
+# at the connection-var level and silently break privilege escalation.
+ansible_become_method: sudo
 admin_ssh_keys: "{{ (lookup('file', krg_keys_file) | from_json)['e4e-admin'] }}"
 # admin-passwords.json currently has no `e4e-admin` hash — that's fine, the
 # break-glass admin stays key-only with a locked console password until/unless
