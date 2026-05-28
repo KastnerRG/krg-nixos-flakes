@@ -6,7 +6,7 @@
 # DSM UI settings (see docs/e4e-nas-dsm.md), not a TF resource.
 # Docs: https://registry.terraform.io/providers/synology-community/synology/latest/docs/resources/core_event
 #
-# Live 2026-05-28 (docs/e4e-nas-live-capture/2026-05-28/scheduler-capture.txt):
+# Live 2026-05-28 pre-reset capture (archived locally, off-repo):
 #   user-visible tasks via `synowebapi SYNO.Core.TaskScheduler list`:
 #     id 6   Recycle Bin            type=recycle  enabled  daily 00:00  "Empty all Recycle Bins"  ← REPRODUCE
 #     id 3   Auto S.M.A.R.T. Test   type=custom   enabled  monthly                                  DSM-default, skip
