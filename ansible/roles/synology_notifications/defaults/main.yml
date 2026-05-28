@@ -1,0 +1,3 @@
+---
+synology_notifications_spec: "{{ krg_spec_dir }}/notifications.yml"
+synology_export_dir: "/var/lib/krg-deploy/synology-export"

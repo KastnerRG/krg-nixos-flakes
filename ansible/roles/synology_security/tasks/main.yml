@@ -1,0 +1,48 @@
+---
+# synology_security — manage DSM firewall + auto-block from spec/krg-prod/security.yml
+# via synowebapi (full-object set; logic in files/apply_security.py via `script`).
+# Per-rule firewall + auto-block allow/deny lists are TODO (capture errored).
+
+- name: Load the security spec
+  ansible.builtin.include_vars:
+    file: "{{ synology_security_spec }}"
+    name: security_spec
+
+- name: Apply firewall (Firewall set — enable + active profile)
+  ansible.builtin.script: >-
+    apply_security.py firewall
+    --enable {{ security_spec.firewall.enable | default(true) }}
+    --profile {{ security_spec.firewall.active_profile | default('default') | quote }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: fw_apply
+  changed_when: "'CHANGED' in fw_apply.stdout or 'WOULD-CHANGE' in fw_apply.stdout"
+  failed_when: "fw_apply.rc != 0 or 'FAIL' in fw_apply.stdout"
+  check_mode: false
+
+- name: Apply firewall conf (Firewall.Conf set — port_check)
+  ansible.builtin.script: >-
+    apply_security.py fw-conf
+    --port-check {{ security_spec.firewall.port_check | default(true) }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: fwc_apply
+  changed_when: "'CHANGED' in fwc_apply.stdout or 'WOULD-CHANGE' in fwc_apply.stdout"
+  failed_when: "fwc_apply.rc != 0 or 'FAIL' in fwc_apply.stdout"
+  check_mode: false
+
+- name: Apply auto-block (AutoBlock set — thresholds)
+  ansible.builtin.script: >-
+    apply_security.py autoblock
+    --enable {{ security_spec.auto_block.enable | default(true) }}
+    --attempts {{ security_spec.auto_block.attempts | default(3) }}
+    --within-mins {{ security_spec.auto_block.within_mins | default(1440) }}
+    --expire-day {{ security_spec.auto_block.expire_day | default(0) }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: ab_apply
+  changed_when: "'CHANGED' in ab_apply.stdout or 'WOULD-CHANGE' in ab_apply.stdout"
+  failed_when: "ab_apply.rc != 0 or 'FAIL' in ab_apply.stdout"
+  check_mode: false
+
+# --- Drift export (read-only) — only with `--tags export` -----------------------
+- name: Export live state for drift detection
+  ansible.builtin.import_tasks: export.yml
+  tags: [export, never]

@@ -20,3 +20,8 @@
     - synology_nfs # NFS service + per-share export rules (synowebapi)
     - synology_acls # share -> principal grant matrix (synoshare --setuser)
     - synology_dsm_web # DSM web: HSTS/HTTP2/mDNS/SSDP/ports + TLS profile
+    - synology_dsm_system # hostname/gateway/DNS (SYNO.Core.Network v2)
+    - synology_services # FTP/AFP/SNMP (FileServ.* + SNMP)
+    - synology_security # firewall global + auto-block thresholds
+    - synology_notifications # mail/SMS/push/CMS channel config
+    - synology_app_portal # AppPortal config + reverse-proxy + access-control
