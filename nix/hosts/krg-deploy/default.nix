@@ -37,10 +37,14 @@
   environment.systemPackages = with pkgs; [
     ansible
     opentofu
+    openbao     # bao CLI — talks to krg-vault for secrets management
     python3     # ansible runtime dependency
     sshpass     # needed by some ansible connection scenarios
     jq
   ];
+
+  # Point bao at krg-vault so every shell session works without manual export.
+  environment.variables.VAULT_ADDR = "https://krg-vault.ucsd.edu:8200";
 
   # Not yet domain-joined — disable AD client until keytab is provisioned.
   krg.adClient.enable = false;
