@@ -1,0 +1,3778 @@
+##### e4e-nas capture 2026-05-28T00:00:49Z #####
+##### DSM 7.3.2 build 86009 #####
+=====BEGIN IDENTITY-GROUPS=====
+21 Group Listed:
+aburto_lab
+acoustic-species-id
+administrators
+aye-aye-sleep
+baboons
+Burrowing Owl
+e4e
+fishsense
+floods_of_lubra
+hardware
+http
+label-studio-admin
+leads
+mangrove
+maya
+minio-admin
+rct
+research_support
+robosub
+smartfin-mfg
+users
+=====END IDENTITY-GROUPS=====
+=====BEGIN IDENTITY-USERS=====
+140 User Listed:
+a.agarwal
+a.baksy
+a.budhathoki
+a.chen
+a.Dasbach-Prisk
+a.eswaran
+a.henderson
+a.jajodia
+a.kirpekar
+a.lehman
+a.li
+a.liang
+a.nallacheruvu
+a.navani
+a.panthi
+a.pimple
+a.takamoto
+a.zhou
+a8ghosh
+admin
+alkan
+aperez
+b.mccalmon
+b.michael
+b.miyamoto
+b.mwamba
+benignoma
+c.chen
+c.kushelevsky
+c.zhang
+ccrutchf
+d.budhidharma
+d.budidharma
+d.muthukumaran
+d.sharma
+d.tomar
+dmathews
+e.bu
+e.huang
+e.wu
+e.zeng
+e.zhang
+e4e
+e4e_maestro
+eduardo
+f.irazaba
+ffavoretto
+g.liu
+g.wrye
+github_actions
+guest
+h.dosseh
+h.le
+h.nam
+h.prakash
+h.strickland
+h.wan
+havasanth
+i.hanabusa
+iingram
+j.he
+j.kumagai
+j.lee
+j.liu
+j.suh
+j.switzer
+j.wang
+j.xu
+j.zhang
+jay026
+jsmith
+junkyard.service
+k.dempster
+k.garwood
+k.han
+k.lewis
+k.marikumaran
+kastner-ml
+kyt001
+l.Goyal
+l.shao
+l.vonschoenfeldt
+label_studio
+m.akerman
+m.chen
+m.chu
+m.kim
+m.martinez
+m.patel
+m.tobler
+maburto
+malcubilla
+minio
+n.hui_ro
+n.jian
+n.rekasius
+nthui
+nthui_test
+o.muha
+o.qazi
+p.rodriguez
+p.schiffman
+p.trivedi
+p.tsoi
+r.ding
+r.hoang
+r.lee
+r.rai
+r.sabhlok
+rkastner
+rwallace
+s.aryal
+s.dalal
+s.dave
+s.kamboj
+s.katel
+s.mccue
+s.shrestha
+s.venkatesh
+shperry
+sprestrelski
+t.baskevitch
+t.fan
+t.sakamoto
+t.yang
+t.zhang
+tflar
+theo.darci-maher
+tzhang
+u.goyal
+v.pabba
+v.wang
+v.zhu
+w.wu
+w.zong
+x.bao
+ymojico
+z.lawrence
+z.lin
+z.lin.895
+=====END IDENTITY-USERS=====
+=====BEGIN SMB-GLOBAL=====
+{
+   "data" : {
+      "disable_shadow_copy" : false,
+      "disable_strict_allocate" : false,
+      "enable_access_based_share_enum" : false,
+      "enable_adserver" : null,
+      "enable_aio_read" : true,
+      "enable_delete_vetofiles" : false,
+      "enable_dirsort" : false,
+      "enable_durable_handles" : false,
+      "enable_enhance_log" : false,
+      "enable_fruit_locking" : false,
+      "enable_local_master_browser" : false,
+      "enable_mask" : false,
+      "enable_msdfs" : false,
+      "enable_multichannel" : true,
+      "enable_ntlmv1_auth" : false,
+      "enable_op_lock" : true,
+      "enable_perf_chart" : false,
+      "enable_reset_on_zero_vc" : false,
+      "enable_samba" : true,
+      "enable_server_signing" : 1,
+      "enable_smb2_leases" : false,
+      "enable_smb3_directory_leasing" : false,
+      "enable_strict_sync" : false,
+      "enable_symlink" : true,
+      "enable_syno_catia" : true,
+      "enable_synotify" : true,
+      "enable_vetofile" : false,
+      "enable_widelink" : false,
+      "offline_files_support" : false,
+      "smb_encrypt_transport" : 1,
+      "smb_max_protocol" : 3,
+      "smb_min_protocol" : 1,
+      "syno_wildcard_search" : false,
+      "vetofile" : "",
+      "wins" : "",
+      "workgroup" : "KRG-UCSD-EDU"
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END SMB-GLOBAL=====
+=====BEGIN NFS-GLOBAL=====
+{
+   "data" : {
+      "enable_nfs" : true,
+      "enable_nfs_v4" : true,
+      "enabled_minor_ver" : 1,
+      "nfs_v4_domain" : "",
+      "read_size" : 8192,
+      "support_encrypt_share" : 1,
+      "support_major_ver" : 4,
+      "support_minor_ver" : 1,
+      "unix_pri_enable" : true,
+      "write_size" : 8192
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-GLOBAL=====
+=====BEGIN SHARES-ENUM=====
+Share Enum Arguments: [0x3FF0F]  ALL ENC DEC C2 COLD-STORAGE MISSING-VOL OFFLINE-VOL CEPH WORM
+55 Listed:
+2019.11.wbm-China
+2024_kastner_ml_dump
+2025_kastner_ml_hdd_8tb_dump
+admin
+aid_data
+aid_elephants_interaction
+aid_nat_geo_coral
+aid_nat_geo_the_music
+aye-aye-sleep-monitoring
+baboons
+bom_aws
+coral-ml
+coral-tile
+data_archive
+data_archive_old
+data_staging
+docker
+fabricant-prod-share
+fishsense
+fishsense_data
+fishsense_process_work
+flight_operations
+Floods of Lubra
+forest_fear_lab
+fsspec_test
+git-lfs-store
+hardware_dev
+harpy_find
+homes
+installers
+junkyard-fishsense
+junkyard_backup
+labeling_share
+label_studio
+maestro
+mangrove
+mangrove_meeting_archive
+maya
+media
+NetBackup
+nextcloud
+operations
+owl-behavior
+passive-acoustic-biodiversity
+photo
+programmatics
+rct
+robosub
+rustfs
+sio_e4e_mangroves
+smartfin-mfg
+temp
+web
+web_packages
+zotero
+=====END SHARES-ENUM=====
+#####SHARE name=2019.11.wbm-China#####
+path=/volume1/2019.11.wbm-China
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[2019.11.wbm-China]
+	 Comment ....[Wild Blue Media China Trip]
+	 Path .......[/volume1/2019.11.wbm-China]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[2019.11.wbm-China]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "error" : {
+      "code" : 2301
+   },
+   "httpd_restart" : false,
+   "success" : false
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=2024_kastner_ml_dump#####
+path=/volume2/2024_kastner_ml_dump
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[2024_kastner_ml_dump]
+	 Comment ....[]
+	 Path .......[/volume2/2024_kastner_ml_dump]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1F80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[yes]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[2024_kastner_ml_dump]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,junkyard.service,label_studio]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "error" : {
+      "code" : 2301
+   },
+   "httpd_restart" : false,
+   "success" : false
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [7] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [8] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=2025_kastner_ml_hdd_8tb_dump#####
+path=/volume2/2025_kastner_ml_hdd_8tb_dump
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[2025_kastner_ml_hdd_8tb_dump]
+	 Comment ....[]
+	 Path .......[/volume2/2025_kastner_ml_hdd_8tb_dump]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[2025_kastner_ml_hdd_8tb_dump]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "error" : {
+      "code" : 2301
+   },
+   "httpd_restart" : false,
+   "success" : false
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [1] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=admin#####
+path=/volume1/admin
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[admin]
+	 Comment ....[Administrative Files]
+	 Path .......[/volume1/admin]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[admin]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[a.zhou,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] user:a.zhou:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=aid_data#####
+path=/volume2/aid_data
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[aid_data]
+	 Comment ....[]
+	 Path .......[/volume2/aid_data]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[aid_data]
+	 ACL RO List .....[]
+	 ACL RW List .....[@KRG-UCSD-EDU\Acoustic Identification NAS,@administrators,z.lawrence,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@acoustic-species-id]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,junkyard.service,label_studio]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [7] group:KRG-UCSD-EDU\Acoustic Identification NAS:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [8] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] group:acoustic-species-id:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [10] user:z.lawrence:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [11] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=aid_elephants_interaction#####
+path=/volume2/aid_elephants_interaction
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[aid_elephants_interaction]
+	 Comment ....[]
+	 Path .......[/volume2/aid_elephants_interaction]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[aid_elephants_interaction]
+	 ACL RO List .....[b.miyamoto,KRG-UCSD-EDU\i.jiang.807]
+	 ACL RW List .....[s.venkatesh,j.liu,@administrators,m.patel,m.kim,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:j.liu:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [1] user:KRG-UCSD-EDU\i.jiang.807:allow:r-x---a-R-c--:fd-- (level:0)
+	 [2] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [3] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [4] user:s.venkatesh:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [5] user:m.patel:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [6] user:m.kim:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [7] user:b.miyamoto:allow:r-x---a-R-c--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=aid_nat_geo_coral#####
+path=/volume2/aid_nat_geo_coral
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[aid_nat_geo_coral]
+	 Comment ....[]
+	 Path .......[/volume2/aid_nat_geo_coral]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[aid_nat_geo_coral]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,p.rodriguez,KRG-UCSD-EDU\r.sabhlok.391,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@acoustic-species-id]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [2] user:KRG-UCSD-EDU\r.sabhlok.391:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [3] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [4] group:acoustic-species-id:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [5] user:p.rodriguez:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [6] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=aid_nat_geo_the_music#####
+path=/volume2/aid_nat_geo_the_music
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[aid_nat_geo_the_music]
+	 Comment ....[The Music After the Rain Drive]
+	 Path .......[/volume2/aid_nat_geo_the_music]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[aid_nat_geo_the_music]
+	 ACL RO List .....[]
+	 ACL RW List .....[o.muha,@administrators,KRG-UCSD-EDU\r.sabhlok.391,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@acoustic-species-id]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [2] user:KRG-UCSD-EDU\r.sabhlok.391:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [3] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [4] group:acoustic-species-id:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [5] user:o.muha:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [6] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=aye-aye-sleep-monitoring#####
+path=/volume1/aye-aye-sleep-monitoring
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[aye-aye-sleep-monitoring]
+	 Comment ....[Aye Aye Sleep Monigoring]
+	 Path .......[/volume1/aye-aye-sleep-monitoring]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[aye-aye-sleep-monitoring]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[kastner-ml,@Burrowing Owl,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@aye-aye-sleep]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:aye-aye-sleep:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:Burrowing Owl:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] user:kastner-ml:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [22] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=baboons#####
+path=/volume1/baboons
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[baboons]
+	 Comment ....[Baboons]
+	 Path .......[/volume1/baboons]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[baboons]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[@baboons,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] user::allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] user::allow:r-x---a-R-c--:fd-- (level:0)
+	 [19] group:baboons:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [21] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=bom_aws#####
+path=/volume1/bom_aws
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[bom_aws]
+	 Comment ....[Baboons AWS]
+	 Path .......[/volume1/bom_aws]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[bom_aws]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,tflar,ccrutchf,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [10] user:tflar:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [11] user:ccrutchf:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [12] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [13] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=coral-ml#####
+path=/volume1/coral-ml
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[coral-ml]
+	 Comment ....[Coral ML]
+	 Path .......[/volume1/coral-ml]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[coral-ml]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=coral-tile#####
+path=/volume1/coral-tile
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[coral-tile]
+	 Comment ....[]
+	 Path .......[/volume1/coral-tile]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[coral-tile]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=data_archive#####
+path=/volume2/data_archive
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[data_archive]
+	 Comment ....[E4E Data Archive]
+	 Path .......[/volume2/data_archive]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[data_archive]
+	 ACL RO List .....[@research_support,@users]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,k.garwood,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro,a.henderson]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:a.henderson:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] user:k.garwood:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [14] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [15] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [16] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group::allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group:users:allow:r-x---a-R-c--:fd-- (level:0)
+	 [20] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=data_archive_old#####
+path=/volume2/data_archive_old
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[data_archive_old]
+	 Comment ....[]
+	 Path .......[/volume2/data_archive_old]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1980]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[data_archive_old]
+	 ACL RO List .....[@research_support,@users]
+	 ACL RW List .....[@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,k.garwood,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro,a.henderson]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:a.henderson:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] user:k.garwood:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [14] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [15] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:users:allow:r-x---a-R-c--:fd-- (level:0)
+	 [19] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [20] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=data_staging#####
+path=/volume1/data_staging
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[data_staging]
+	 Comment ....[]
+	 Path .......[/volume1/data_staging]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[data_staging]
+	 ACL RO List .....[]
+	 ACL RW List .....[@research_support,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:research_support:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:r-x---a-R-c--:fd-- (level:0)
+	 [19] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=docker#####
+path=/volume2/docker
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[docker]
+	 Comment ....[]
+	 Path .......[/volume2/docker]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1880]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[no]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[docker]
+	 ACL RO List .....[#everyone]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,ContainerManager]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [1] user:ContainerManager:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [2] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [3] everyone::allow:r-x---a-R-c--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=fabricant-prod-share#####
+path=/volume2/fabricant-prod-share
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[fabricant-prod-share]
+	 Comment ....[]
+	 Path .......[/volume2/fabricant-prod-share]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1F80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[yes]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[fabricant-prod-share]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,KRG-UCSD-EDU\svc_nfs_nas]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : [
+         {
+            "async" : true,
+            "client" : "fabricant-prod.ucsd.edu",
+            "crossmnt" : true,
+            "insecure" : false,
+            "privilege" : "rw",
+            "root_squash" : "root",
+            "security_flavor" : {
+               "kerberos" : false,
+               "kerberos_integrity" : false,
+               "kerberos_privacy" : false,
+               "sys" : true
+            }
+         }
+      ]
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [1] user:KRG-UCSD-EDU\svc_nfs_nas:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [2] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=fishsense#####
+path=/volume1/fishsense
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[fishsense]
+	 Comment ....[FishSense]
+	 Path .......[/volume1/fishsense]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[fishsense]
+	 ACL RO List .....[@research_support,n.hui_ro,@leads]
+	 ACL RW List .....[@fishsense,t.yang,dmathews,s.aryal,shperry,z.lawrence,@administrators,j.he,@hardware,k.han,tzhang,a.panthi,KRG-UCSD-EDU\fs_services,kastner-ml,@KRG-UCSD-EDU\FishSense NAS,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,r.rai]
+	 ACL NA List .....[label_studio,j.kumagai,junkyard.service,nthui_test,minio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [12] user:KRG-UCSD-EDU\fs_services:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [13] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] user:n.hui_ro:allow:r-x---a-R-c--:fd-- (level:0)
+	 [16] user:s.aryal:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] user:tzhang:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] user:r.rai:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] user:j.he:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] user:dmathews:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] user:k.han:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [22] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [23] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [24] user::allow:r-x---a-R-c--:fd-- (level:0)
+	 [25] user:kastner-ml:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [26] group:fishsense:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [27] group:hardware:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [28] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [29] user:shperry:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [30] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [31] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [32] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [33] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [34] user:t.yang:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [35] user:a.panthi:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [36] user:z.lawrence:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [37] user::allow:r-x---a-R-c--:fd-- (level:0)
+	 [38] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [39] group:KRG-UCSD-EDU\FishSense NAS:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=fishsense_data#####
+path=/volume2/fishsense_data
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[fishsense_data]
+	 Comment ....[Fishsense Data]
+	 Path .......[/volume2/fishsense_data]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[fishsense_data]
+	 ACL RO List .....[KRG-UCSD-EDU\fs_services,n.hui_ro]
+	 ACL RW List .....[@fishsense,@administrators,shperry,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@KRG-UCSD-EDU\FishSense NAS]
+	 ACL NA List .....[minio,j.kumagai,junkyard.service,label_studio]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [5] user:KRG-UCSD-EDU\fs_services:allow:r-x---a-R-c--:fd-- (level:0)
+	 [6] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [7] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [8] group:fishsense:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] user:shperry:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [10] user:n.hui_ro:allow:r-x---a-R-c--:fd-- (level:0)
+	 [11] user::allow:r-x---a-R-c--:fd-- (level:0)
+	 [12] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [13] group:KRG-UCSD-EDU\FishSense NAS:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=fishsense_process_work#####
+path=/volume2/fishsense_process_work
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[fishsense_process_work]
+	 Comment ....[Fishsense Processing Working Directory]
+	 Path .......[/volume2/fishsense_process_work]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1880]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[no]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[fishsense_process_work]
+	 ACL RO List .....[KRG-UCSD-EDU\fs_services,@fishsense,a.budhathoki,s.shrestha,@KRG-UCSD-EDU\FishSense NAS]
+	 ACL RW List .....[n.hui_ro,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@KRG-UCSD-EDU\FishSense Production Admins]
+	 ACL NA List .....[junkyard.service]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [2] user:KRG-UCSD-EDU\fs_services:allow:r-x---a-R-c--:fd-- (level:0)
+	 [3] group:KRG-UCSD-EDU\FishSense NAS:allow:r-x---a-R-c--:fd-- (level:0)
+	 [4] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [5] group::allow:r-x---a-R-c--:fd-- (level:0)
+	 [6] user:s.shrestha:allow:r-x---a-R-c--:fd-- (level:0)
+	 [7] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [8] user:n.hui_ro:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] user:a.budhathoki:allow:r-x---a-R-c--:fd-- (level:0)
+	 [10] group:fishsense:allow:r-x---a-R-c--:fd-- (level:0)
+	 [11] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [12] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [13] group:KRG-UCSD-EDU\FishSense Production Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=flight_operations#####
+path=/volume1/flight_operations
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[flight_operations]
+	 Comment ....[Flight Operations]
+	 Path .......[/volume1/flight_operations]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[flight_operations]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=Floods of Lubra#####
+path=/volume1/Floods of Lubra
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[Floods of Lubra]
+	 Comment ....[Floods of Lubra]
+	 Path .......[/volume1/Floods of Lubra]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[Floods of Lubra]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@floods_of_lubra,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:floods_of_lubra:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=forest_fear_lab#####
+path=/volume1/forest_fear_lab
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[forest_fear_lab]
+	 Comment ....[E4E FFL Collaborative Share]
+	 Path .......[/volume1/forest_fear_lab]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[forest_fear_lab]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,a.henderson,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@acoustic-species-id]
+	 ACL NA List .....[k.garwood,n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:k.garwood:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [14] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:acoustic-species-id:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] user:a.henderson:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=fsspec_test#####
+path=/volume2/fsspec_test
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[fsspec_test]
+	 Comment ....[]
+	 Path .......[/volume2/fsspec_test]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[fsspec_test]
+	 ACL RO List .....[]
+	 ACL RW List .....[junkyard.service,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [2] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [3] user:junkyard.service:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [4] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=git-lfs-store#####
+path=/volume2/git-lfs-store
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[git-lfs-store]
+	 Comment ....[Store for Git LFS Files]
+	 Path .......[/volume2/git-lfs-store]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [no]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[git-lfs-store]
+	 ACL RO List .....[]
+	 ACL RW List .....[@e4e,@users,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,k.garwood,minio,j.kumagai,junkyard.service,label_studio]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:k.garwood:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [8] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] group:e4e:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [10] group:users:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [11] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=hardware_dev#####
+path=/volume1/hardware_dev
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[hardware_dev]
+	 Comment ....[Hardware Support Team]
+	 Path .......[/volume1/hardware_dev]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[hardware_dev]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[@hardware,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:hardware:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [19] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=harpy_find#####
+path=/volume1/harpy_find
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[harpy_find]
+	 Comment ....[]
+	 Path .......[/volume1/harpy_find]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[harpy_find]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=homes#####
+path=/volume1/homes
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[homes]
+	 Comment ....[user home]
+	 Path .......[/volume1/homes]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x19A0]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[homes]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[#owner,#everyone]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [13] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] owner::allow:rwxpdDaARWcCo:fd-- (level:0)
+	 [15] everyone::allow:--x----------:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=installers#####
+path=/volume1/installers
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[installers]
+	 Comment ....[]
+	 Path .......[/volume1/installers]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[installers]
+	 ACL RO List .....[@users]
+	 ACL RW List .....[@research_support,@administrators,@leads,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,a.henderson,k.garwood,label_studio,j.kumagai,junkyard.service,nthui_test,minio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:k.garwood:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] user:a.henderson:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [14] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [15] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [16] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group:research_support:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group:users:allow:r-x---a-R-c--:fd-- (level:0)
+	 [22] group:leads:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [23] group::allow:r-x---a-R-c--:fd-- (level:0)
+	 [24] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=junkyard-fishsense#####
+path=/volume1/junkyard-fishsense
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[junkyard-fishsense]
+	 Comment ....[]
+	 Path .......[/volume1/junkyard-fishsense]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[junkyard-fishsense]
+	 ACL RO List .....[]
+	 ACL RW List .....[junkyard.service,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:junkyard.service:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [2] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [3] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [4] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=junkyard_backup#####
+path=/volume2/junkyard_backup
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[junkyard_backup]
+	 Comment ....[]
+	 Path .......[/volume2/junkyard_backup]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[junkyard_backup]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [1] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=labeling_share#####
+path=/volume1/labeling_share
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[labeling_share]
+	 Comment ....[Labeling Party Share]
+	 Path .......[/volume1/labeling_share]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[labeling_share]
+	 ACL RO List .....[]
+	 ACL RW List .....[@users,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[k.garwood,n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:k.garwood:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [11] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [12] group:users:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [13] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=label_studio#####
+path=/volume2/label_studio
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[label_studio]
+	 Comment ....[]
+	 Path .......[/volume2/label_studio]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[label_studio]
+	 ACL RO List .....[label_studio]
+	 ACL RW List .....[@label-studio-admin,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,junkyard.service]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [6] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [7] user:label_studio:allow:r-x---a-R-c--:fd-- (level:0)
+	 [8] group:label-studio-admin:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=maestro#####
+path=/volume1/maestro
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[maestro]
+	 Comment ....[maestro]
+	 Path .......[/volume1/maestro]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[maestro]
+	 ACL RO List .....[]
+	 ACL RW List .....[nthui_test,@administrators,shperry,e4e_maestro,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,junkyard.service,label_studio]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [7] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [8] user:nthui_test:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] user:shperry:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [10] user:e4e_maestro:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [11] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=mangrove#####
+path=/volume1/mangrove
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[mangrove]
+	 Comment ....[Mangrove Monitoring Data Share]
+	 Path .......[/volume1/mangrove]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[mangrove]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[@mangrove,kastner-ml,e4e,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] user:kastner-ml:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group:mangrove:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] user:e4e:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [21] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [22] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=mangrove_meeting_archive#####
+path=/volume2/mangrove_meeting_archive
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[mangrove_meeting_archive]
+	 Comment ....[Mangrove Monitoring Meeting Recordings Archive]
+	 Path .......[/volume2/mangrove_meeting_archive]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[mangrove_meeting_archive]
+	 ACL RO List .....[@mangrove]
+	 ACL RW List .....[@leads,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,junkyard.service,label_studio]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [7] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [8] group:leads:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [9] group:mangrove:allow:r-x---a-R-c--:fd-- (level:0)
+	 [10] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=maya#####
+path=/volume1/maya
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[maya]
+	 Comment ....[Maya Archaeology Data Share]
+	 Path .......[/volume1/maya]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[maya]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[e4e,@maya,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] user:e4e:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:maya:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [20] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=media#####
+path=/volume1/media
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[media]
+	 Comment ....[E4E Media]
+	 Path .......[/volume1/media]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1BA0]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[media]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=NetBackup#####
+path=/volume1/NetBackup
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[NetBackup]
+	 Comment ....[System default shared folder]
+	 Path .......[/volume1/NetBackup]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1980]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[NetBackup]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=nextcloud#####
+path=/volume1/nextcloud
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[nextcloud]
+	 Comment ....[data folder for nextcloud]
+	 Path .......[/volume1/nextcloud]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1980]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[nextcloud]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins,@http]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:http:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=operations#####
+path=/volume1/operations
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[operations]
+	 Comment ....[]
+	 Path .......[/volume1/operations]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1F80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[yes]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[operations]
+	 ACL RO List .....[@leads]
+	 ACL RW List .....[@research_support,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:research_support:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=owl-behavior#####
+path=/volume1/owl-behavior
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[owl-behavior]
+	 Comment ....[burrowing owl behavior project]
+	 Path .......[/volume1/owl-behavior]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[owl-behavior]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[iingram,@Burrowing Owl,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] user:iingram:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] group:Burrowing Owl:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=passive-acoustic-biodiversity#####
+path=/volume2/passive-acoustic-biodiversity
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[passive-acoustic-biodiversity]
+	 Comment ....[]
+	 Path .......[/volume2/passive-acoustic-biodiversity]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[passive-acoustic-biodiversity]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[@acoustic-species-id,@administrators,j.he,KRG-UCSD-EDU\s.dalal.800,m.tobler,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,label_studio,j.kumagai,junkyard.service,nthui_test,minio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] user:KRG-UCSD-EDU\s.dalal.800:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] user:m.tobler:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [19] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] group:acoustic-species-id:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [22] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [23] user:j.he:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [24] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=photo#####
+path=/volume1/photo
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[photo]
+	 Comment ....[System default shared folder]
+	 Path .......[/volume1/photo]
+	 Deny list ..[@Directory Consumers@e4e-nas.ucsd.edu,a.henderson,@Directory Clients@e4e-nas.ucsd.edu,junkyard.service,@Directory Operators@e4e-nas.ucsd.edu,label_studio,minio,@users@e4e-nas.ucsd.edu,e4e_maestro,malcubilla,j.kumagai,k.garwood,n.hui_ro,nthui_test]
+	 RW list ....[@acoustic-species-id,PhotoStation,@administrators,@administrators@edu.ucsd.e4e-nas,@KRG-UCSD-EDU\NAS Administrators,admin,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 RO list ....[@users,@research_support,@e4e_nas-users@edu.ucsd.e4e-nas]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x520]
+	 WinShare .....[no]
+	 ACL ..........[no]
+	 Skip smb perm.[no]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[yes]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[photo]
+	 ACL RO List .....[#everyone]
+	 ACL RW List .....[@administrators,admin]
+	 ACL NA List .....[]
+	 ACL Custom List .[PhotoStation]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [PhotoStation(user)] 
+--------------------- 
+	 [0] user:PhotoStation:allow:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] everyone::allow:r-x---a-R-c--:---n (level:0)
+	 [2] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [3] user:admin:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=programmatics#####
+path=/volume1/programmatics
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[programmatics]
+	 Comment ....[]
+	 Path .......[/volume1/programmatics]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[programmatics]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@leads,@e4e,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,malcubilla,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user:malcubilla:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [14] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group:e4e:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group:leads:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=rct#####
+path=/volume1/rct
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[rct]
+	 Comment ....[Radio Collar Tracking Data Share]
+	 Path .......[/volume1/rct]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[rct]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[@rct,@hardware,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:rct:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:hardware:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [20] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=robosub#####
+path=/volume1/robosub
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[robosub]
+	 Comment ....[robosub]
+	 Path .......[/volume1/robosub]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[robosub]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@robosub,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] user::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group:robosub:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=rustfs#####
+path=/volume2/rustfs
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[rustfs]
+	 Comment ....[]
+	 Path .......[/volume2/rustfs]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[rustfs]
+	 ACL RO List .....[]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [1] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=sio_e4e_mangroves#####
+path=/volume1/sio_e4e_mangroves
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[sio_e4e_mangroves]
+	 Comment ....[SIO/E4E Mangrove Data]
+	 Path .......[/volume1/sio_e4e_mangroves]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[sio_e4e_mangroves]
+	 ACL RO List .....[@mangrove,@aburto_lab,j.kumagai,@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [13] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] user:j.kumagai:allow:r-x---a-R-c--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group:mangrove:allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group:aburto_lab:allow:r-x---a-R-c--:fd-- (level:0)
+	 [19] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=smartfin-mfg#####
+path=/volume1/smartfin-mfg
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[smartfin-mfg]
+	 Comment ....[Smartfin Manufacturing]
+	 Path .......[/volume1/smartfin-mfg]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[smartfin-mfg]
+	 ACL RO List .....[@research_support,@leads]
+	 ACL RW List .....[@smartfin-mfg,@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] user::allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group:smartfin-mfg:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group:leads:allow:r-x---a-R-c--:fd-- (level:0)
+	 [20] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=temp#####
+path=/volume1/temp
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[temp]
+	 Comment ....[]
+	 Path .......[/volume1/temp]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1980]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[temp]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@users,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[k.garwood,n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro,a.henderson]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:k.garwood:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] user:a.henderson:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [14] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [15] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [16] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [20] group:users:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [21] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [22] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=web#####
+path=/volume1/web
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[web]
+	 Comment ....[System default shared folder]
+	 Path .......[/volume1/web]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1980]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[web]
+	 ACL RO List .....[@research_support,http,@http]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] user:http:allow:r-x---a-R-c--:fd-- (level:0)
+	 [15] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:http:allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [19] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=web_packages#####
+path=/volume1/web_packages
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[web_packages]
+	 Comment ....[]
+	 Path .......[/volume1/web_packages]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1980]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[no]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[web_packages]
+	 ACL RO List .....[@research_support,http,@http]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:http:allow:r-x---a-R-c--:fd-- (level:0)
+	 [15] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [17] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [18] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [19] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [20] user:http:allow:r-x---a-R-c--:fd-- (level:0)
+=====END FS-ACL=====
+#####SHARE name=zotero#####
+path=/volume1/zotero
+=====BEGIN SHARE-GET=====
+SYNOSHARE data dump:
+	 Name .......[zotero]
+	 Comment ....[zotero]
+	 Path .......[/volume1/zotero]
+	 Deny list ..[]
+	 RW list ....[]
+	 RO list ....[]
+	 fType ......[2]
+	 fBrowseable [yes]
+	 FTPPrivilege[0]
+	 Status .....[0x1B80]
+	 WinShare .....[yes]
+	 ACL ..........[yes]
+	 Skip smb perm.[yes]
+	 Permit .......[yes]
+	 RecycleBin....[yes]
+	 RecycleBinAdminOnly....[yes]
+	 HideUnreadable ........[no]
+	 Snapshot browsing .....[no]
+	 On Cold Storage Volume.....[no]
+=====END SHARE-GET=====
+=====BEGIN SHARE-ACL=====
+SYNOSHARE ACL Perm List:
+	 Name ............[zotero]
+	 ACL RO List .....[@research_support]
+	 ACL RW List .....[@administrators,@KRG-UCSD-EDU\Engineers for Exploration NAS Admins]
+	 ACL NA List .....[n.hui_ro,minio,j.kumagai,nthui_test,junkyard.service,label_studio,e4e_maestro]
+	 ACL Custom List .[]
+=====END SHARE-ACL=====
+=====BEGIN NFS-RULES=====
+{
+   "data" : {
+      "rule" : []
+   },
+   "httpd_restart" : false,
+   "success" : true
+}
+=====END NFS-RULES=====
+=====BEGIN FS-ACL=====
+ACL version: 1 
+Archive: has_ACL,is_support_ACL 
+Owner: [root(user)] 
+--------------------- 
+	 [0] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [1] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [2] user:j.kumagai:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [3] user:minio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [4] user:nthui_test:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [5] user:e4e_maestro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [6] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [7] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [8] group::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [9] user::deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [10] user:n.hui_ro:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [11] user:label_studio:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [12] user:junkyard.service:deny:rwxpdDaARWcCo:fd-- (level:0)
+	 [13] group:administrators:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [14] group:KRG-UCSD-EDU\Engineers for Exploration NAS Admins:allow:rwxpdDaARWc--:fd-- (level:0)
+	 [15] group::allow:rwxpdDaARWc--:fd-- (level:0)
+	 [16] group:research_support:allow:r-x---a-R-c--:fd-- (level:0)
+	 [17] group::allow:rwxpdDaARWc--:fd-- (level:0)
+=====END FS-ACL=====
+##### capture complete #####

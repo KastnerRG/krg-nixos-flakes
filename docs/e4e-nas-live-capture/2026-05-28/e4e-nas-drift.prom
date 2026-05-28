@@ -1,0 +1,16 @@
+# HELP krg_synology_drift Live DSM state diverges from spec (1=drift).
+# TYPE krg_synology_drift gauge
+krg_synology_drift{host="e4e-nas",resource="shares"} 1
+krg_synology_drift_items{host="e4e-nas",resource="shares"} 1
+krg_synology_drift{host="e4e-nas",resource="smb"} 1
+krg_synology_drift_items{host="e4e-nas",resource="smb"} 1
+krg_synology_drift{host="e4e-nas",resource="nfs"} 0
+krg_synology_drift_items{host="e4e-nas",resource="nfs"} 0
+krg_synology_drift{host="e4e-nas",resource="acls"} 0
+krg_synology_drift_items{host="e4e-nas",resource="acls"} 0
+# HELP krg_synology_drift_check_success Detector ran with all snapshots present+parsed.
+# TYPE krg_synology_drift_check_success gauge
+krg_synology_drift_check_success{host="e4e-nas"} 1
+# HELP krg_synology_drift_check_timestamp_seconds Unix time of this check.
+# TYPE krg_synology_drift_check_timestamp_seconds gauge
+krg_synology_drift_check_timestamp_seconds{host="e4e-nas"} 1779951811

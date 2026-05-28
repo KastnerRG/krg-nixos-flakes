@@ -1,0 +1,18 @@
+nfs:
+  enable: true
+  nfsv4: true
+  v4_domain: ''
+exports:
+- share: fabricant-prod-share
+  rules:
+  - async: true
+    client: fabricant-prod.ucsd.edu
+    crossmnt: true
+    insecure: false
+    privilege: rw
+    root_squash: root
+    security_flavor:
+      kerberos: false
+      kerberos_integrity: false
+      kerberos_privacy: false
+      sys: true

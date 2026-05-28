@@ -16,16 +16,21 @@
 #         - { group: leads, access: ro }
 #         - { user: someuser, access: rw }
 #
-# TODO — capture the real matrix from the LIVE NAS *before* the Mode-2 reset:
-#   ansible-playbook playbooks/synology.yml --tags export   # -> <host>-acls.yml
-# (the `--list_acl` output drops into the grant shape above; @name -> group:). The DSM
-# config export's binary ACL blobs reference the DEAD old-domain SIDs, so they are NOT a
-# usable source — the live box is. The `governs:` hints in groups.yml are inferred
-# name-correlations to start from, not the authoritative matrix.
+# ✅ 2026-05-28: PRE-RESET CAPTURE TAKEN — see
+# docs/e4e-nas-live-capture/2026-05-28/{capture.txt,acls.yml,SUMMARY.md}
+# All 55 live shares captured via `synoshare --list_acl` (read-only). That file is the
+# authoritative REFERENCE but is NOT pasted here verbatim, because many grants reference
+# the DEAD old domain (e.g. `KRG-UCSD-EDU\Engineers for Exploration NAS Admins`). Those
+# principals won't exist after the Mode-2 reset + KRG.LOCAL join — committing them as
+# desired state would encode dead SIDs back into the spec.
 #
-# DEAD-SID gotcha (runbook): preserved data carries dead-SID on-disk ACLs, so each share
-# also needs a recursive `synoacltool` "apply to sub-folders and files" pass AFTER the
-# KRG.LOCAL join (a post-join step, not this role yet). The exporter captures
-# `synoacltool -get` per share so that on-disk state is recorded before the reset.
+# TODO (post-AD-join, before applying synology_acls):
+#   1. Map dead `KRG-UCSD-EDU\…` group refs in the capture to their KRG.LOCAL equivalents
+#      (largely the groups.yml set + the local `administrators`).
+#   2. Decide which per-user grants (service-account NA deny lists, etc.) carry over and
+#      to which new user objects.
+#   3. Populate the `acls:` list below; the role and drift detector then enforce it.
+#   4. Separately, run the recursive on-disk re-apply (`synoacltool` per share) for
+#      preserved data carrying dead SIDs (runbook post-join step, not this role).
 
-acls: [] # TODO — capture from the live box before reset
+acls: [] # populated from the capture + dead-SID translation, post-AD-join

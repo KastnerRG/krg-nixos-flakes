@@ -14,8 +14,8 @@
 # Rule fields (validated): client; privilege rw|ro; root_squash (DSM short enum — "root"
 # renders as no_root_squash, i.e. root NOT squashed); async; insecure (allow non-priv
 # source ports); crossmnt; security_flavor {sys,kerberos,kerberos_integrity,kerberos_privacy}.
-# ⚠️ Confirm the exact root_squash/security/async values against the LIVE box's rule
-# (`--tags export` → load) BEFORE the reset — the live box is authoritative, this is a seed.
+# Values below are CONFIRMED from the 2026-05-28 live capture
+# (docs/e4e-nas-live-capture/2026-05-28/nfs-exports.yml) — load/save round-trips this shape.
 
 nfs:
   enable: true
@@ -29,8 +29,8 @@ exports:
     rules:
       - client: fabricant-prod.ucsd.edu
         privilege: rw
-        root_squash: root          # "root" => no_root_squash on the wire
-        async: false
+        root_squash: root          # "root" => no_root_squash on the wire (root NOT squashed)
+        async: true                # CAPTURED: live rule uses async (was assumed false in the seed)
         insecure: false
         crossmnt: true
         security_flavor: { sys: true, kerberos: false, kerberos_integrity: false, kerberos_privacy: false }
