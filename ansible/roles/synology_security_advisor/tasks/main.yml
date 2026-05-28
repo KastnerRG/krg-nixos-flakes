@@ -1,0 +1,35 @@
+---
+# synology_security_advisor — manage DSM Security Advisor (scheduled vuln/config
+# scan) from spec/krg-prod/security-advisor.yml via synowebapi (full-object set on
+# SYNO.SDS.SecurityScan.Main; logic in files/apply_security_advisor.py via the
+# `script` module, DSM py3.8).
+#
+# CROSS-REFERENCE: this is the DSM-native replacement for `oec_qualys_trellix` on
+# Linux hosts — see docs/adr/0006-no-oec-on-dsm.md (pending). The intent is the
+# same (periodic vuln/config scan with email notify on findings); the mechanism
+# is Synology-curated, matching the appliance threat model.
+
+- name: Load the Security Advisor spec
+  ansible.builtin.include_vars:
+    file: "{{ synology_security_advisor_spec }}"
+    name: sa_spec
+
+- name: Apply Security Advisor config (SYNO.SDS.SecurityScan.Main set — full-object; partial = err 2001)
+  ansible.builtin.script: >-
+    apply_security_advisor.py main
+    --enable {{ sa_spec.security_advisor.enabled | default(true) }}
+    --day {{ sa_spec.security_advisor.schedule.day | default('Wed') | quote }}
+    --hour {{ sa_spec.security_advisor.schedule.hour | default(4) }}
+    --minute {{ sa_spec.security_advisor.schedule.minute | default(15) }}
+    --categories {{ (sa_spec.security_advisor.scan_categories | default([])) | to_json | quote }}
+    --notify-email {{ sa_spec.security_advisor.notify_email_on_finding | default(true) }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: sa_apply
+  changed_when: "'CHANGED' in sa_apply.stdout or 'WOULD-CHANGE' in sa_apply.stdout"
+  failed_when: "sa_apply.rc != 0 or 'FAIL' in sa_apply.stdout"
+  check_mode: false  # script self-gates on --check
+
+# --- Drift export (read-only) — only with `--tags export` -----------------------
+- name: Export live state for drift detection
+  ansible.builtin.import_tasks: export.yml
+  tags: [export, never]
