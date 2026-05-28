@@ -129,8 +129,12 @@ resource "authentik_application" "qualcomm_docs" {
 }
 
 # ── E4E Roster ────────────────────────────────────────────────────────────────
+# Gated on var.enable_e4e_roster (default false) so the placeholder localhost
+# callback isn't registered in production Authentik until the real URL is known.
+# Flip the variable when roster gets a production host (and update the URLs).
 
 resource "authentik_provider_oauth2" "e4e_roster" {
+  count              = var.enable_e4e_roster ? 1 : 0
   name               = "KRG Roster"
   client_id          = "e4e-roster"
   authorization_flow = data.authentik_flow.default_authorization.id
@@ -144,8 +148,9 @@ resource "authentik_provider_oauth2" "e4e_roster" {
 }
 
 resource "authentik_application" "e4e_roster" {
+  count             = var.enable_e4e_roster ? 1 : 0
   name              = "KRG Roster"
   slug              = "e4e-roster"
-  protocol_provider = authentik_provider_oauth2.e4e_roster.id
+  protocol_provider = authentik_provider_oauth2.e4e_roster[0].id
   meta_launch_url   = "http://localhost:3000"
 }
