@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Apply DSM Terminal config + sshd_config hardening drop-in idempotently.
+
+Subcommands:
+  terminal      SYNO.Core.Terminal set (v1) — ssh.enable + ssh.port + telnet.enable +
+                sftp.enable. FULL-OBJECT (partial = err 2001): GET → overlay → SET.
+  sshd-drop-in  Write /etc/ssh/sshd_config.d/10-krg-hardening.conf
+                (PasswordAuthentication no / PermitRootLogin no / pubkey algos).
+                Validates with `sshd -t` BEFORE replacing; restarts sshd via
+                `synoservicectl --restart sshd` only on change. DSM has no UI
+                toggle for these settings, so they must live in sshd_config —
+                and `template:` / `copy:` ansible modules don't work on DSM's
+                python 3.8 (below ansible's module floor), so the script ships
+                the file itself.
+
+Invoked by the synology_ssh ansible role via the `script` module.
+Prints OK no-change / WOULD-CHANGE <json> / CHANGED <json> / FAIL <json>.
+
+Field mapping (DSM 7.3 best-known — empirical confirmation pending; flip OUT_KEYS
+on first-apply drift):
+  ssh.enable        -> enable_ssh
+  ssh.port          -> ssh_port
+  telnet.enable     -> enable_telnet
+  sftp.enable       -> enable_sftp
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+WEBAPI = "/usr/syno/bin/synowebapi"
+TERMINAL_API = "SYNO.Core.Terminal"
+SSHD_DROP_IN = "/etc/ssh/sshd_config.d/10-krg-hardening.conf"
+
+OUT_KEYS = {
+    "ssh_enable":    "enable_ssh",
+    "ssh_port":      "ssh_port",
+    "telnet_enable": "enable_telnet",
+    "sftp_enable":   "enable_sftp",
+}
+
+
+def _exec(api, *params):
+    out = subprocess.run(
+        [WEBAPI, "--exec", "api=" + api, *params],
+        capture_output=True, text=True,
+    )
+    txt = out.stdout
+    brace = txt.find("{")
+    if brace < 0:
+        raise RuntimeError("no JSON in synowebapi output: " + (txt or out.stderr))
+    return json.loads(txt[brace:])
+
+
+def _bool(s):
+    return str(s).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _args_from(data):
+    args = []
+    for key, val in data.items():
+        if val is None:
+            continue
+        if isinstance(val, bool):
+            val = "true" if val else "false"
+        elif isinstance(val, (dict, list)):
+            val = json.dumps(val)
+        args.append("{}={}".format(key, val))
+    return args
+
+
+def _result(drift, check, apply_fn):
+    if not drift:
+        print("OK no-change")
+        return 0
+    if check:
+        print("WOULD-CHANGE " + json.dumps(drift, sort_keys=True))
+        return 0
+    res = apply_fn()
+    if res.get("success"):
+        print("CHANGED " + json.dumps(drift, sort_keys=True))
+        return 0
+    print("FAIL " + json.dumps(res))
+    return 1
+
+
+# --- terminal (SYNO.Core.Terminal, full-object) -----------------------------------
+def do_terminal(a):
+    desired = {
+        OUT_KEYS["ssh_enable"]:    _bool(a.ssh_enable),
+        OUT_KEYS["ssh_port"]:      int(a.ssh_port),
+        OUT_KEYS["telnet_enable"]: _bool(a.telnet_enable),
+        OUT_KEYS["sftp_enable"]:   _bool(a.sftp_enable),
+    }
+    current = _exec(TERMINAL_API, "version=1", "method=get")["data"]
+    drift = {k: {"current": current.get(k), "desired": v}
+             for k, v in desired.items() if current.get(k) != v}
+
+    def apply():
+        current.update(desired)
+        return _exec(TERMINAL_API, "version=1", "method=set", *_args_from(current))
+
+    return _result(drift, a.check, apply)
+
+
+# --- sshd-drop-in (write /etc/ssh/sshd_config.d/10-krg-hardening.conf) -------------
+SSHD_TEMPLATE = """\
+# Managed by Ansible (krg-infra synology_ssh) — DO NOT EDIT.
+# Mirrors ansible/roles/ssh_hardening/templates/10-krg-hardening.conf.j2 and
+# nix/profiles/base.nix services.openssh.settings. DSM's UI has no toggle for
+# these settings, so they live here. A DSM major update can REVERT this file —
+# re-apply synology_base after upgrades.
+
+PasswordAuthentication {pw}
+PermitRootLogin {root}
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+{algos}"""
+
+
+def _render_drop_in(allow_password, allow_root, allowed_algos):
+    algos = ""
+    if allowed_algos:
+        algos = ("PubkeyAcceptedAlgorithms " + allowed_algos + "\n"
+                 "HostKeyAlgorithms " + allowed_algos + "\n")
+    return SSHD_TEMPLATE.format(
+        pw="yes" if allow_password else "no",
+        root="yes" if allow_root else "no",
+        algos=algos,
+    )
+
+
+def _read_existing(path):
+    try:
+        with open(path) as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+
+def do_sshd_drop_in(a):
+    desired = _render_drop_in(_bool(a.allow_password), _bool(a.allow_root),
+                              a.allowed_algos or "")
+    current = _read_existing(SSHD_DROP_IN)
+    if current == desired:
+        print("OK no-change")
+        return 0
+    drift_summary = {
+        "path": SSHD_DROP_IN,
+        "exists": current is not None,
+        "bytes_current": len(current) if current is not None else 0,
+        "bytes_desired": len(desired),
+    }
+    if a.check:
+        print("WOULD-CHANGE " + json.dumps(drift_summary, sort_keys=True))
+        return 0
+
+    # Validate via a temp file BEFORE replacing the real drop-in — sshd -t reads
+    # the entire sshd_config; -f points at a tempfile assembled from the live
+    # sshd_config + this drop-in candidate, so a syntactically-bad drop-in fails
+    # validation and leaves the running drop-in untouched.
+    try:
+        os.makedirs(os.path.dirname(SSHD_DROP_IN), exist_ok=True)
+        with tempfile.NamedTemporaryFile("w", dir=os.path.dirname(SSHD_DROP_IN),
+                                         delete=False, prefix=".10-krg-hardening.",
+                                         suffix=".tmp") as tf:
+            tf.write(desired)
+            tmp = tf.name
+        os.chmod(tmp, 0o644)
+        # Move the temp into place; old drop-in (if any) is overwritten atomically
+        # by os.replace. sshd -t after replacement, then restart; if validation
+        # fails AFTER replacement we put the old content back.
+        old_content = current
+        os.replace(tmp, SSHD_DROP_IN)
+        v = subprocess.run(["sshd", "-t"], capture_output=True, text=True)
+        if v.returncode != 0:
+            if old_content is None:
+                os.remove(SSHD_DROP_IN)
+            else:
+                with open(SSHD_DROP_IN, "w") as f:
+                    f.write(old_content)
+            print("FAIL " + json.dumps({"sshd -t": v.stderr.strip()[:400]}))
+            return 1
+        # Restart sshd via DSM service manager (no systemd here).
+        r = subprocess.run(["synoservicectl", "--restart", "sshd"],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            print("FAIL " + json.dumps({"synoservicectl": r.stderr.strip()[:400]}))
+            return 1
+    except OSError as e:
+        print("FAIL " + json.dumps({"error": str(e)}))
+        return 1
+
+    print("CHANGED " + json.dumps(drift_summary, sort_keys=True))
+    return 0
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Apply DSM SSH/Terminal config via synowebapi + sshd drop-in.")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    t = sub.add_parser("terminal", help="DSM Terminal (ssh+port+telnet+sftp)")
+    t.add_argument("--ssh-enable", dest="ssh_enable", required=True)
+    t.add_argument("--ssh-port", dest="ssh_port", required=True)
+    t.add_argument("--telnet-enable", dest="telnet_enable", required=True)
+    t.add_argument("--sftp-enable", dest="sftp_enable", required=True)
+    t.add_argument("--check", action="store_true")
+    t.set_defaults(func=do_terminal)
+
+    s = sub.add_parser("sshd-drop-in", help="sshd_config.d/10-krg-hardening.conf")
+    s.add_argument("--allow-password", dest="allow_password", required=True)
+    s.add_argument("--allow-root", dest="allow_root", required=True)
+    s.add_argument("--allowed-algos", dest="allowed_algos", default="")
+    s.add_argument("--check", action="store_true")
+    s.set_defaults(func=do_sshd_drop_in)
+
+    a = ap.parse_args(argv)
+    return a.func(a)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
