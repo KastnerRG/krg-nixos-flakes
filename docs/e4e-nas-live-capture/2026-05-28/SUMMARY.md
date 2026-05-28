@@ -63,3 +63,26 @@ This file is the **reference** for designing the post-AD-join ACL matrix:
 
 The recursive on-disk ACL re-apply for preserved share data carrying dead SIDs
 (`synoacltool` per share) remains a separate **post-join runbook step**.
+
+### Task Scheduler — only the Recycle Bin is user-config (the rest are DSM defaults)
+
+Captured via [`scheduler-capture.txt`](scheduler-capture.txt) (`synowebapi
+SYNO.Core.TaskScheduler list` + `synoschedtask --get`). The two surfaces disagree
+on what counts as a task:
+
+- **`synowebapi method=list` (user-visible)** → **3 tasks**:
+  | id | name | type | enabled | trigger |
+  |---|---|---|---|---|
+  | **6** | **Recycle Bin** | recycle | ✓ | daily 00:00 — **action "Empty all Recycle Bins"** |
+  | 3 | Auto S.M.A.R.T. Test | custom (SMART) | ✓ | monthly (next 2026-06-13) |
+  | 80322000 | PowerOff task 0 | power | ✗ | one-off, stale/disabled |
+- **`synoschedtask --get` (everything)** also exposes DSM-default system tasks: DSM
+  Auto Update (weekly Sat 02:00), Security Advisor (weekly Wed 04:15), Security Scan
+  (monthly), etc. — DSM recreates these on install, so no IaC needed.
+- **EventScheduler** → empty (`data: []`); no event-triggered tasks defined.
+
+**IaC implication:** only **Recycle Bin (id 6)** needs explicit reproduction (the
+single task the runbook §"Scheduled task" calls out → `synology_core_event` in
+[`terraform/e4e-nas/scheduler.tf`](../../../terraform/e4e-nas/scheduler.tf), still a
+stub). The PowerOff task is stale and can be dropped on rebuild. S.M.A.R.T. and the
+system tasks come back automatically from DSM.
