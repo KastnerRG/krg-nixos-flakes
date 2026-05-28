@@ -25,7 +25,7 @@ resource "authentik_source_ldap" "samba_ad" {
   object_uniqueness_field = "objectSid"
 
   # 7 user property mappings — matches the live source config (screenshot).
-  user_property_mappings = [
+  property_mappings = [
     data.authentik_property_mapping_source_ldap.dn_user_path.id,
     data.authentik_property_mapping_source_ldap.mail.id,
     data.authentik_property_mapping_source_ldap.name.id,
@@ -36,7 +36,7 @@ resource "authentik_source_ldap" "samba_ad" {
   ]
 
   # 1 group property mapping — matches the live source config.
-  group_property_mappings = [
+  property_mappings_group = [
     data.authentik_property_mapping_source_ldap.name.id,
   ]
 

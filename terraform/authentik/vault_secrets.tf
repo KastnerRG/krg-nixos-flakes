@@ -36,6 +36,6 @@ resource "vault_kv_secret_v2" "outpost_token" {
   mount = "secret"
   name  = "krg-prod/authentik-outpost-token"
   data_json = jsonencode({
-    token = authentik_outpost.proxy.token
+    token = authentik_token.proxy_outpost.key
   })
 }
