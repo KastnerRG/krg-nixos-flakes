@@ -9,7 +9,7 @@ resource "authentik_provider_oauth2" "e4e_nas" {
   client_id          = "e4e-nas"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["https://e4e-nas.ucsd.edu:6021"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "https://e4e-nas.ucsd.edu:6021" }]
   property_mappings  = local.std_scopes
   sub_mode           = "user_email"
   access_token_validity  = "minutes=60"
@@ -31,7 +31,7 @@ resource "authentik_provider_oauth2" "fishsense_workflows" {
   client_id          = "fishsense-workflows"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["https://workflows.fishsense.e4e.ucsd.edu/auth/sso/callback"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "https://workflows.fishsense.e4e.ucsd.edu/auth/sso/callback" }]
   property_mappings  = local.std_scopes
   sub_mode           = "hashed_user_id"
   access_token_validity  = "minutes=60"
@@ -54,7 +54,7 @@ resource "authentik_provider_oauth2" "fishsense_analytics" {
   client_id          = "fishsense-analytics"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["https://analytics.fishsense.e4e.ucsd.edu/oauth-authorized/authentik"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "https://analytics.fishsense.e4e.ucsd.edu/oauth-authorized/authentik" }]
   property_mappings  = local.std_scopes
   sub_mode           = "hashed_user_id"
   access_token_validity  = "minutes=60"
@@ -76,7 +76,7 @@ resource "authentik_provider_oauth2" "fishsense_oauth" {
   client_id          = "fishsense-oauth"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["https://fishsense.e4e.ucsd.edu/api/auth/callback/authentik"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "https://fishsense.e4e.ucsd.edu/api/auth/callback/authentik" }]
   property_mappings  = local.std_scopes
   sub_mode           = "hashed_user_id"
   access_token_validity  = "minutes=60"
@@ -135,7 +135,7 @@ resource "authentik_provider_oauth2" "e4e_roster" {
   client_id          = "e4e-roster"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["http://roster.e4e.ucsd.edu/auth/callback"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "http://roster.e4e.ucsd.edu/auth/callback" }]
   property_mappings  = local.std_scopes
   sub_mode           = "hashed_user_id"
   access_token_validity  = "hours=1"

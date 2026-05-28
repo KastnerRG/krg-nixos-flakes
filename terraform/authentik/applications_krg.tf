@@ -18,7 +18,7 @@ resource "authentik_provider_oauth2" "grafana" {
   client_id          = "grafana"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["https://dashboard.waiter.ucsd.edu/login/generic_oauth"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "https://dashboard.waiter.ucsd.edu/login/generic_oauth" }]
   property_mappings  = local.std_scopes
   sub_mode           = "user_email"
   access_token_validity  = "minutes=60"
@@ -41,7 +41,7 @@ resource "authentik_provider_oauth2" "outline" {
   client_id          = "outline"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["https://wiki.fabricant.ucsd.edu/auth/oidc.callback"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "https://wiki.fabricant.ucsd.edu/auth/oidc.callback" }]
   property_mappings  = local.std_scopes
   sub_mode           = "user_email"
   access_token_validity  = "minutes=60"
@@ -64,7 +64,7 @@ resource "authentik_provider_oauth2" "mlflow" {
   client_id          = "mlflow"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  redirect_uris      = ["https://mlflow.krg.ucsd.edu/callback"]
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "https://mlflow.krg.ucsd.edu/callback" }]
   property_mappings  = local.std_scopes
   sub_mode           = "user_username"
   access_token_validity  = "minutes=60"
