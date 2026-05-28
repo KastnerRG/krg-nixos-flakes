@@ -18,16 +18,8 @@ resource "authentik_outpost" "proxy" {
   })
 }
 
-# The outpost auto-creates a service account user named ak-outpost-<id>.
-# Look it up and issue an API token the proxy container uses to authenticate.
-data "authentik_user" "proxy_outpost_svc" {
-  username = "ak-outpost-${authentik_outpost.proxy.id}"
-}
-
-resource "authentik_token" "proxy_outpost" {
-  identifier   = "proxy-outpost-token"
-  user         = data.authentik_user.proxy_outpost_svc.pk
-  intent       = "api"
-  expiring     = false
-  retrieve_key = true
-}
+# The outpost auto-creates a service account user (ak-outpost-<id>) and token.
+# Retrieve the token from Admin → Outposts → <outpost> → "View token" after apply,
+# then store it manually:
+#   bao kv put secret/krg-prod/authentik-outpost-token token=<value>
+# The proxy container reads it via AUTHENTIK_TOKEN in authentik_traefik_token.env.
