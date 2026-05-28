@@ -5,6 +5,10 @@
 # in files/apply_dsm_web.py, shipped via the `script` module (DSM's py3.8 — same
 # constraint as synology_smb/_nfs/_acls). Git is truth; UI = drift (ADR 0001).
 #
+# CROSS-REFERENCE: this is DSM's built-in web UI hardening (no direct Linux
+# counterpart in this repo today — Traefik on krg-prod handles fleet-wide HTTP
+# hardening separately). Same HSTS / HTTP/2 / TLS-Modern intent, different vehicle.
+#
 #   * SYNO.Core.Web.DSM v2 set      — FULL-object pattern (partial = err 2001), like SMB.
 #   * SYNO.Core.Web.Security.TLSProfile v1 set — single integer (`default-level`);
 #     the helper maps spec name (modern|intermediate|old) → DSM's int. The mapping is

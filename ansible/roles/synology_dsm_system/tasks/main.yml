@@ -4,6 +4,11 @@
 # Per-interface IP set lives on SYNO.Core.Network.Ethernet — not yet driven here (the
 # live static IP already matches the spec, so it's a no-op until we want to change it).
 # NTP set API is unconfirmed on this DSM; subcommand reserved, TODO probe.
+#
+# CROSS-REFERENCE: parallels nix `networking.hostName` / `networking.defaultGateway`
+# / `networking.nameservers` and the Debian counterparts (`/etc/hostname` +
+# `/etc/resolv.conf`). Same intent — make the box reachable with a stable name;
+# runs FIRST in synology_base for the same reason.
 
 - name: Load the DSM system spec
   ansible.builtin.include_vars:

@@ -3,6 +3,13 @@
 # spec/krg-prod/services.yml via synowebapi. Each API is full-object set
 # (partial = err 2001); logic in files/apply_services.py via `script` module.
 # SFTP/WebDAV/Rsync surfaces are not yet mapped (capture errored 102 — TODO).
+#
+# CROSS-REFERENCE: FTP/AFP are DSM-specific (no Debian/NixOS equivalents in
+# this repo). SNMP intent (read-only host metrics) parallels
+# `services.prometheus.exporters.node` in nix and `ansible/roles/monitoring`
+# (node_exporter) — same goal (let Prometheus scrape the box), different
+# protocol. SSH/SFTP toggles live in [`synology_ssh`](../synology_ssh) for
+# anti-lockout-order reasons.
 
 - name: Load the services spec
   ansible.builtin.include_vars:

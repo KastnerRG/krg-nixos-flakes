@@ -2,6 +2,12 @@
 # synology_notifications — DSM notification channels (mail, SMS, push, CMS) from
 # spec/krg-prod/notifications.yml via synowebapi (full-object set per API).
 # Gmail OAuth token bootstrap is one-time + interactive in DSM UI — not in this role.
+#
+# CROSS-REFERENCE: parallels nix `services.smartd.notifyEmail` /
+# `services.zfs.zed.settings.ZED_EMAIL_ADDR` on the Linux side — same intent
+# (admin alerts for health/security events), DSM-curated channel here. The
+# email channel configured here is consumed by `synology_security_advisor`
+# (notify-on-finding) and `synology_dsm_updates` (notify-on-install).
 
 - name: Load the notifications spec
   ansible.builtin.include_vars:
