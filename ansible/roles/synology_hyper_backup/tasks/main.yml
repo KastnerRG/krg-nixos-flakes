@@ -19,20 +19,19 @@
     file: "{{ synology_hyper_backup_spec }}"
     name: hb_spec
 
-- name: Refuse to create encrypted jobs without their secret
-  ansible.builtin.assert:
-    that:
-      - hyper_backup_secrets[item.name] is defined
-    fail_msg: >-
+- name: Warn when an encrypted job lacks its bootstrap secret (apply step will skip it)
+  ansible.builtin.debug:
+    msg: >-
       Hyper Backup job '{{ item.name }}' is declared encrypted but
-      hyper_backup_secrets['{{ item.name }}'] is empty. Supply at runtime:
-      `ansible-playbook ... -e @secrets-hb.yml`. Skipping create until set.
-    quiet: true
+      hyper_backup_secrets['{{ item.name }}'] is empty. apply_hyper_backup.py
+      will SKIP creating it until the secret is supplied at runtime:
+      `ansible-playbook ... -e @secrets-hb.yml`.
   loop: "{{ hb_spec.jobs | default([]) }}"
   loop_control:
     label: "{{ item.name }}"
-  when: item.encrypt | default(hb_spec.defaults.encrypt | default(true))
-  ignore_errors: true   # convert assert -> warn; the role's apply step skips missing-secret jobs
+  when:
+    - item.encrypt | default(hb_spec.defaults.encrypt | default(true))
+    - hyper_backup_secrets[item.name] is not defined
 
 - name: Apply Hyper Backup job set (declarative list sync by name)
   ansible.builtin.script: >-
