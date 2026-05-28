@@ -48,6 +48,7 @@ services:
       # source doesn't exist under NixOS, so Docker would materialise it as a
       # root-owned dir). promtail-config.yaml should target the journal / /var/log.
       - ./loki/promtail-config.yaml:/etc/promtail/config.yml:ro
+      - promtail_positions:/var/lib/promtail
     command: -config.file=/etc/promtail/config.yml
     restart: unless-stopped
     networks:
@@ -88,3 +89,6 @@ networks:
   loki_network:
   prometheus_network:
     external: true
+
+volumes:
+  promtail_positions:
