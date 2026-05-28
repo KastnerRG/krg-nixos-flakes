@@ -59,6 +59,22 @@ in {
         protected by key-only auth + fail2ban). Usually set via krg.base.serviceHost.
       '';
     };
+
+    sourcedPorts = mkOption {
+      type    = types.listOf (types.submodule {
+        options = {
+          port    = mkOption { type = types.port; };
+          sources = mkOption { type = types.listOf types.str; };
+        };
+      });
+      default     = [];
+      description = ''
+        Ports reachable ONLY from specific source CIDRs/IPs in-guest.
+        Use for services that should be internal-only (e.g. OpenBao API on
+        sealab nets) while still benefiting from in-guest defense-in-depth.
+        Each entry: { port = <N>; sources = [ "cidr1" "cidr2" ... ]; }
+      '';
+    };
   };
 
   config = mkMerge [
@@ -96,7 +112,10 @@ in {
           '') cfg.sshSources
           + optionalString cfg.allowRDP (concatMapStringsSep "\n" (src: ''
             ip saddr ${src} tcp dport 3389 accept
-          '') cfg.rdpSources);
+          '') cfg.rdpSources)
+          + concatMapStringsSep "\n" ({ port, sources }: concatMapStringsSep "\n" (src: ''
+            ip saddr ${src} tcp dport ${toString port} accept
+          '') sources) cfg.sourcedPorts;
       };
     })
   ];

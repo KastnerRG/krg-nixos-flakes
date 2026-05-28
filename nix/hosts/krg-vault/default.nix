@@ -1,4 +1,7 @@
-{ ... }: {
+{ ... }:
+let
+  trusted = builtins.fromJSON (builtins.readFile ../../networks/trusted.json);
+in {
   imports = [
     ../../profiles/base.nix
     ../../modules/users.nix
@@ -32,9 +35,14 @@
 
   krg.firewall = {
     # 80: public, ACME HTTP-01 challenge only (nginx handles it)
-    # 8200: sealab-only OpenBao API (TLS); Proxmox .fw restricts external access
-    allowedTCPPorts = [ 22 80 8200 ];
+    allowedTCPPorts = [ 22 80 ];
     monitoringPorts = [ 9100 ];
+    # 8200: OpenBao API — sealab + ops admins only, matching the Proxmox perimeter
+    sourcedPorts = [{
+      port    = 8200;
+      sources = map (e: e.cidr) trusted.ipsets.sealab
+             ++ map (e: e.cidr) trusted.ipsets.ops;
+    }];
   };
 
   # Declare openbao group statically so the ACME ownership assertion can
