@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 let
   # Referencing the directory (not individual files) puts the entire
   # docker-compose/krg-prod/ subtree into a single Nix store path so that
@@ -110,6 +110,9 @@ in {
   ];
 
 
+
+  environment.systemPackages = with pkgs; [ openbao ];
+  environment.variables.VAULT_ADDR = "https://krg-vault.ucsd.edu:8200";
 
   # TODO Automate secrets
   # krg-prod runs as a single compose project (compose.yml uses `include:` to

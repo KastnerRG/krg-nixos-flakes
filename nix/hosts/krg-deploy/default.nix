@@ -37,10 +37,14 @@
   environment.systemPackages = with pkgs; [
     ansible
     opentofu
+    openbao     # bao CLI — talks to krg-vault for secrets management
     python3     # ansible runtime dependency
     sshpass     # needed by some ansible connection scenarios
     jq
   ];
+
+  # Point bao at krg-vault so every shell session works without manual export.
+  environment.variables.VAULT_ADDR = "https://krg-vault.ucsd.edu:8200";
 
   # Not yet domain-joined — disable AD client until keytab is provisioned.
   krg.adClient.enable = false;
@@ -53,7 +57,7 @@
     serviceConfig = {
       Type             = "oneshot";
       User             = "krg-admin";
-      WorkingDirectory = "/var/lib/krg-admin";   # always exists; ansible subdir may not yet
+      WorkingDirectory = "/var/lib/krg-admin";
       ExecStart = pkgs.writeShellScript "ansible-apply" ''
         # Bootstrap: clone on first run if the repo isn't present yet.
         # Uses HTTPS so no deploy key is needed for the initial pull.
@@ -64,9 +68,9 @@
             /var/lib/krg-admin/krg-infra
         fi
         ${pkgs.git}/bin/git -C /var/lib/krg-admin/krg-infra pull --ff-only
-        ${pkgs.ansible}/bin/ansible-playbook \
-          --inventory /var/lib/krg-admin/krg-infra/ansible/inventory \
-          /var/lib/krg-admin/krg-infra/ansible/playbooks/site.yml
+        # cd into ansible/ so ansible.cfg is found and roles_path = roles resolves correctly.
+        cd /var/lib/krg-admin/krg-infra/ansible
+        ${pkgs.ansible}/bin/ansible-playbook playbooks/site.yml
       '';
     };
   };
