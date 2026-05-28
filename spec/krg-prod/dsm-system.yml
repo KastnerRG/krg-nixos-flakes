@@ -2,8 +2,8 @@
 # Source of truth for the post-rebuild state. Values CONFIRMED / DRIFT-MARKED from the
 # 2026-05-28 live pre-reset capture (archived locally, off-repo).
 #
-# IaC home (per the everything-IaC rule): `synology_api` escape hatch in
-# `terraform/e4e-nas/dsm-system.tf` calling SYNO.Core.Network set + system hostname API.
+# IaC home: `synology_dsm_system` Ansible role — `apply_dsm_system.py` does
+# GET→merge→SET on SYNO.Core.Network (set v2; partial = err 2001 like SMB/NFS).
 # DSM 7.3 hardware (DS3617xs / Xeon D-1527 / 16 GB) is fixed by physical reality.
 
 system:

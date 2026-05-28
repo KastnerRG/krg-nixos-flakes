@@ -1,8 +1,9 @@
 # DSM Application Portal config for e4e-nas — per-app portals, reverse-proxy entries,
 # access control. From the 2026-05-28 live capture.
 #
-# IaC home: `synology_api` in `terraform/e4e-nas/app-portal.tf` calling
-# SYNO.Core.AppPortal.{set,Config.set,AccessControl.create,ReverseProxy.create}.
+# IaC home: `synology_app_portal` Ansible role — `apply_app_portal.py` on
+# SYNO.Core.AppPortal.{set, Config.set, AccessControl.{create,update,delete},
+# ReverseProxy.{create,update,delete}}.
 #
 # DSM 7's "Login Portal" page is split between SYNO.Core.Web.DSM (ports/HTTPS/HSTS —
 # in `dsm-web.yml`) and SYNO.Core.AppPortal.* (per-app portals, reverse proxies,

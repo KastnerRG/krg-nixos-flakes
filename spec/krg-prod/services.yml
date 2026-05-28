@@ -1,8 +1,8 @@
 # Non-SMB / non-NFS file & system services for e4e-nas — FTP/FTPS, AFP, SFTP, WebDAV,
 # Rsync, SNMP. SMB lives in smb-globals.yml, NFS in nfs-exports.yml.
 #
-# IaC home: `synology_api` escape hatch in `terraform/e4e-nas/services.tf` calling
-# SYNO.Core.FileServ.{FTP,AFP,SFTP,WebDAVServer,Rsync} set + SYNO.Core.SNMP set.
+# IaC home: `synology_services` Ansible role — `apply_services.py` GET→merge→SET per
+# service on SYNO.Core.FileServ.{FTP,AFP,SFTP,WebDAVServer,Rsync} + SYNO.Core.SNMP.
 # Values from the 2026-05-28 live capture.
 
 # --- FTP/FTPS ---

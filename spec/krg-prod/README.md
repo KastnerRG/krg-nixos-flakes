@@ -18,17 +18,24 @@ Ansible-role-driven (existing `synology_*` roles):
 | `users.yml` | `synology_users` | **stub** — local/service accounts only (humans = AD) |
 | `acls.yml` | `synology_acls` | **stub** — captured live; needs post-AD-join translation |
 
-Terraform / `synology_api`-driven (new files from the 2026-05-28 capture, **everything-IaC** rule — no runbook for what the webapi can do):
+Ansible-role-driven (new from the 2026-05-28 capture, **everything-IaC** rule — these
+DSM webapis use the full-object-set pattern that returns err 2001 on partial set, so the
+right tool is the same `apply_*.py` GET→merge→SET helper that `synology_{smb,nfs,acls}`
+already use — not `synology_api` in Terraform):
 
-| File | IaC home | Owns |
+| File | Role that consumes it | Owns |
 |---|---|---|
-| `dsm-system.yml` | `terraform/e4e-nas/dsm-system.tf` | hostname, NTP, static network (IP/gw/DNS) |
-| `dsm-web.yml`    | `terraform/e4e-nas/dsm-web.tf`    | DSM ports, HTTPS/HSTS, HTTP/2, mDNS/SSDP, **TLS profile** |
-| `security.yml`   | `terraform/e4e-nas/security.tf`   | firewall (global + profiles + rules), auto-block |
-| `services.yml`   | `terraform/e4e-nas/services.tf`   | FTP/FTPS, AFP, SFTP, WebDAV, Rsync, **SNMP v3** |
-| `notifications.yml` | `terraform/e4e-nas/notifications.tf` | mail (Gmail OAuth), SMS, push, CMS |
-| `app-portal.yml` | `terraform/e4e-nas/app-portal.tf` | per-app portals, reverse-proxy, access control |
-| `garage.yml`     | `garage_config` (Ansible)         | buckets/keys/policies/quotas |
+| `dsm-system.yml` | `synology_dsm_system` | hostname, NTP, static network (IP/gw/DNS) |
+| `dsm-web.yml`    | `synology_dsm_web`    | DSM ports, HTTPS/HSTS, HTTP/2, mDNS/SSDP, **TLS profile** |
+| `security.yml`   | `synology_security`   | firewall (global + profiles + rules), auto-block |
+| `services.yml`   | `synology_services`   | FTP/FTPS, AFP, SFTP, WebDAV, Rsync, **SNMP v3** |
+| `notifications.yml` | `synology_notifications` | mail (Gmail OAuth), SMS, push, CMS |
+| `app-portal.yml` | `synology_app_portal` | per-app portals, reverse-proxy, access control |
+| `garage.yml`     | `garage_config`       | buckets/keys/policies/quotas |
+
+Terraform `terraform/e4e-nas/` stays for things the synology-community provider has
+first-class resources for: Container Manager (Garage container), packages, scheduler
+(`synology_core_event`), file provisioning, VMs.
 
 Seeded files came from the build sheet in
 [`../../docs/e4e-nas-dsm.md`](../../docs/e4e-nas-dsm.md). The four **auto-created**

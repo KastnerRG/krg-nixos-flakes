@@ -1,9 +1,9 @@
 # DSM notification config for e4e-nas — mail (OAuth Gmail), SMS, push, CMS.
 # Source of truth for the post-rebuild state. Values from the 2026-05-28 live capture.
 #
-# IaC home: `synology_api` in `terraform/e4e-nas/notifications.tf` calling
-# SYNO.Core.Notification.Mail.Conf set (v2) + Notification.Mail.Auth set +
-# Notification.Push.Conf set + Notification.SMS.Conf set + Advance.Variables/Filter.
+# IaC home: `synology_notifications` Ansible role — `apply_notifications.py`
+# GET→merge→SET on SYNO.Core.Notification.{Mail.Conf v2, Mail.Auth, Push.Conf, SMS.Conf,
+# Advance.Variables, Advance.FilterSettings, CMS.Conf}.
 #
 # OAuth tokens are NOT in this spec — they're issued by Google interactively and stored
 # by DSM. Post-rebuild a one-time bootstrap will re-link the Gmail account (the only

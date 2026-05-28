@@ -19,3 +19,4 @@
     - synology_smb # SMB global service settings (synowebapi full-object set)
     - synology_nfs # NFS service + per-share export rules (synowebapi)
     - synology_acls # share -> principal grant matrix (synoshare --setuser)
+    - synology_dsm_web # DSM web: HSTS/HTTP2/mDNS/SSDP/ports + TLS profile

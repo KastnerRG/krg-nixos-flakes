@@ -3,9 +3,9 @@
 # 2026-05-28 live pre-reset capture (archived locally). Defense-in-depth: this is the
 # in-DSM layer, complementary to the Proxmox/in-guest layers handled elsewhere.
 #
-# IaC home: `synology_api` escape hatch in `terraform/e4e-nas/security.tf` calling
-# SYNO.Core.Security.Firewall set + Firewall.Profile set + AutoBlock set +
-# AutoBlock.Rules create/upload. The Firewall API surface (per .lib) is:
+# IaC home: `synology_security` Ansible role — `apply_security.py` GET→merge→SET on
+# SYNO.Core.Security.Firewall + Firewall.Profile (rules) + AutoBlock + AutoBlock.Rules.
+# The Firewall API surface (per .lib) is:
 #   Firewall      get/set                          (enable + active profile_name)
 #   Firewall.Conf get/set                          (port_check, etc.)
 #   Firewall.Adapter      list                     (adapter_names: eth0..eth3, vpn, …)

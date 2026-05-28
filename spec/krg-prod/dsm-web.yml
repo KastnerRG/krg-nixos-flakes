@@ -2,10 +2,10 @@
 # Source of truth for the post-rebuild state. Values from the 2026-05-28 live pre-reset
 # capture (archived locally) — drift items marked "HARDEN" below.
 #
-# IaC home: `synology_api` escape hatch in `terraform/e4e-nas/dsm-web.tf` calling
-# SYNO.Core.Web.DSM set + SYNO.Core.Web.Security.TLSProfile set. Underlying surface
-# returns httpd_restart=false on get; some set ops do require an httpd restart (DSM
-# handles it).
+# IaC home: `synology_dsm_web` Ansible role — `apply_dsm_web.py` does GET→merge→SET on
+# SYNO.Core.Web.DSM (v2; partial = err 2001) plus the simpler `default-level` set on
+# SYNO.Core.Web.Security.TLSProfile. DSM may need a httpd restart on web-config changes;
+# DSM handles it (set returns httpd_restart hint).
 
 web:
   # Already non-default 5000/5001 — looks like prior hardening; keep.
