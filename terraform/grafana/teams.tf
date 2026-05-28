@@ -1,21 +1,3 @@
-# One team per AD group that gets machine-scoped dashboard access.
-# grafana_team_external_group maps the OAuth groups claim value → Grafana team,
-# so users are auto-assigned at login without manual team management.
-
-resource "grafana_team" "waiter" {
-  name = "Waiter"
-}
-
-resource "grafana_team_external_group" "waiter" {
-  team_id = grafana_team.waiter.id
-  groups  = ["Waiter"]
-}
-
-resource "grafana_team" "kastnerml" {
-  name = "KastnerML"
-}
-
-resource "grafana_team_external_group" "kastnerml" {
-  team_id = grafana_team.kastnerml.id
-  groups  = ["KastnerML"]
-}
+# Team sync (grafana_team_external_group) requires Grafana Enterprise.
+# Per-lab folder RBAC is tracked in GitHub issue #73.
+# For now, teams and folder restrictions are not configured.

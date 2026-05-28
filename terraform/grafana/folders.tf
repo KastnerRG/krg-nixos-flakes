@@ -1,9 +1,2 @@
-resource "grafana_folder" "waiter" {
-  uid   = "waiter"
-  title = "Waiter"
-}
-
-resource "grafana_folder" "kastnerml" {
-  uid   = "kastnerml"
-  title = "KastnerML"
-}
+# Folders without team sync have no access-control effect in Grafana OSS.
+# Tracked in GitHub issue #73.
