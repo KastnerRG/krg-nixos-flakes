@@ -111,6 +111,9 @@ in {
 
 
 
+  environment.systemPackages = with pkgs; [ openbao ];
+  environment.variables.VAULT_ADDR = "https://krg-vault.ucsd.edu:8200";
+
   # TODO Automate secrets
   # krg-prod runs as a single compose project (compose.yml uses `include:` to
   # bring in authentik, grafana, label-studio, mlflow, and outline stacks).
