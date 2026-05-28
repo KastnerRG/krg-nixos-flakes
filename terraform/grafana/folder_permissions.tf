@@ -5,7 +5,6 @@
 resource "grafana_folder_permission" "waiter" {
   folder_uid = grafana_folder.waiter.uid
   permissions {
-    type       = "team"
     team_id    = grafana_team.waiter.id
     permission = "View"
   }
@@ -14,7 +13,6 @@ resource "grafana_folder_permission" "waiter" {
 resource "grafana_folder_permission" "kastnerml" {
   folder_uid = grafana_folder.kastnerml.uid
   permissions {
-    type       = "team"
     team_id    = grafana_team.kastnerml.id
     permission = "View"
   }

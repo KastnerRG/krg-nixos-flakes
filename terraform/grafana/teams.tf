@@ -7,8 +7,8 @@ resource "grafana_team" "waiter" {
 }
 
 resource "grafana_team_external_group" "waiter" {
-  team_id  = grafana_team.waiter.id
-  group_id = "Waiter"
+  team_id = grafana_team.waiter.id
+  groups  = ["Waiter"]
 }
 
 resource "grafana_team" "kastnerml" {
@@ -16,6 +16,6 @@ resource "grafana_team" "kastnerml" {
 }
 
 resource "grafana_team_external_group" "kastnerml" {
-  team_id  = grafana_team.kastnerml.id
-  group_id = "KastnerML"
+  team_id = grafana_team.kastnerml.id
+  groups  = ["KastnerML"]
 }
