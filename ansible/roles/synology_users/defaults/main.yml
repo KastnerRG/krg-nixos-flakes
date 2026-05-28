@@ -10,3 +10,9 @@ synology_export_dir: "/var/lib/krg-deploy/synology-export"
 # Secret: map of local-user-name -> password, supplied via ansible-vault or
 # -e @secrets.yml. NEVER put passwords in spec/krg-prod/users.yml.
 synology_user_passwords: {}
+
+# Shared admin keys file (nix/keys/admins.json — same one read by
+# group_vars/all.yml for `admin_ssh_keys`). The role parses entries with
+# `ssh_keys_from: nix/keys/admins.json#<slot>` by re-reading this file and
+# slicing the `<slot>` key (e.g. `krg-admin`).
+synology_admin_keys_file: "{{ krg_keys_file }}"
