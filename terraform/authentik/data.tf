@@ -28,7 +28,7 @@ data "authentik_property_mapping_provider_scope" "profile" {
 
 # Base LDAP mappings
 data "authentik_property_mapping_source_ldap" "dn_user_path" {
-  managed = "goauthentik.io/sources/ldap/default-dn-user-path"
+  managed = "goauthentik.io/sources/ldap/default-dn-path"
 }
 
 data "authentik_property_mapping_source_ldap" "mail" {
@@ -41,17 +41,17 @@ data "authentik_property_mapping_source_ldap" "name" {
 
 # Active Directory-specific mappings
 data "authentik_property_mapping_source_ldap" "ad_given_name" {
-  managed = "goauthentik.io/sources/ldap/ms-ad-givenName"
+  managed = "goauthentik.io/sources/ldap/ms-givenName"
 }
 
 data "authentik_property_mapping_source_ldap" "ad_sam_account_name" {
-  managed = "goauthentik.io/sources/ldap/ms-ad-sAMAccountName"
+  managed = "goauthentik.io/sources/ldap/ms-samaccountname"
 }
 
 data "authentik_property_mapping_source_ldap" "ad_sn" {
-  managed = "goauthentik.io/sources/ldap/ms-ad-sn"
+  managed = "goauthentik.io/sources/ldap/ms-sn"
 }
 
 data "authentik_property_mapping_source_ldap" "ad_upn" {
-  managed = "goauthentik.io/sources/ldap/ms-ad-userPrincipalName"
+  managed = "goauthentik.io/sources/ldap/ms-userprincipalname"
 }
