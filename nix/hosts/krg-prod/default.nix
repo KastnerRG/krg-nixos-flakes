@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 let
   # Referencing the directory (not individual files) puts the entire
   # docker-compose/krg-prod/ subtree into a single Nix store path so that
