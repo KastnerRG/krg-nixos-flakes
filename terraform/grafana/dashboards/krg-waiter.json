@@ -329,7 +329,7 @@
             "uid": "de0e1fh1fk35sc"
           },
           "editorMode": "code",
-          "expr": "rate(node_network_transmit_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1\"}[30s])",
+          "expr": "rate(node_network_transmit_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1np0\"}[30s])",
           "instant": false,
           "legendFormat": "Tx",
           "range": true,
@@ -341,7 +341,7 @@
             "uid": "de0e1fh1fk35sc"
           },
           "editorMode": "code",
-          "expr": "rate(node_network_receive_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1\"}[30s])",
+          "expr": "rate(node_network_receive_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1np0\"}[30s])",
           "hide": false,
           "instant": false,
           "legendFormat": "Rx",
@@ -349,7 +349,7 @@
           "refId": "B"
         }
       ],
-      "title": "Current eno1 Network Activity",
+      "title": "Current eno1np0 Network Activity",
       "type": "gauge"
     },
     {
@@ -2127,7 +2127,7 @@
             "uid": "de0e1fh1fk35sc"
           },
           "editorMode": "code",
-          "expr": "rate(node_network_transmit_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1\"}[$__interval])",
+          "expr": "rate(node_network_transmit_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1np0\"}[$__interval])",
           "instant": false,
           "legendFormat": "Tx",
           "range": true,
@@ -2139,7 +2139,7 @@
             "uid": "de0e1fh1fk35sc"
           },
           "editorMode": "code",
-          "expr": "rate(node_network_receive_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1\"}[$__interval])",
+          "expr": "rate(node_network_receive_bytes_total{instance=\"waiter.ucsd.edu:9100\",device=\"eno1np0\"}[$__interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Rx",
