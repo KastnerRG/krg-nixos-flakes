@@ -26,9 +26,10 @@ behaviour on any other layer (nix or Debian/ansible), mirror it here.
 
 ## Anti-lockout invariants
 
-- Step 2 (`users`) MUST run before step 3 (`ssh`) so the break-glass `krg-admin`
-  exists with authorized keys before password auth is disabled. Same rule the
-  Debian baseline applies for `krg_admin` → `ssh_hardening`.
+- Step 2 (`users`) MUST run before step 3 (`ssh`) so the break-glass admin
+  (`e4e-admin` on this NAS, since it's E4E hardware) exists with authorized
+  keys before password auth is disabled. Same rule the Debian baseline applies
+  for `krg_admin` → `ssh_hardening`.
 - Step 11 (`ad`) MUST run AFTER 2 + 3 so a bad winbind idmap or `allowed_groups`
   filter can't lock out local accounts.
 - Step 5 (`external_access`) MUST run AFTER 4 (`security`) so the perimeter is

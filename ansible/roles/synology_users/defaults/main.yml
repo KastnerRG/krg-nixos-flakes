@@ -14,5 +14,6 @@ synology_user_passwords: {}
 # Shared admin keys file (nix/keys/admins.json — same one read by
 # group_vars/all.yml for `admin_ssh_keys`). The role parses entries with
 # `ssh_keys_from: nix/keys/admins.json#<slot>` by re-reading this file and
-# slicing the `<slot>` key (e.g. `krg-admin`).
+# slicing the `<slot>` key (e.g. `krg-admin` for krg-prod hosts, `e4e-admin`
+# for E4E hardware like e4e-nas).
 synology_admin_keys_file: "{{ krg_keys_file }}"

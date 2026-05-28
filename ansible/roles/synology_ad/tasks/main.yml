@@ -12,9 +12,9 @@
 #                     Skipped if test-join shows joined; SKIPPED with WARN if no creds.
 #
 # ORDER CONSTRAINT: synology_base composer runs this LAST so the local
-# break-glass krg-admin (synology_users) and the key-only SSH lockdown
-# (synology_ssh) are already in place — a misconfigured idmap or allowed_groups
-# filter can't lock us out because local accounts bypass winbind.
+# break-glass e4e-admin (synology_users; E4E hardware) and the key-only SSH
+# lockdown (synology_ssh) are already in place — a misconfigured idmap or
+# allowed_groups filter can't lock us out because local accounts bypass winbind.
 
 - name: Load the AD spec
   ansible.builtin.include_vars:
@@ -55,7 +55,7 @@
       {{ inventory_hostname }} is NOT joined to {{ ad_spec.ad.realm }} and no
       ad_join_password was supplied. Staging config and skipping join. Re-run with
       -e ad_join_password='<Domain Admin password>' to enroll the NAS. Local
-      accounts (krg-admin) continue to work.
+      accounts (e4e-admin) continue to work.
   when:
     - "'JOINED' not in ad_test.stdout"
     - ad_join_password | length == 0

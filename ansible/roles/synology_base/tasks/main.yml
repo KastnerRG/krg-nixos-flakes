@@ -14,9 +14,10 @@
 #
 # ORDER IS LOAD-BEARING:
 #   1. dsm_system        — set hostname/network FIRST so we can be reached
-#   2. users             — break-glass krg-admin (+ AD home service + disable admin/guest)
-#                          BEFORE we lock down SSH (ANTI-LOCKOUT — see synology_ssh).
-#                          Same rule as ansible/roles/base krg_admin -> ssh_hardening.
+#   2. users             — break-glass e4e-admin (E4E hardware; +AD home service +
+#                          disable admin/guest) BEFORE we lock down SSH
+#                          (ANTI-LOCKOUT — see synology_ssh). Same rule as
+#                          ansible/roles/base krg_admin -> ssh_hardening.
 #   3. ssh               — key-only, no password, no root, telnet+sftp off (the breach fix)
 #   4. security          — DSM firewall + autoblock thresholds (defense-in-depth)
 #   5. external_access   — QuickConnect/UPnP off — AFTER perimeter, so nothing punches around it
@@ -28,7 +29,7 @@
 #  10. dsm_updates       — hotfix-security auto-install (DSM may revert sshd drop-in
 #                          on major upgrades — re-apply synology_base after upgrades)
 #  11. ad                — KRG.LOCAL domain join LAST. Failure here MUST NOT lock out
-#                          local krg-admin; mirrors ansible/roles/base ad_client order.
+#                          local e4e-admin; mirrors ansible/roles/base ad_client order.
 
 - name: DSM identity & network (hostname/gateway/DNS — make the box reachable)
   ansible.builtin.import_role:

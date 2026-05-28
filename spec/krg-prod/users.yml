@@ -7,9 +7,9 @@
 #   * the built-in accounts we want DISABLED (admin, guest — runbook §1)
 #   * the DSM Home Service toggle (required for SSH login + AD user homes — runbook §1, §2)
 #
-# CROSS-REFERENCE: keep aligned with [[break-glass-admin-account]] memory rule —
-# break-glass username is `krg-admin`, NEVER `e4e-admin`-shaped per-host names
-# (this NAS is part of krg-prod's lab tooling).
+# CROSS-REFERENCE: e4e-nas is E4E hardware — break-glass admin is `e4e-admin`
+# (not the lab-wide `krg-admin`). See [[break-glass-admin-account]] memory rule.
+# Same shared keys file (nix/keys/admins.json), just the `e4e-admin` slot.
 #
 # Passwords NEVER live in this file. The role pulls them from
 # `synology_user_passwords` (Ansible vault / `-e @secrets.yml`). The break-glass
@@ -25,11 +25,11 @@
 #                        (lookup happens in the role via the shared admin_ssh_keys var)
 #   api_only:            true → don't drop SSH authorized_keys (web-API account only)
 users:
-  - name: krg-admin
-    description: "Break-glass admin (matches nix users/admin.nix + ansible krg_admin)"
+  - name: e4e-admin
+    description: "Break-glass admin (E4E hardware; same role as nix users/admin.nix on the krg side)"
     groups: [administrators]
-    ssh_keys_from: nix/keys/admins.json#krg-admin
-  - name: krg-automation
+    ssh_keys_from: nix/keys/admins.json#e4e-admin
+  - name: e4e-automation
     description: "OpenTofu / Ansible API account (terraform.tfvars dsm_user)"
     groups: [administrators]
     api_only: true

@@ -6,9 +6,11 @@
 # role; this role is for the service/break-glass LOCAL accounts (and local
 # groups, if the spec opts into type: local).
 #
-# CROSS-REFERENCE: keep the break-glass krg-admin aligned with
-# nix/users/admin.nix and ansible/roles/krg_admin. All three layers read SSH
-# keys from nix/keys/admins.json (single source of truth).
+# CROSS-REFERENCE: keep the break-glass admin aligned with nix/users/admin.nix
+# and ansible/roles/krg_admin. All three layers read SSH keys from
+# nix/keys/admins.json (single source of truth). On this NAS the slot is
+# `e4e-admin` (E4E hardware); group_vars/synology.yml overrides
+# admin_ssh_keys to that slot.
 #
 # WHY raw + PATH prefix (validated on the rig 2026-05-27):
 #   * DSM ships Python 3.8; modern ansible-core needs >=3.9 on the target for its

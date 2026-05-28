@@ -13,8 +13,9 @@
 # refuse to disable password auth unless admin_ssh_keys is populated.
 #
 # ORDER CONSTRAINT: this role MUST run AFTER synology_users so the break-glass
-# krg-admin exists with authorized SSH keys BEFORE we turn password auth off.
-# The synology_base composer enforces that order.
+# admin (e4e-admin on this NAS — E4E hardware) exists with authorized SSH keys
+# BEFORE we turn password auth off. The synology_base composer enforces that
+# order.
 #
 # DSM-update fragility: a DSM major upgrade can REVERT the sshd_config drop-in
 # (runbook §1 historical note). Re-apply synology_base after upgrades.

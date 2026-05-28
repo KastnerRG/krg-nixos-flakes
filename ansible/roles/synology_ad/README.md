@@ -22,9 +22,10 @@ mirror it here.
 
 ## Order constraint
 
-`synology_base` runs this LAST — local `krg-admin` (`synology_users`) and
-key-only SSH (`synology_ssh`) are already in place, so a misconfigured idmap or
-allowed-groups filter can't lock you out (local accounts bypass winbind).
+`synology_base` runs this LAST — local `e4e-admin` (`synology_users`; E4E
+hardware) and key-only SSH (`synology_ssh`) are already in place, so a
+misconfigured idmap or allowed-groups filter can't lock you out (local
+accounts bypass winbind).
 
 ## Coverage
 

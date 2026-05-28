@@ -58,7 +58,7 @@ snmp:
   enable_snmp: true                    # HARDEN: live=false; spec ON for monitoring
   enable_snmp_v1v2: false              # v1/v2 stay OFF (cleartext)
   enable_snmp_v3: true
-  contact: "krg-admin@ucsd.edu"        # TODO confirm the right contact
+  contact: "e4e-admin@ucsd.edu"        # E4E hardware — matches the break-glass admin slot. TODO confirm the right contact
   location: "Building/Room — UCSD"     # TODO confirm
   name: e4e-nas                        # sysName
   # USM (User-based Security Model) — v3 user; the credential goes via vault/bootstrap,

@@ -12,10 +12,10 @@ the Debian role: refuse to disable password auth unless
 
 ## Order constraint
 
-This role MUST run AFTER `synology_users` so the break-glass `krg-admin` exists
-with authorized SSH keys BEFORE password auth is turned off. The
-`synology_base` composer enforces that order — do not invoke `synology_ssh`
-outside that composition.
+This role MUST run AFTER `synology_users` so the break-glass admin
+(`e4e-admin` on this NAS, since it's E4E hardware) exists with authorized
+SSH keys BEFORE password auth is turned off. The `synology_base` composer
+enforces that order — do not invoke `synology_ssh` outside that composition.
 
 ## Coverage
 
