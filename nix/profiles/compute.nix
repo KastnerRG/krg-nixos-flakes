@@ -60,7 +60,7 @@
   krg.fpga.enable = lib.mkDefault false;
   # The XRDP/XFCE desktop exists only to host the FPGA GUI tools (Vivado/Vitis/
   # Questa), so it tracks FPGA: a headless compute box (FPGA off) gets no desktop.
-  krg.xrdp.enable = config.krg.fpga.enable;
+  krg.xrdp.enable = true;
 
   # Native IPMI exporter systemd service (from waiter monitoring.yaml)
   krg.ipmiExporter.enable = true;
@@ -79,7 +79,7 @@
   # waiter is physical, so base.nix keeps the NixOS firewall enabled.
   krg.firewall = {
     allowedTCPPorts = [ 22 ];
-    allowRDP        = config.krg.fpga.enable;  # 3389 only when the XRDP desktop is up
+    allowRDP        = config.krg.xrdp.enable;  # 3389 only when the XRDP desktop is up
     # node-exporter (9100), docker metrics (9323), prometheus client (9000),
     # IPMI exporter (9290). DCGM (9400) is contributed by the nvidia module
     # (krg.nvidia.dcgmExporter), coupled to the driver — not listed here.

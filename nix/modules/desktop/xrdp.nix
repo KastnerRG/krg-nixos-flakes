@@ -32,6 +32,7 @@ in {
       xfce.xfwm4
       xfce.xfce4-panel
       firefox
+      xhost
     ];
 
     # RDP access group: created AND assigned only when XRDP is enabled, so it's not
