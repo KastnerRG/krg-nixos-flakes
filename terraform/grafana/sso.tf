@@ -19,9 +19,11 @@ resource "grafana_sso_settings" "authentik" {
     token_url         = "${var.authentik_url}/application/o/token/"
     api_url           = "${var.authentik_url}/application/o/userinfo/"
     scopes            = "openid email profile"
-    role_attribute_path = "contains(groups[*], 'KRG Admins') && 'GrafanaAdmin' || 'Viewer'"
-    allow_sign_up     = true
-    use_pkce          = true
-    use_refresh_token = true
+    # Domain Admins get full admin; everyone else is a Viewer with folder-level restrictions.
+    role_attribute_path   = "contains(groups[*], 'Domain Admins') && 'GrafanaAdmin' || 'Viewer'"
+    groups_attribute_path = "groups"
+    allow_sign_up         = true
+    use_pkce              = true
+    use_refresh_token     = true
   }
 }
