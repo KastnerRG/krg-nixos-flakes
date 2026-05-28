@@ -31,11 +31,12 @@ class _R:
         self.stderr = ""
 
 
+# --- helpers (unchanged) -----------------------------------------------------
 def test_parse_list_acl_real_output():
     t = m.parse_list_acl(RIG_LIST_ACL)
     assert t["RO"] == {"myadmin"}
-    assert t["RW"] == {"@rigtest", "bob"}   # group is @-prefixed, user bare
-    assert t["NA"] == set()                 # empty tier -> empty set
+    assert t["RW"] == {"@rigtest", "bob"}
+    assert t["NA"] == set()
 
 
 def test_desired_tiers_prefixes_groups():
@@ -49,53 +50,95 @@ def test_desired_tiers_rejects_bad_input():
     with pytest.raises(SystemExit):
         m.desired_tiers([{"group": "x", "access": "bogus"}])
     with pytest.raises(SystemExit):
-        m.desired_tiers([{"access": "rw"}])  # neither group nor user
+        m.desired_tiers([{"access": "rw"}])
 
 
-def test_no_change(monkeypatch, capsys):
-    monkeypatch.setattr(m, "_run", lambda *a: _R(RIG_LIST_ACL))
+# --- setuser subcommand ------------------------------------------------------
+def test_setuser_no_change(monkeypatch, capsys):
+    monkeypatch.setattr(m, "_run", lambda cmd: _R(RIG_LIST_ACL))
     grants = [{"user": "myadmin", "access": "ro"},
               {"group": "rigtest", "access": "rw"},
               {"user": "bob", "access": "rw"}]
-    rc = m.main(["--share", "acltest", "--grants", json.dumps(grants)])
+    rc = m.main(["setuser", "--share", "acltest", "--grants", json.dumps(grants)])
     assert rc == 0 and "OK no-change" in capsys.readouterr().out
 
 
-def test_apply_only_resets_drifted_tiers(monkeypatch, capsys):
+def test_setuser_apply_only_resets_drifted_tiers(monkeypatch, capsys):
     setcalls = []
 
-    def fake_run(*a):
-        if a[0] == "--list_acl":
+    def fake_run(cmd):
+        # cmd is e.g. [SYNOSHARE, "--list_acl", "acltest"] or [SYNOSHARE, "--setuser", ...]
+        if "--list_acl" in cmd:
             return _R(RIG_LIST_ACL)
-        setcalls.append(a)  # ("--setuser", share, tier, "=", csv)
+        setcalls.append(cmd)
         return _R("", 0)
 
     monkeypatch.setattr(m, "_run", fake_run)
-    # desired: only @rigtest RW -> RO (myadmin) clears, RW (@rigtest,bob) -> @rigtest; NA unchanged
-    rc = m.main(["--share", "acltest", "--grants",
+    rc = m.main(["setuser", "--share", "acltest", "--grants",
                  json.dumps([{"group": "rigtest", "access": "rw"}])])
     out = capsys.readouterr().out
     assert rc == 0 and out.startswith("CHANGED")
-    tiers = {c[2] for c in setcalls}
-    assert tiers == {"RW", "RO"}  # NA was already empty -> not touched
-    rw_csv = next(c[4] for c in setcalls if c[2] == "RW")
-    ro_csv = next(c[4] for c in setcalls if c[2] == "RO")
-    assert rw_csv == "@rigtest" and ro_csv == ""  # `= ""` clears RO
+    tiers = {c[c.index("--setuser") + 2] for c in setcalls}
+    assert tiers == {"RW", "RO"}   # NA was already empty -> not touched
+    rw_csv = next(c[-1] for c in setcalls if c[c.index("--setuser") + 2] == "RW")
+    ro_csv = next(c[-1] for c in setcalls if c[c.index("--setuser") + 2] == "RO")
+    assert rw_csv == "@rigtest" and ro_csv == ""
 
 
-def test_check_reports_without_setting(monkeypatch, capsys):
-    monkeypatch.setattr(m, "_run", lambda *a: _R(RIG_LIST_ACL) if a[0] == "--list_acl"
+def test_setuser_check_reports_without_setting(monkeypatch, capsys):
+    monkeypatch.setattr(m, "_run", lambda cmd: _R(RIG_LIST_ACL) if "--list_acl" in cmd
                         else (_ for _ in ()).throw(AssertionError("must not set in --check")))
-    rc = m.main(["--share", "acltest", "--grants",
+    rc = m.main(["setuser", "--share", "acltest", "--grants",
                  json.dumps([{"group": "rigtest", "access": "rw"}]), "--check"])
     assert rc == 0 and capsys.readouterr().out.startswith("WOULD-CHANGE")
 
 
-def test_fail_when_setuser_errors(monkeypatch, capsys):
-    def fake_run(*a):
-        return _R(RIG_LIST_ACL) if a[0] == "--list_acl" else _R("denied", 1)
+def test_setuser_fail_when_errors(monkeypatch, capsys):
+    def fake_run(cmd):
+        return _R(RIG_LIST_ACL) if "--list_acl" in cmd else _R("denied", 1)
 
     monkeypatch.setattr(m, "_run", fake_run)
-    rc = m.main(["--share", "acltest", "--grants",
+    rc = m.main(["setuser", "--share", "acltest", "--grants",
                  json.dumps([{"group": "rigtest", "access": "rw"}])])
     assert rc == 1 and capsys.readouterr().out.startswith("FAIL")
+
+
+# --- recursive-stamp subcommand ---------------------------------------------
+def test_recursive_stamp_check_mode(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(m, "_run", lambda cmd: (_ for _ in ()).throw(
+        AssertionError("must not invoke synoacltool in --check")))
+    rc = m.main(["recursive-stamp", "--share", "maya", "--path", str(tmp_path), "--check"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert out.startswith("WOULD-CHANGE")
+    assert "synoacltool" in out
+
+
+def test_recursive_stamp_invokes_synoacltool(monkeypatch, capsys, tmp_path):
+    calls = []
+
+    def fake_run(cmd):
+        calls.append(cmd)
+        return _R("", 0)
+
+    monkeypatch.setattr(m, "_run", fake_run)
+    rc = m.main(["recursive-stamp", "--share", "maya", "--path", str(tmp_path)])
+    assert rc == 0
+    assert capsys.readouterr().out.startswith("CHANGED")
+    # exactly one synoacltool -reset -R call, with the right path
+    assert len(calls) == 1
+    assert calls[0][1:] == ["-reset", "-R", str(tmp_path)]
+
+
+def test_recursive_stamp_rejects_missing_path(capsys):
+    rc = m.main(["recursive-stamp", "--share", "maya", "--path", "/no/such/path"])
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert out.startswith("FAIL") and "not a directory" in out
+
+
+def test_recursive_stamp_failure_reports(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(m, "_run", lambda cmd: _R("permission denied", 1))
+    rc = m.main(["recursive-stamp", "--share", "maya", "--path", str(tmp_path)])
+    assert rc == 1
+    assert capsys.readouterr().out.startswith("FAIL")

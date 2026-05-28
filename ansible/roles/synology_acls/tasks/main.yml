@@ -1,26 +1,33 @@
 ---
 # synology_acls — manage the DSM share -> principal ACL grant matrix from
-# spec/krg-prod/acls.yml by wrapping `synoshare --setuser` (groups are @-prefixed; a bare
-# group name silently no-ops). Logic lives in files/apply_acls.py, shipped via the `script`
-# module (DSM's Python 3.8). Idempotent: read `--list_acl` tiers, diff, only re-set the
-# tiers that drift with the `=` operator (sets each tier EXACTLY — the grant list is
-# authoritative; a principal omitted from the spec is REMOVED). Git is truth; UI = drift
-# (ADR 0001). Validated on the DSM 7.3.2-86009 rig. Cross-ref: docs/krg-prod-iac.md.
+# spec/krg-prod/acls.yml by wrapping `synoshare --setuser` (groups are @-prefixed; a
+# bare group name silently no-ops). Logic lives in files/apply_acls.py, shipped via
+# the `script` module (DSM's Python 3.8). Idempotent: read `--list_acl` tiers,
+# diff, only re-set the tiers that drift with the `=` operator (sets each tier
+# EXACTLY — the grant list is authoritative; a principal omitted from the spec is
+# REMOVED). Git is truth; UI = drift (ADR 0001). Validated on the DSM rig.
 #
-# SCOPE: SHARE-level grants (DSM also writes them to the share-root filesystem ACL). The
-# recursive filesystem-ACL re-apply for *preserved data* carrying dead old-domain SIDs
-# (`synoacltool`) is a separate post-AD-join concern (runbook) — the exporter CAPTURES the
-# live `synoacltool -get` per share (the pre-reset capture the runbook needs), but this
-# role does not yet APPLY recursive filesystem ACLs.
+# TWO modes:
+#   * setuser (default)         — share-level grant matrix. Runs on every play.
+#   * recursive-stamp (opt-in)  — runbook §4 "apply to this folder, sub-folders
+#     and files" post-AD-join pass. Walks the whole subtree (`synoacltool -reset -R`)
+#     to overwrite preserved-data ACLs carrying dead old-domain SIDs. Expensive on
+#     big shares — gated behind `--tags acls-recursive` so it does NOT run on every
+#     synology_base re-apply. Operator triggers explicitly post-AD-join.
+#
+# CROSS-REFERENCE: there's no Linux counterpart; ACLs are DSM-specific. The
+# share-level grant model mirrors what nix/profiles/server.nix would express
+# with `users.users.*.groups` on a non-DSM host, but at the filesystem layer.
 
 - name: Load the ACL grant spec
   ansible.builtin.include_vars:
     file: "{{ synology_acls_spec }}"
     name: acls_spec
 
+# --- Mode 1: share-level grants (always runs) ---------------------------------
 - name: Apply share-level ACL grants (synoshare --setuser; groups @-prefixed)
   ansible.builtin.script: >-
-    apply_acls.py
+    apply_acls.py setuser
     --share {{ item.share | quote }}
     --grants {{ item.grants | default([]) | to_json | quote }}
     {{ '--check' if ansible_check_mode else '' }}
@@ -31,10 +38,32 @@
   changed_when: "'CHANGED' in acl_apply.stdout or 'WOULD-CHANGE' in acl_apply.stdout"
   failed_when: "acl_apply.rc != 0 or 'FAIL' in acl_apply.stdout"
   check_mode: false # run in --check too; apply_acls.py --check self-gates (read-only)
-  # acls.yml is seeded empty (acls: []) — capture the real matrix from the LIVE box first
-  # (`--tags export`), since dead-SID config blobs are not a usable source.
 
-# --- Drift export / pre-reset live capture — only with `--tags export` ----------
+# --- Mode 2: recursive filesystem stamp (opt-in, --tags acls-recursive) -------
+# Walks <path>/** and re-applies the share-root ACL to every entry. The
+# `apply_recursive` per-share flag (default false; spec defaults can flip it to
+# true) declares INTENT; the `acls-recursive` tag controls SCHEDULE so the walk
+# doesn't fire on every synology_base re-apply. Operator runs:
+#     ansible-playbook playbooks/synology.yml --tags acls-recursive
+# post-AD-join, after the share-level grants have been re-pointed at KRG.LOCAL
+# principals.
+- name: Recursive filesystem ACL stamp (runbook §4 — opt-in, expensive)
+  ansible.builtin.script: >-
+    apply_acls.py recursive-stamp
+    --share {{ item.share | quote }}
+    --path {{ (item.path | default('/volume1/' + item.share)) | quote }}
+    {{ '--check' if ansible_check_mode else '' }}
+  loop: "{{ acls_spec.acls | default([]) }}"
+  loop_control:
+    label: "{{ item.share }}"
+  when: item.apply_recursive | default(acls_spec.defaults.apply_recursive | default(false))
+  register: recursive_apply
+  changed_when: "'CHANGED' in recursive_apply.stdout or 'WOULD-CHANGE' in recursive_apply.stdout"
+  failed_when: "recursive_apply.rc != 0 or 'FAIL' in recursive_apply.stdout"
+  check_mode: false
+  tags: [acls-recursive, never]   # `never` -> skip unless explicitly requested
+
+# --- Drift export / pre-reset live capture — only with `--tags export` --------
 - name: Export live ACL state for drift detection
   ansible.builtin.import_tasks: export.yml
   tags: [export, never]
