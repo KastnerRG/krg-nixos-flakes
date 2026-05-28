@@ -131,11 +131,12 @@ resource "authentik_application" "qualcomm_docs" {
 # ── E4E Roster ────────────────────────────────────────────────────────────────
 
 resource "authentik_provider_oauth2" "e4e_roster" {
-  name               = "E4E Roster"
+  name               = "KRG Roster"
   client_id          = "e4e-roster"
   authorization_flow = data.authentik_flow.default_authorization.id
   invalidation_flow  = data.authentik_flow.default_invalidation.id
-  allowed_redirect_uris = [{ matching_mode = "strict", url = "http://roster.e4e.ucsd.edu/auth/callback" }]
+  # Temporary dev callback — update to the production URL when roster is deployed.
+  allowed_redirect_uris = [{ matching_mode = "strict", url = "http://localhost:3000/auth/callback" }]
   property_mappings  = local.std_scopes
   sub_mode           = "hashed_user_id"
   access_token_validity  = "hours=1"
@@ -143,8 +144,8 @@ resource "authentik_provider_oauth2" "e4e_roster" {
 }
 
 resource "authentik_application" "e4e_roster" {
-  name              = "E4E Roster"
+  name              = "KRG Roster"
   slug              = "e4e-roster"
   protocol_provider = authentik_provider_oauth2.e4e_roster.id
-  meta_launch_url   = "http://roster.e4e.ucsd.edu"
+  meta_launch_url   = "http://localhost:3000"
 }
