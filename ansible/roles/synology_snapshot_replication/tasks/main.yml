@@ -1,0 +1,56 @@
+---
+# synology_snapshot_replication — manage per-share Btrfs snapshot schedules and
+# retention on e4e-nas from spec/krg-prod/snapshots.yml.
+#
+# CROSS-REFERENCE: this is the DSM counterpart of nix `services.zfs.autoSnapshot`
+# (waiter — `nix/modules/zfs.nix`) and the ansible `nfs_server` zfs-auto-snapshot
+# timers (fabricant). Same cadence + retention shape (hourly/daily/weekly/monthly
+# keep counts), same per-share opt-out, mirrored fleet-wide.
+#
+# Logic in files/apply_snapshots.py (script: module, DSM py3.8). Idempotent: read
+# current schedule per share, diff against the desired (defaults + per-share
+# override), only re-apply where it drifts. shares not listed = defaults
+# applied.
+
+- name: Load the Snapshot Replication spec
+  ansible.builtin.include_vars:
+    file: "{{ synology_snapshots_spec }}"
+    name: snap_spec
+
+- name: Load the shares spec (to know the full list of shares to schedule)
+  ansible.builtin.include_vars:
+    file: "{{ krg_spec_dir }}/shares.yml"
+    name: shares_spec
+
+- name: Apply Snapshot Replication schedule per share
+  ansible.builtin.script: >-
+    apply_snapshots.py share
+    --share {{ item.name | quote }}
+    --enabled {{ ((snap_spec.shares | selectattr('name', 'equalto', item.name) | list
+                  | first | default({})).enabled
+                  | default(snap_spec.defaults.enabled | default(true))) }}
+    --hourly {{ ((snap_spec.shares | selectattr('name', 'equalto', item.name) | list
+                  | first | default({})).schedule | default({})).hourly
+                  | default(snap_spec.defaults.schedule.hourly | default(4)) }}
+    --daily {{ ((snap_spec.shares | selectattr('name', 'equalto', item.name) | list
+                  | first | default({})).schedule | default({})).daily
+                  | default(snap_spec.defaults.schedule.daily | default(7)) }}
+    --weekly {{ ((snap_spec.shares | selectattr('name', 'equalto', item.name) | list
+                  | first | default({})).schedule | default({})).weekly
+                  | default(snap_spec.defaults.schedule.weekly | default(4)) }}
+    --monthly {{ ((snap_spec.shares | selectattr('name', 'equalto', item.name) | list
+                  | first | default({})).schedule | default({})).monthly
+                  | default(snap_spec.defaults.schedule.monthly | default(12)) }}
+    {{ '--check' if ansible_check_mode else '' }}
+  loop: "{{ shares_spec.shares | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: snap_apply
+  changed_when: "'CHANGED' in snap_apply.stdout or 'WOULD-CHANGE' in snap_apply.stdout"
+  failed_when: "snap_apply.rc != 0 or 'FAIL' in snap_apply.stdout"
+  check_mode: false
+
+# --- Drift export (read-only) — only with `--tags export` -------------------
+- name: Export live snapshot schedules for drift detection
+  ansible.builtin.import_tasks: export.yml
+  tags: [export, never]
