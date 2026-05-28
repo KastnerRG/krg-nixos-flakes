@@ -51,10 +51,18 @@
     description = "Apply Ansible playbooks to managed infrastructure";
     path = [ pkgs.openssh pkgs.git pkgs.ansible pkgs.python3 ];
     serviceConfig = {
-      Type            = "oneshot";
-      User            = "krg-admin";
-      WorkingDirectory = "/var/lib/krg-admin/krg-infra/ansible";
+      Type             = "oneshot";
+      User             = "krg-admin";
+      WorkingDirectory = "/var/lib/krg-admin";   # always exists; ansible subdir may not yet
       ExecStart = pkgs.writeShellScript "ansible-apply" ''
+        # Bootstrap: clone on first run if the repo isn't present yet.
+        # Uses HTTPS so no deploy key is needed for the initial pull.
+        if ! ${pkgs.git}/bin/git -C /var/lib/krg-admin/krg-infra \
+              rev-parse --git-dir >/dev/null 2>&1; then
+          ${pkgs.git}/bin/git clone \
+            https://github.com/KastnerRG/krg-infra.git \
+            /var/lib/krg-admin/krg-infra
+        fi
         ${pkgs.git}/bin/git -C /var/lib/krg-admin/krg-infra pull --ff-only
         ${pkgs.ansible}/bin/ansible-playbook \
           --inventory /var/lib/krg-admin/krg-infra/ansible/inventory \
