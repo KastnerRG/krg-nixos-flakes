@@ -13,7 +13,3 @@ output "mlflow_client_id" {
   value = authentik_provider_oauth2.mlflow.client_id
 }
 
-output "outpost_token_vault_path" {
-  value       = "secret/krg-prod/authentik-outpost-token"
-  description = "Vault path where the proxy outpost token was written"
-}
