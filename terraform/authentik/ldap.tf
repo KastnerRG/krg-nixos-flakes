@@ -9,7 +9,7 @@ resource "authentik_source_ldap" "samba_ad" {
   slug    = "krg-samba-ad"
   enabled = true
 
-  server_uri = "ldap://krg-ldap.ucsd.edu"
+  server_uri = "ldap://fabricant-ldap.ucsd.edu"
   start_tls  = true
 
   bind_cn       = "CN=authentik-bind,CN=Users,DC=KRG,DC=LOCAL"
