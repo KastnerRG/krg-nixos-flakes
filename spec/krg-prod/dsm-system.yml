@@ -1,0 +1,44 @@
+# DSM system-level config for e4e-nas — hostname, network (static), DNS, NTP.
+# Source of truth for the post-rebuild state. Values CONFIRMED / DRIFT-MARKED from the
+# 2026-05-28 live pre-reset capture (archived locally, off-repo).
+#
+# IaC home (per the everything-IaC rule): `synology_api` escape hatch in
+# `terraform/e4e-nas/dsm-system.tf` calling SYNO.Core.Network set + system hostname API.
+# DSM 7.3 hardware (DS3617xs / Xeon D-1527 / 16 GB) is fixed by physical reality.
+
+system:
+  # Live: "e4e_nas" (underscore — NOT a valid DNS label per RFC 952/1123).
+  # Spec: hyphenated form, matches the FQDN already used everywhere else (cert SAN, DNS).
+  hostname: e4e-nas
+
+  ntp:
+    enabled: true
+    # Live: "fabricant-ldap.krg-ucsd-edu.intranet" — the DEAD old-domain DC. Drift.
+    # Post-rebuild: pick the new authoritative source (KRG.LOCAL DC once stood up, or pool).
+    # TODO: confirm — `time.ucsd.edu` is the campus NTP, or pool.ntp.org as a safe default.
+    server: time.ucsd.edu
+
+  timezone: America/Los_Angeles   # confirm via DSM Control Panel → Regional Options
+
+network:
+  # Live: eth0 = 132.239.17.124/16 (no DHCP), gw 132.239.17.1, dns 132.239.95.109 + 1.1.1.1.
+  # eth1/eth2/eth3 are link-down (10.33.x / 169.254.x leftover) and should be left alone
+  # or zeroed out; don't manage them here unless re-purposed.
+  primary_interface: eth0
+  static:
+    interface: eth0
+    address: 132.239.17.124
+    netmask: 255.255.0.0   # /16 (matches gateway 132.239.17.1)
+    mtu: 1500
+  gateway: 132.239.17.1
+  dns:
+    primary: 132.239.95.109   # UCSD recursive
+    secondary: 1.1.1.1
+    manual: true              # don't take DHCP DNS
+  proxy:
+    enabled: false
+  # IPv6, MAC clone, PPPoE, traffic control — all stay default-off; capture confirmed.
+
+# --- Hardening notes (drift the role will fix on apply) ---
+# - hostname underscore → hyphen (DNS-correct)
+# - NTP server points at a dead old-domain DC → swap to live source
