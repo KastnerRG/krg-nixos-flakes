@@ -101,12 +101,34 @@ def _diff_lists(api, entries_key, desired_list, check):
     if deletes: drift["delete"] = deletes
 
     def apply():
+        # Return the first failed _exec result so _result() reports FAIL and
+        # the role's failed_when fires. Hardcoding {"success": True} would
+        # swallow err 2001 / bad-id / etc. and silently report CHANGED.
         for e in creates:
-            _exec(api, "version=1", "method=create", *_args_from(e))
+            r = _exec(api, "version=1", "method=create", *_args_from(e))
+            if not r.get("success"):
+                return r
         for k, d in updates:
-            _exec(api, "version=1", "method=update", *_args_from(d))
+            # When we update by alias-fallback (no live id), include the id
+            # we DID find in live_by_id so DSM knows which entry to mutate.
+            args = dict(d)
+            if "id" not in args and live_by_id[k].get("id") is not None:
+                args["id"] = live_by_id[k]["id"]
+            r = _exec(api, "version=1", "method=update", *_args_from(args))
+            if not r.get("success"):
+                return r
         for e in deletes:
-            _exec(api, "version=1", "method=delete", *_args_from({"id": e.get("id")}))
+            # Delete by id when present; fall back to alias/name (matches the
+            # same _list_key the diff uses, so we don't send an empty key).
+            del_key = ({"id": e["id"]} if e.get("id") is not None
+                       else {"alias": e["alias"]} if e.get("alias") is not None
+                       else {"name": e["name"]} if e.get("name") is not None
+                       else None)
+            if del_key is None:
+                return {"success": False, "error": {"reason": "delete: no id/alias/name", "entry": e}}
+            r = _exec(api, "version=1", "method=delete", *_args_from(del_key))
+            if not r.get("success"):
+                return r
         return {"success": True}
 
     return _result(drift, check, apply)

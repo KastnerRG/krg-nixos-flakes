@@ -94,3 +94,69 @@ def test_access_control_uses_same_diff(monkeypatch, capsys):
     assert rc == 0 and capsys.readouterr().out.startswith("CHANGED")
     apis = {a for a, _ in captured}
     assert apis == {"SYNO.Core.AppPortal.AccessControl"}
+
+
+# --- H1: failure surfaces, doesn't get swallowed as success ----------------------
+def test_reverse_proxy_create_failure_reports_FAIL(monkeypatch, capsys):
+    """A `success: false` from DSM on create must propagate as FAIL, not CHANGED."""
+    live = []
+    desired = [{"alias": "new_one", "fqdn": "n.example", "https": True}]
+
+    call_counter = {"n": 0}
+
+    def fake(api, *params):
+        if "method=list" in params:
+            return {"data": {"entries": list(live)}, "success": True}
+        # First create returns DSM err 2001 (partial-set / bad payload)
+        call_counter["n"] += 1
+        return {"success": False, "error": {"code": 2001}}
+
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["reverse-proxy", "--entries", json.dumps(desired)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert out.startswith("FAIL")
+    # Confirm we actually attempted the create (regression guard against
+    # short-circuiting before the apply runs).
+    assert call_counter["n"] >= 1
+
+
+def test_reverse_proxy_update_failure_reports_FAIL(monkeypatch, capsys):
+    live = [{"id": 5, "alias": "x", "fqdn": "a", "https": False}]
+    desired = [{"id": 5, "alias": "x", "fqdn": "a", "https": True}]   # update
+
+    def fake(api, *params):
+        if "method=list" in params:
+            return {"data": {"entries": list(live)}, "success": True}
+        if "method=update" in params:
+            return {"success": False, "error": {"code": 400}}
+        return {"success": True}
+
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["reverse-proxy", "--entries", json.dumps(desired)])
+    assert rc == 1
+    assert capsys.readouterr().out.startswith("FAIL")
+
+
+# --- Low: delete-key fallback (alias / name when id missing) ----------------------
+def test_delete_falls_back_to_alias_when_no_id(monkeypatch, capsys):
+    """An entry the role knows only by alias (no id from DSM) must still delete cleanly."""
+    live = [{"alias": "no_id_entry", "fqdn": "x.example", "https": False}]   # no id field
+
+    captured = []
+
+    def fake(api, *params):
+        if "method=list" in params:
+            return {"data": {"entries": list(live)}, "success": True}
+        captured.append((api, params))
+        return {"success": True}
+
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["reverse-proxy", "--entries", "[]"])   # desired empty → delete live
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert out.startswith("CHANGED")
+    # The delete call MUST carry alias=, not an empty id= (the prior bug).
+    del_call = next(p for _, p in captured if "method=delete" in p)
+    assert "alias=no_id_entry" in del_call
+    assert not any(tok.startswith("id=") and tok.endswith("=") for tok in del_call)
