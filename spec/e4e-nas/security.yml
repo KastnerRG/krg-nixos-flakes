@@ -33,12 +33,17 @@ firewall:
   # geoip: { enable: false }
 
 auto_block:
-  # Live: 3 attempts in 1440 min (24h), no expiry (0). Aggressive — matches the breach-
-  # driven hardening posture. Consider expire_day to age out noisy blockers.
+  # Live: 3 attempts in 1440 min (24h), no expiry (0). Aggressive — matches the
+  # breach-driven hardening posture.
   enable: true
   attempts: 3
   within_mins: 1440
-  expire_day: 0                   # 0 = never; safer: 7-30 to age noisy entries
+  # CONFIRMED 2026-05-28: keep 0 (never expire). The NAS is internet-exposed
+  # so attackers SHOULD stay blocked permanently — the trade-off (operator
+  # has to manually unblock a misfire) is right here. The autoblock allow-list
+  # (sealab + machines + monitoring, wired in synology_security tasks/main.yml)
+  # exempts every legitimate management/probe source, so the misfire risk is low.
+  expire_day: 0
 
   # Allow-list (never block) + deny-list (always block). The allow-list is
   # COMPUTED in the role from nix/networks/trusted.json (`krg_trusted` —

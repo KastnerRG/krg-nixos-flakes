@@ -13,12 +13,12 @@ system:
 
   ntp:
     enabled: true
-    # Live: "fabricant-ldap.krg-ucsd-edu.intranet" — the DEAD old-domain DC. Drift.
-    # Post-rebuild: pick the new authoritative source (KRG.LOCAL DC once stood up, or pool).
-    # TODO: confirm — `time.ucsd.edu` is the campus NTP, or pool.ntp.org as a safe default.
-    server: time.ucsd.edu
+    # `time.ucsd.edu` doesn't exist; using the public pool (Synology's own
+    # default) — globally distributed, no campus dependency, fine for a
+    # storage appliance that doesn't need sub-millisecond accuracy.
+    server: pool.ntp.org
 
-  timezone: America/Los_Angeles   # confirm via DSM Control Panel → Regional Options
+  timezone: America/Los_Angeles   # confirmed (2026-05-28)
 
 network:
   # Live: eth0 = 132.239.17.124/16 (no DHCP), gw 132.239.17.1, dns 132.239.95.109 + 1.1.1.1.
@@ -41,4 +41,4 @@ network:
 
 # --- Hardening notes (drift the role will fix on apply) ---
 # - hostname underscore → hyphen (DNS-correct)
-# - NTP server points at a dead old-domain DC → swap to live source
+# - NTP server points at a dead old-domain DC → swap to pool.ntp.org

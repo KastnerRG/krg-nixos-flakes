@@ -7,11 +7,12 @@
 
 # --- FTP/FTPS ---
 # Live: plain FTP OFF, FTPS ON, custom passive port range 55536:55899, UTF-8 on, FIPS off.
-# HARDEN target: FTP fully OFF (both plain and FTPS) unless a real client needs it. The
-# runbook §"Services & system settings" called FTP off + harden. Decide if FTPS stays.
+# DECISION (2026-05-28): FTPS killed. Both surfaces stay OFF — SMB + NFS cover the
+# share-access use cases, and there's no current FTP client. Re-enable only if a
+# specific consumer needs it (then flip enable_ftps and revisit the passive range).
 ftp:
   enable_ftp: false           # plain FTP — keep OFF
-  enable_ftps: false          # CHANGE from live (was true) — re-enable only on demand
+  enable_ftps: false          # KILLED (was true on live) — re-enable only on demand
   enable_fxp: false
   enable_fips: false
   enable_utf8: true
@@ -58,7 +59,7 @@ snmp:
   enable_snmp: true                    # HARDEN: live=false; spec ON for monitoring
   enable_snmp_v1v2: false              # v1/v2 stay OFF (cleartext)
   enable_snmp_v3: true
-  contact: "e4e-admin@ucsd.edu"        # E4E hardware — matches the break-glass admin slot. TODO confirm the right contact
+  contact: "e4e@ucsd.edu"              # E4E hardware — confirmed 2026-05-28
   location: "Building/Room — UCSD"     # TODO confirm
   name: e4e-nas                        # sysName
   # USM (User-based Security Model) — v3 user; the credential goes via vault/bootstrap,
