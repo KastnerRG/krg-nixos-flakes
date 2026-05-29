@@ -31,12 +31,16 @@
     # (7.0.9), ending in hung-task warnings + a watchdog reboot. Fixed upstream in
     # 1.2.0 ("Avoid FUSE deadlocks by resolving paths with O_PATH fds"); nixpkgs has
     # NOT merged it (PR NixOS/nixpkgs#500707), so `nix flake update` does not help.
-    # Pin 1.2.0 directly and wire it via services.envfs.package (oec module). The
-    # module is unchanged across the bump (the PR is package-only), so
-    # extraFallbackPathCommands etc. still apply. GOTCHA: the derivation is still
-    # NAMED envfs-1.1.0 — upstream never bumped the in-tree version string for the
-    # 1.2.0 tag — but source rev 8a2a7066 carries the O_PATH fix. Drop this input once
-    # #500707 lands and `nix flake update` picks it up.
+    # Pin 1.2.0 here as the SOURCE and build it with our own rustPlatform in the oec
+    # module (services.envfs.package). We do NOT use this flake's own package output:
+    # envfs's default.nix vendors via `cargoLock.lockFile`, which on nixpkgs 25.11
+    # fetches crates from the legacy crates.io/api/v1 endpoint — now HTTP 403, so that
+    # build fails (e.g. concurrent-hashmap). Building with `cargoHash` instead uses
+    # fetchCargoVendor -> static.crates.io and works (see the oec module). The version
+    # string in Cargo.toml is still 1.1.0 (upstream never bumped it for the 1.2.0 tag),
+    # but rev 8a2a7066 carries the O_PATH fix. Drop this input once #500707 lands and
+    # `nix flake update` picks up a fixed envfs (tracked in KastnerRG/krg-infra#82;
+    # upstream crates.io-403 context: Mic92/envfs#145).
     envfs = {
       url = "github:Mic92/envfs/1.2.0";
       inputs.nixpkgs.follows = "nixpkgs";
