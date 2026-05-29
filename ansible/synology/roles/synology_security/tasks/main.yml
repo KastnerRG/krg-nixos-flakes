@@ -1,5 +1,5 @@
 ---
-# synology_security — manage DSM firewall + auto-block from spec/krg-prod/security.yml
+# synology_security — manage DSM firewall + auto-block from spec/e4e-nas/security.yml
 # via synowebapi (full-object set; logic in files/apply_security.py via `script`).
 #
 # CROSS-REFERENCE: counterpart of nix `krg.firewall` (`nix/modules/security/firewall.nix`)

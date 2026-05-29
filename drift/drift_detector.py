@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""krg drift detector — diff the LIVE Synology (e4e-nas) state against spec/krg-prod/.
+"""krg drift detector — diff the LIVE Synology (e4e-nas) state against spec/e4e-nas/.
 
 Git is the source of truth; any UI change is drift (ADR 0001). The synology_* role
 exporters (`ansible-playbook playbooks/synology.yml --tags export`) write per-host
@@ -11,7 +11,7 @@ a systemd timer, feeding node_exporter's textfile collector → the krg-prod Pro
 Resources: shares (presence), SMB globals, NFS (global + per-share rules), share ACLs.
 Each diff mirrors the field mapping of the matching synology_* apply helper.
 
-  drift_detector.py --spec-dir spec/krg-prod \
+  drift_detector.py --spec-dir spec/e4e-nas \
       --snapshot-dir /var/lib/krg-deploy/synology-export --host e4e-nas \
       [--metrics-file e4e-nas-drift.prom] [--format text|json]
 
@@ -223,7 +223,7 @@ def render_prometheus(host, results, drifts):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Diff live Synology state (exporter snapshots) vs spec.")
-    ap.add_argument("--spec-dir", default="spec/krg-prod")
+    ap.add_argument("--spec-dir", default="spec/e4e-nas")
     ap.add_argument("--snapshot-dir", required=True)
     ap.add_argument("--host", required=True)
     ap.add_argument("--metrics-file", help="write Prometheus textfile metrics here")

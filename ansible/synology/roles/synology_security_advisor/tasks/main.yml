@@ -1,6 +1,6 @@
 ---
 # synology_security_advisor — manage DSM Security Advisor (scheduled vuln/config
-# scan) from spec/krg-prod/security-advisor.yml via synowebapi (full-object set on
+# scan) from spec/e4e-nas/security-advisor.yml via synowebapi (full-object set on
 # SYNO.SDS.SecurityScan.Main; logic in files/apply_security_advisor.py via the
 # `script` module, DSM py3.8).
 #

@@ -1,6 +1,6 @@
 ---
-# Declarative spec consumed by this role (krg_spec_dir is in group_vars/synology.yml).
-synology_dsm_web_spec: "{{ krg_spec_dir }}/dsm-web.yml"
+# Declarative spec consumed by this role (nas_spec_dir is in group_vars/synology.yml).
+synology_dsm_web_spec: "{{ nas_spec_dir }}/dsm-web.yml"
 
 # Where the exporter writes the live-state snapshot (read by the drift_detector).
 # On the control node (krg-deploy); keep out of git. Shared with the other synology_* roles.

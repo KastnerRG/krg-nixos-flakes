@@ -1,6 +1,6 @@
 ---
 # Exporter (read-only): capture live DSM shares so the drift_exporter can diff them
-# against spec/krg-prod/shares.yml. Paired half of the role (ADR 0001 — UI = drift).
+# against spec/e4e-nas/shares.yml. Paired half of the role (ADR 0001 — UI = drift).
 # Run: ansible-playbook playbooks/synology.yml --tags export
 #
 # ⚠️ The `synoshare --enum`/`--get` output FORMAT is undocumented/version-specific; for

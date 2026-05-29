@@ -4,7 +4,7 @@
 Two subcommands:
 
   setuser           Apply the share -> principal grant matrix from
-                    spec/krg-prod/acls.yml. Each grant names a `group` (DSM needs
+                    spec/e4e-nas/acls.yml. Each grant names a `group` (DSM needs
                     an `@` prefix — a bare group name silently no-ops!) or a `user`,
                     with `access: rw|ro|no` (-> DSM tiers RW/RO/NA). Reads current
                     tiers via `synoshare --list_acl`, diffs, and only re-sets tiers

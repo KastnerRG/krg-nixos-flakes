@@ -1,6 +1,6 @@
 # THROWAWAY fixture (test rig only) to exercise apply_acls.py / synoshare --setuser.
 # Requires a share `acltest` and group `rigtest` on the rig. Point the role at this dir
-# with: -e krg_spec_dir=.../test/rig-fixtures
+# with: -e nas_spec_dir=.../test/rig-fixtures
 acls:
   - share: acltest
     grants:

@@ -1,5 +1,5 @@
 ---
-# synology_smb — manage DSM SMB *global* service settings from spec/krg-prod/smb-globals.yml.
+# synology_smb — manage DSM SMB *global* service settings from spec/e4e-nas/smb-globals.yml.
 #
 # DSM's SYNO.Core.FileServ.SMB `set` rejects a PARTIAL object (error code 2001), so the
 # apply logic GETs the full settings object (API version 3), overlays only the managed
@@ -12,7 +12,7 @@
 # store, so a direct file edit would not survive — synowebapi is the supported surface.
 # Validated on the DSM 7.3.2-86009 rig: drift -> --check (WOULD-CHANGE) -> apply (CHANGED)
 # -> re-run (OK no-change); min/max protocol render into smb.conf as SMB3.
-# Cross-ref: docs/krg-prod-iac.md, ADR 0005, spec/krg-prod/smb-globals.yml.
+# Cross-ref: docs/krg-prod-iac.md, ADR 0005, spec/e4e-nas/smb-globals.yml.
 
 - name: Load the SMB global spec
   ansible.builtin.include_vars:

@@ -1,6 +1,6 @@
 ---
 # synology_quotas — per-share (+ optional per-user) quota policy from
-# spec/krg-prod/quotas.yml. Drives `synoquota` CLI via files/apply_quotas.py
+# spec/e4e-nas/quotas.yml. Drives `synoquota` CLI via files/apply_quotas.py
 # (script: module, DSM py3.8). Idempotent: read current, diff by share, only
 # update on drift. `size_gib: 0` means "no quota" (REMOVE any existing).
 #

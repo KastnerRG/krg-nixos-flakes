@@ -1,6 +1,6 @@
 ---
 # synology_users — manage LOCAL DSM users + (optionally) LOCAL groups from
-# spec/krg-prod/{users,groups}.yml by wrapping the DSM CLI (synouser/synogroup).
+# spec/e4e-nas/{users,groups}.yml by wrapping the DSM CLI (synouser/synogroup).
 # DSM is not Debian, so ansible.builtin.user/group don't apply. Idempotent +
 # --check aware. Human identities come from the AD domain (winbind), NOT this
 # role; this role is for the service/break-glass LOCAL accounts (and local

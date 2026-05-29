@@ -1,7 +1,7 @@
 # synology_smb
 
 Manage DSM **SMB global service settings** on the Synology (e4e-nas) from the declarative
-spec in [`spec/krg-prod/smb-globals.yml`](../../../spec/krg-prod/smb-globals.yml); git is
+spec in [`spec/e4e-nas/smb-globals.yml`](../../../spec/e4e-nas/smb-globals.yml); git is
 the source of truth, UI changes are drift
 ([ADR 0001](../../../docs/adr/0001-iac-source-of-truth.md)).
 

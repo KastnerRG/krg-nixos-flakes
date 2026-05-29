@@ -1,7 +1,7 @@
 # synology_app_portal
 
 Manage DSM **Application Portal** on e4e-nas from
-[`spec/krg-prod/app-portal.yml`](../../../spec/krg-prod/app-portal.yml).
+[`spec/e4e-nas/app-portal.yml`](../../../spec/e4e-nas/app-portal.yml).
 
 ## Coverage
 

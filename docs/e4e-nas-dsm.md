@@ -6,7 +6,7 @@ cifs-utils); krg-prod's prometheus blackbox-probes it; it's a trusted host in
 [`../nix/networks/trusted.json`](../nix/networks/trusted.json).
 
 **Source of truth has moved to IaC.** Per ADR 0001 the DSM configuration lives
-in [`../spec/krg-prod/*.yml`](../spec/krg-prod) and is applied by the
+in [`../spec/e4e-nas/*.yml`](../spec/e4e-nas) and is applied by the
 [`synology_*` Ansible roles](../ansible/roles) composed in
 [`../ansible/playbooks/synology.yml`](../ansible/playbooks/synology.yml). This
 runbook is now **only** the break-glass + one-time migration sheet — things
@@ -17,17 +17,17 @@ recovery without automation).
 
 | Former section | Now driven by |
 |---|---|
-| §1 Admin account, key-only SSH, Telnet off | [`synology_users`](../ansible/roles/synology_users) + [`synology_ssh`](../ansible/roles/synology_ssh) (spec: [`users.yml`](../spec/krg-prod/users.yml), [`ssh.yml`](../spec/krg-prod/ssh.yml)) |
-| §2 KRG.LOCAL domain join + idmap reconciliation | [`synology_ad`](../ansible/roles/synology_ad) (spec: [`ad.yml`](../spec/krg-prod/ad.yml)) |
-| §3 Firewall + autoblock + QuickConnect/UPnP off | [`synology_security`](../ansible/roles/synology_security) + [`synology_external_access`](../ansible/roles/synology_external_access) (specs: [`security.yml`](../spec/krg-prod/security.yml), [`external-access.yml`](../spec/krg-prod/external-access.yml)) |
-| §4 Shared folders + ACLs + recursive stamp | [`synology_shares`](../ansible/roles/synology_shares) + [`synology_acls`](../ansible/roles/synology_acls) (recursive-stamp via `--tags acls-recursive`; specs: [`shares.yml`](../spec/krg-prod/shares.yml), [`acls.yml`](../spec/krg-prod/acls.yml)) |
-| §5 Snapshot Replication + Hyper Backup | [`synology_snapshot_replication`](../ansible/roles/synology_snapshot_replication) + [`synology_hyper_backup`](../ansible/roles/synology_hyper_backup) (specs: [`snapshots.yml`](../spec/krg-prod/snapshots.yml), [`hyper-backup.yml`](../spec/krg-prod/hyper-backup.yml)) |
-| §6 DSM updates | [`synology_dsm_updates`](../ansible/roles/synology_dsm_updates) (spec: [`dsm-updates.yml`](../spec/krg-prod/dsm-updates.yml)) |
+| §1 Admin account, key-only SSH, Telnet off | [`synology_users`](../ansible/synology/roles/synology_users) + [`synology_ssh`](../ansible/synology/roles/synology_ssh) (spec: [`users.yml`](../spec/e4e-nas/users.yml), [`ssh.yml`](../spec/e4e-nas/ssh.yml)) |
+| §2 KRG.LOCAL domain join + idmap reconciliation | [`synology_ad`](../ansible/synology/roles/synology_ad) (spec: [`ad.yml`](../spec/e4e-nas/ad.yml)) |
+| §3 Firewall + autoblock + QuickConnect/UPnP off | [`synology_security`](../ansible/synology/roles/synology_security) + [`synology_external_access`](../ansible/synology/roles/synology_external_access) (specs: [`security.yml`](../spec/e4e-nas/security.yml), [`external-access.yml`](../spec/e4e-nas/external-access.yml)) |
+| §4 Shared folders + ACLs + recursive stamp | [`synology_shares`](../ansible/synology/roles/synology_shares) + [`synology_acls`](../ansible/synology/roles/synology_acls) (recursive-stamp via `--tags acls-recursive`; specs: [`shares.yml`](../spec/e4e-nas/shares.yml), [`acls.yml`](../spec/e4e-nas/acls.yml)) |
+| §5 Snapshot Replication + Hyper Backup | [`synology_snapshot_replication`](../ansible/synology/roles/synology_snapshot_replication) + [`synology_hyper_backup`](../ansible/synology/roles/synology_hyper_backup) (specs: [`snapshots.yml`](../spec/e4e-nas/snapshots.yml), [`hyper-backup.yml`](../spec/e4e-nas/hyper-backup.yml)) |
+| §6 DSM updates | [`synology_dsm_updates`](../ansible/synology/roles/synology_dsm_updates) (spec: [`dsm-updates.yml`](../spec/e4e-nas/dsm-updates.yml)) |
 | §7 Periodic `.dss` config backup | [`../terraform/e4e-nas/scheduler.tf`](../terraform/e4e-nas/scheduler.tf) (`weekly_config_backup_export`) |
-| §8 Monitoring (SNMP + blackbox) | [`synology_services`](../ansible/roles/synology_services) (SNMP) — blackbox already in [`../nix/docker-compose/krg-prod/prometheus/prometheus.yml`](../nix/docker-compose/krg-prod/prometheus/prometheus.yml) |
-| Per-share quotas | [`synology_quotas`](../ansible/roles/synology_quotas) (spec: [`quotas.yml`](../spec/krg-prod/quotas.yml)) |
-| DSM web hardening (HSTS / HTTP2 / TLS profile) | [`synology_dsm_web`](../ansible/roles/synology_dsm_web) (spec: [`dsm-web.yml`](../spec/krg-prod/dsm-web.yml)) |
-| OEC (Qualys/Trellix) | **Not on DSM** — see [ADR 0006](adr/0006-no-oec-on-dsm.md); replaced by [`synology_security_advisor`](../ansible/roles/synology_security_advisor) |
+| §8 Monitoring (SNMP + blackbox) | [`synology_services`](../ansible/synology/roles/synology_services) (SNMP) — blackbox already in [`../nix/docker-compose/krg-prod/prometheus/prometheus.yml`](../nix/docker-compose/krg-prod/prometheus/prometheus.yml) |
+| Per-share quotas | [`synology_quotas`](../ansible/synology/roles/synology_quotas) (spec: [`quotas.yml`](../spec/e4e-nas/quotas.yml)) |
+| DSM web hardening (HSTS / HTTP2 / TLS profile) | [`synology_dsm_web`](../ansible/synology/roles/synology_dsm_web) (spec: [`dsm-web.yml`](../spec/e4e-nas/dsm-web.yml)) |
+| OEC (Qualys/Trellix) | **Not on DSM** — see [ADR 0006](adr/0006-no-oec-on-dsm.md); replaced by [`synology_security_advisor`](../ansible/synology/roles/synology_security_advisor) |
 
 ## Routine apply
 
@@ -93,9 +93,9 @@ configuration backup from the off-box destination (driven by
 ## DSM major-update post-action
 
 A DSM major upgrade (e.g. 7.3 → 7.4) can revert:
-- the sshd_config drop-in written by [`synology_ssh`](../ansible/roles/synology_ssh)
+- the sshd_config drop-in written by [`synology_ssh`](../ansible/synology/roles/synology_ssh)
   (DSM regenerates `/etc/ssh/sshd_config.d/` on some upgrades),
-- and potentially `/etc/hosts` pins added by [`synology_ad`](../ansible/roles/synology_ad).
+- and potentially `/etc/hosts` pins added by [`synology_ad`](../ansible/synology/roles/synology_ad).
 
 After a DSM major upgrade, re-run the playbook (idempotent — no-drift re-run
 is cheap, reverted drop-ins are re-asserted in one shot):
@@ -109,7 +109,7 @@ ansible-playbook playbooks/synology.yml
 Preserved-volume files carry the old `KRG.UCSD.EDU` SIDs. After the new
 `KRG.LOCAL` AD has the users + groups populated:
 
-1. Update [`spec/krg-prod/acls.yml`](../spec/krg-prod/acls.yml) — translate the
+1. Update [`spec/e4e-nas/acls.yml`](../spec/e4e-nas/acls.yml) — translate the
    captured live ACLs to KRG.LOCAL principals.
 2. `ansible-playbook playbooks/synology.yml` — applies share-level grants.
 3. Flip `defaults.apply_recursive: true` in the acls spec (or per-share flag).

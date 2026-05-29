@@ -1,7 +1,7 @@
 # synology_dsm_system
 
 Manage DSM **hostname / gateway / DNS** on e4e-nas from
-[`spec/krg-prod/dsm-system.yml`](../../../spec/krg-prod/dsm-system.yml).
+[`spec/e4e-nas/dsm-system.yml`](../../../spec/e4e-nas/dsm-system.yml).
 
 ## Coverage (this iteration)
 

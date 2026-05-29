@@ -1,7 +1,7 @@
 # synology_acls
 
 Manage the DSM **share → principal ACL grant matrix** on the Synology (e4e-nas) from
-[`spec/krg-prod/acls.yml`](../../../spec/krg-prod/acls.yml); git is the source of truth, UI
+[`spec/e4e-nas/acls.yml`](../../../spec/e4e-nas/acls.yml); git is the source of truth, UI
 changes are drift ([ADR 0001](../../../docs/adr/0001-iac-source-of-truth.md)).
 
 ## How it works

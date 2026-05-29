@@ -1,6 +1,6 @@
-# spec/krg-prod — declarative DSM source of truth
+# spec/e4e-nas — declarative DSM source of truth
 
-The declarative spec for **e4e-nas** (the krg-prod NAS), consumed by the Ansible
+The declarative spec for **e4e-nas** (E4E hardware), consumed by the Ansible
 `synology_*` roles and their paired `--check` exporters. **Git is the source of
 truth; any DSM UI change is drift** (ADR [0001](../../docs/adr/0001-iac-source-of-truth.md)).
 See the architecture + standup plan in [`../../docs/krg-prod-iac.md`](../../docs/krg-prod-iac.md).

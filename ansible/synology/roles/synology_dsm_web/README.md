@@ -1,7 +1,7 @@
 # synology_dsm_web
 
 Manage DSM **web service settings** on the Synology (e4e-nas) from
-[`spec/krg-prod/dsm-web.yml`](../../../spec/krg-prod/dsm-web.yml): HTTPS / HSTS /
+[`spec/e4e-nas/dsm-web.yml`](../../../spec/e4e-nas/dsm-web.yml): HTTPS / HSTS /
 HTTP/2 (SPDY) / mDNS (Avahi) / SSDP / DSM ports / **TLS compatibility profile**. Git is
 the source of truth, UI changes are drift
 ([ADR 0001](../../../docs/adr/0001-iac-source-of-truth.md)).

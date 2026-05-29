@@ -63,6 +63,6 @@ this ADR.
 
 Related: ADR 0001 (git as the source of truth for DSM config — supports
 "if it's not in `synology_*` it's drift, including any future OEC sideload"),
-[`synology_security_advisor/README.md`](../../ansible/roles/synology_security_advisor/README.md),
-[`synology_dsm_updates/README.md`](../../ansible/roles/synology_dsm_updates/README.md),
+[`synology_security_advisor/README.md`](../../ansible/synology/roles/synology_security_advisor/README.md),
+[`synology_dsm_updates/README.md`](../../ansible/synology/roles/synology_dsm_updates/README.md),
 the runbook `docs/e4e-nas-dsm.md` §6 hardening notes.

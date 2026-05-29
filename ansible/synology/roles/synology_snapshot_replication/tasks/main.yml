@@ -1,6 +1,6 @@
 ---
 # synology_snapshot_replication — manage per-share Btrfs snapshot schedules and
-# retention on e4e-nas from spec/krg-prod/snapshots.yml.
+# retention on e4e-nas from spec/e4e-nas/snapshots.yml.
 #
 # CROSS-REFERENCE: this is the DSM counterpart of nix `services.zfs.autoSnapshot`
 # (waiter — `nix/modules/zfs.nix`) and the ansible `nfs_server` zfs-auto-snapshot
@@ -19,7 +19,7 @@
 
 - name: Load the shares spec (to know the full list of shares to schedule)
   ansible.builtin.include_vars:
-    file: "{{ krg_spec_dir }}/shares.yml"
+    file: "{{ nas_spec_dir }}/shares.yml"
     name: shares_spec
 
 - name: Apply Snapshot Replication schedule per share

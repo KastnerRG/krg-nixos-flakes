@@ -1,7 +1,7 @@
 # synology_snapshot_replication
 
 Per-share Btrfs Snapshot Replication schedule + retention on e4e-nas from
-[`spec/krg-prod/snapshots.yml`](../../../spec/krg-prod/snapshots.yml).
+[`spec/e4e-nas/snapshots.yml`](../../../spec/e4e-nas/snapshots.yml).
 
 CROSS-REFERENCE: counterpart of `services.zfs.autoSnapshot` in
 [`nix/modules/zfs.nix`](../../../nix/modules/zfs.nix) (waiter — ZFS), and the

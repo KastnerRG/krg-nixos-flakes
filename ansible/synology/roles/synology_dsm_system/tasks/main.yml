@@ -1,5 +1,5 @@
 ---
-# synology_dsm_system — DSM hostname + network (general) from spec/krg-prod/dsm-system.yml
+# synology_dsm_system — DSM hostname + network (general) from spec/e4e-nas/dsm-system.yml
 # via synowebapi (full-object set; logic in files/apply_dsm_system.py).
 # Per-interface IP set lives on SYNO.Core.Network.Ethernet — not yet driven here (the
 # live static IP already matches the spec, so it's a no-op until we want to change it).

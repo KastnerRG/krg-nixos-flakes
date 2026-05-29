@@ -1,5 +1,5 @@
 ---
-# synology_ssh — DSM SSH/Telnet/SFTP hardening from spec/krg-prod/ssh.yml.
+# synology_ssh — DSM SSH/Telnet/SFTP hardening from spec/e4e-nas/ssh.yml.
 # Two surfaces, BOTH driven by files/apply_ssh.py via the `script` module (DSM
 # python 3.8 is below ansible's module floor, so `template:` and `copy:` are
 # unavailable — script is the only mechanism that works):

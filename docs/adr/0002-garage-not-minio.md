@@ -25,7 +25,7 @@ Use **Garage**.
 
 - AGPLv3 obligations apply only if we distribute modified Garage; we don't.
 - Image version is **pinned**, never `latest` (DSM Container Manager).
-- Buckets/keys/policies/quotas are declared in `spec/krg-prod/garage.yml` and applied
+- Buckets/keys/policies/quotas are declared in `spec/e4e-nas/garage.yml` and applied
   by the `garage_config` Ansible role; drift read back via `garage … -o json`.
 
 Related: ADR 0003 (where Garage runs).

@@ -1,5 +1,5 @@
 ---
-# synology_shares — manage DSM shared folders from spec/krg-prod/shares.yml by wrapping
+# synology_shares — manage DSM shared folders from spec/e4e-nas/shares.yml by wrapping
 # the DSM `synoshare` CLI. DSM is not Debian; ansible has no shared-folder module. Copies
 # the synology_users proof-of-pattern: probe -> create-if-missing (idempotent,
 # --check-aware) + a paired read-only exporter for drift detection. Git is truth; UI
@@ -24,7 +24,7 @@
 # Per-share USER ACLs (synoshare --setuser) live in the future synology_acls role, NOT
 # here (--add leaves the na/rw/ro lists empty). Recycle-bin / advanced flags have NO
 # synoshare arg -> tracked as a follow-up below.
-# Cross-ref: docs/krg-prod-iac.md, ADR 0005, spec/krg-prod/shares.yml.
+# Cross-ref: docs/krg-prod-iac.md, ADR 0005, spec/e4e-nas/shares.yml.
 
 - name: Load the declarative shares spec
   ansible.builtin.include_vars:

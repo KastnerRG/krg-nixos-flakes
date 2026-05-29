@@ -1,6 +1,6 @@
 ---
 # synology_dsm_web — manage DSM web settings (HSTS / HTTP/2 / mDNS / SSDP / HTTPS
-# redirect / DSM ports / TLS profile) from spec/krg-prod/dsm-web.yml via synowebapi.
+# redirect / DSM ports / TLS profile) from spec/e4e-nas/dsm-web.yml via synowebapi.
 # Two synowebapi surfaces, both idempotent (GET → diff → SET, only on drift); logic
 # in files/apply_dsm_web.py, shipped via the `script` module (DSM's py3.8 — same
 # constraint as synology_smb/_nfs/_acls). Git is truth; UI = drift (ADR 0001).

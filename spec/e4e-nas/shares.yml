@@ -1,4 +1,4 @@
-# Shared folders on e4e-nas (the krg-prod NAS) — declarative source of truth.
+# Shared folders on e4e-nas — declarative source of truth.
 # Consumed by the `synology_shares` Ansible role (wraps `synoshare`); the paired
 # exporter reads `synoshare --enum`/`--get` back into this shape for drift detection.
 # Seeded from the build sheet (docs/e4e-nas-dsm.md). Git is truth; UI = drift (ADR 0001).

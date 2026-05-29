@@ -1,6 +1,6 @@
 ---
 # synology_acls — manage the DSM share -> principal ACL grant matrix from
-# spec/krg-prod/acls.yml by wrapping `synoshare --setuser` (groups are @-prefixed; a
+# spec/e4e-nas/acls.yml by wrapping `synoshare --setuser` (groups are @-prefixed; a
 # bare group name silently no-ops). Logic lives in files/apply_acls.py, shipped via
 # the `script` module (DSM's Python 3.8). Idempotent: read `--list_acl` tiers,
 # diff, only re-set the tiers that drift with the `=` operator (sets each tier

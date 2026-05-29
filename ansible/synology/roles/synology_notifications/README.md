@@ -1,7 +1,7 @@
 # synology_notifications
 
 Manage DSM **notification channels** (mail / SMS / push / CMS) on e4e-nas from
-[`spec/krg-prod/notifications.yml`](../../../spec/krg-prod/notifications.yml).
+[`spec/e4e-nas/notifications.yml`](../../../spec/e4e-nas/notifications.yml).
 
 ## Coverage
 

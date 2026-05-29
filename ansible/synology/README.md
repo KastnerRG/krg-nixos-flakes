@@ -34,11 +34,11 @@ ansible/synology/
 
 ## What's NOT here (and why)
 
-- **`spec/krg-prod/*.yml`** — the declarative specs. Kept at the repo root
+- **`spec/e4e-nas/*.yml`** — the declarative specs. Kept at the repo root
   next to the other lab specs because they ARE the source of truth across
   layers (the drift exporter + future fabricant integrations also read them).
   If the NAS goes away, those spec files become orphaned and you can delete
-  them at that time — `git grep -l '^# .*synology' spec/krg-prod/` finds them.
+  them at that time — `git grep -l '^# .*synology' spec/e4e-nas/` finds them.
 - **`terraform/e4e-nas/`** — Container Manager / scheduler resources for DSM.
   Already its own deletable subtree.
 - **`docs/e4e-nas-dsm.md` + `docs/adr/0006-no-oec-on-dsm.md`** — break-glass
@@ -69,7 +69,7 @@ When the NAS is retired or moved off the lab:
 ```bash
 git rm -r ansible/synology/
 # Optional cleanup of the spec + terraform + docs (now orphaned):
-git rm -r spec/krg-prod/{shares,acls,smb-globals,nfs-exports,services,security,notifications,dsm-web,dsm-system,app-portal,ssh,users,groups,ad,dsm-updates,security-advisor,external-access,quotas,snapshots,hyper-backup}.yml
+git rm -r spec/e4e-nas/{shares,acls,smb-globals,nfs-exports,services,security,notifications,dsm-web,dsm-system,app-portal,ssh,users,groups,ad,dsm-updates,security-advisor,external-access,quotas,snapshots,hyper-backup}.yml
 git rm -r terraform/e4e-nas/
 git rm docs/e4e-nas-dsm.md docs/adr/0006-no-oec-on-dsm.md
 ```

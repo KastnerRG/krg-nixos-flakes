@@ -1,6 +1,6 @@
 ---
 # synology_external_access — disable Synology's relay/NAT-pierce surfaces from
-# spec/krg-prod/external-access.yml. Without this, QuickConnect and UPnP punch
+# spec/e4e-nas/external-access.yml. Without this, QuickConnect and UPnP punch
 # straight through the firewall perimeter we just spent effort building.
 #
 # Three independent webapi surfaces (each is full-object set; partial = err 2001).

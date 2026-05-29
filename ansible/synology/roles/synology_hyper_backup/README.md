@@ -1,7 +1,7 @@
 # synology_hyper_backup
 
 Declarative DSM Hyper Backup jobs on e4e-nas from
-[`spec/krg-prod/hyper-backup.yml`](../../../spec/krg-prod/hyper-backup.yml).
+[`spec/e4e-nas/hyper-backup.yml`](../../../spec/e4e-nas/hyper-backup.yml).
 This is the OFF-BOX DR layer (runbook §5) — snapshots are local recovery, this
 is the "room burned" copy.
 

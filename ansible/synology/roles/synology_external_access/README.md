@@ -1,7 +1,7 @@
 # synology_external_access
 
 Disable DSM's relay / NAT-pierce surfaces on e4e-nas from
-[`spec/krg-prod/external-access.yml`](../../../spec/krg-prod/external-access.yml).
+[`spec/e4e-nas/external-access.yml`](../../../spec/e4e-nas/external-access.yml).
 
 QuickConnect and UPnP both bypass the in-DSM firewall perimeter that
 `synology_security` sets up — the runbook §3 line "they bypass this perimeter

@@ -1,7 +1,7 @@
 # synology_nfs
 
 Manage DSM **NFS service settings and per-share export rules** on the Synology (e4e-nas)
-from [`spec/krg-prod/nfs-exports.yml`](../../../spec/krg-prod/nfs-exports.yml); git is the
+from [`spec/e4e-nas/nfs-exports.yml`](../../../spec/e4e-nas/nfs-exports.yml); git is the
 source of truth, UI changes are drift
 ([ADR 0001](../../../docs/adr/0001-iac-source-of-truth.md)).
 

@@ -1,4 +1,4 @@
-# NFS on e4e-nas (the krg-prod NAS) — declarative source of truth.
+# NFS on e4e-nas — declarative source of truth.
 # Consumed by the `synology_nfs` Ansible role (synowebapi); the exporter reads the live
 # state back into this shape. Git is truth; UI = drift (ADR 0001).
 #

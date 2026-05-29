@@ -1,7 +1,7 @@
 # synology_security
 
 Manage DSM **firewall + auto-block** on e4e-nas from
-[`spec/krg-prod/security.yml`](../../../spec/krg-prod/security.yml). Git is truth;
+[`spec/e4e-nas/security.yml`](../../../spec/e4e-nas/security.yml). Git is truth;
 UI = drift.
 
 ## Coverage

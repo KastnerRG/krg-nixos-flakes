@@ -1,6 +1,6 @@
 ---
 # synology_nfs — manage DSM NFS service + per-share export rules from
-# spec/krg-prod/nfs-exports.yml via synowebapi. Two synowebapi surfaces, both idempotent
+# spec/e4e-nas/nfs-exports.yml via synowebapi. Two synowebapi surfaces, both idempotent
 # (GET/load -> diff -> SET/save, only on drift); the logic lives in files/apply_nfs.py,
 # shipped via the `script` module (runs on DSM's Python 3.8 — below ansible-core's module
 # floor, same constraint as synology_users/_shares/_smb). Git is truth; UI = drift (ADR 0001).

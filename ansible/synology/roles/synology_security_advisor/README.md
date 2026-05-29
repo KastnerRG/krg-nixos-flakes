@@ -2,7 +2,7 @@
 
 Manage DSM Security Advisor (scheduled vuln/config scan + email notify) on
 e4e-nas from
-[`spec/krg-prod/security-advisor.yml`](../../../spec/krg-prod/security-advisor.yml).
+[`spec/e4e-nas/security-advisor.yml`](../../../spec/e4e-nas/security-advisor.yml).
 
 CROSS-REFERENCE: this is the DSM-native replacement for `oec_qualys_trellix` on
 Linux hosts. Same intent — periodic vuln/config scan with email notify on

@@ -1,6 +1,6 @@
 ---
 # synology_notifications — DSM notification channels (mail, SMS, push, CMS) from
-# spec/krg-prod/notifications.yml via synowebapi (full-object set per API).
+# spec/e4e-nas/notifications.yml via synowebapi (full-object set per API).
 # Gmail OAuth token bootstrap is one-time + interactive in DSM UI — not in this role.
 #
 # CROSS-REFERENCE: parallels nix `services.smartd.notifyEmail` /

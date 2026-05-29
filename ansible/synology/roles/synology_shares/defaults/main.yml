@@ -1,6 +1,6 @@
 ---
-# Declarative spec consumed by this role (krg_spec_dir is in group_vars/synology.yml).
-synology_shares_spec: "{{ krg_spec_dir }}/shares.yml"
+# Declarative spec consumed by this role (nas_spec_dir is in group_vars/synology.yml).
+synology_shares_spec: "{{ nas_spec_dir }}/shares.yml"
 
 # Where the exporter writes the live-state snapshot (read by the drift_exporter).
 # On the control node (krg-deploy); keep out of git. Shared with synology_users.

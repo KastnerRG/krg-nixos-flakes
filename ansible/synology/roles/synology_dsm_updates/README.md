@@ -1,7 +1,7 @@
 # synology_dsm_updates
 
 Manage DSM auto-update policy on e4e-nas from
-[`spec/krg-prod/dsm-updates.yml`](../../../spec/krg-prod/dsm-updates.yml).
+[`spec/e4e-nas/dsm-updates.yml`](../../../spec/e4e-nas/dsm-updates.yml).
 
 CROSS-REFERENCE: counterpart of nix `system.autoUpgrade` (`nix/profiles/base.nix`)
 and the Debian `unattended-upgrades` baseline

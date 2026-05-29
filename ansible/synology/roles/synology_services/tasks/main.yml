@@ -1,6 +1,6 @@
 ---
 # synology_services — manage DSM file/system services (FTP/AFP/SNMP) from
-# spec/krg-prod/services.yml via synowebapi. Each API is full-object set
+# spec/e4e-nas/services.yml via synowebapi. Each API is full-object set
 # (partial = err 2001); logic in files/apply_services.py via `script` module.
 # SFTP/WebDAV/Rsync surfaces are not yet mapped (capture errored 102 — TODO).
 #

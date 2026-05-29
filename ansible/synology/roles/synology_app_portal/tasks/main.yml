@@ -1,6 +1,6 @@
 ---
 # synology_app_portal — DSM Application Portal (config + reverse-proxy + access-control)
-# from spec/krg-prod/app-portal.yml via synowebapi. Config is full-object set; the
+# from spec/e4e-nas/app-portal.yml via synowebapi. Config is full-object set; the
 # entry lists are diffed declaratively (create/update/delete by id).
 
 - name: Load the app portal spec

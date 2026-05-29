@@ -1,7 +1,7 @@
 # synology_ad
 
 DSM Active Directory domain join (KRG.LOCAL) + winbind idmap reconciliation
-from [`spec/krg-prod/ad.yml`](../../../spec/krg-prod/ad.yml).
+from [`spec/e4e-nas/ad.yml`](../../../spec/e4e-nas/ad.yml).
 
 CROSS-REFERENCE: counterpart of nix `krg.adClient`
 ([`nix/modules/sssd-ad-client.nix`](../../../nix/modules/sssd-ad-client.nix))

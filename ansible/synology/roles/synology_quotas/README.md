@@ -1,7 +1,7 @@
 # synology_quotas
 
 Per-share (and optional per-user) quota policy on e4e-nas from
-[`spec/krg-prod/quotas.yml`](../../../spec/krg-prod/quotas.yml). Wraps the
+[`spec/e4e-nas/quotas.yml`](../../../spec/e4e-nas/quotas.yml). Wraps the
 `synoquota` CLI via [`files/apply_quotas.py`](files/apply_quotas.py)
 (script:, DSM py3.8).
 

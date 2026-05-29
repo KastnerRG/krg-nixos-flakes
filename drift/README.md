@@ -7,7 +7,7 @@ for the Synology NAS (`e4e-nas`).
 ## How it fits together
 
 ```
-synology_* roles (apply)          spec/krg-prod/*.yml  ── desired state
+synology_* roles (apply)          spec/e4e-nas/*.yml  ── desired state
         │                                  │
         │  --tags export                   │
         ▼                                  ▼
@@ -28,7 +28,7 @@ means the diff logic is **unit-testable offline** and a captured snapshot is an 
 ## Usage
 
 ```bash
-drift_detector.py --spec-dir spec/krg-prod \
+drift_detector.py --spec-dir spec/e4e-nas \
     --snapshot-dir /var/lib/krg-deploy/synology-export --host e4e-nas \
     [--metrics-file e4e-nas-drift.prom] [--format text|json]
 ```

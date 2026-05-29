@@ -1,7 +1,7 @@
 # synology_services
 
 Manage DSM **file/system services** on e4e-nas from
-[`spec/krg-prod/services.yml`](../../../spec/krg-prod/services.yml): FTP/FTPS, AFP, SNMP.
+[`spec/e4e-nas/services.yml`](../../../spec/e4e-nas/services.yml): FTP/FTPS, AFP, SNMP.
 Git is truth; UI = drift ([ADR 0001](../../../docs/adr/0001-iac-source-of-truth.md)).
 
 ## How it works

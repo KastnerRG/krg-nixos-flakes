@@ -1,4 +1,4 @@
-# DSM update policy for e4e-nas (the krg-prod NAS) — declarative source of truth.
+# DSM update policy for e4e-nas — declarative source of truth.
 # Consumed by the `synology_dsm_updates` Ansible role.
 #
 # CROSS-REFERENCE: this is the DSM counterpart of nix system.autoUpgrade (set in

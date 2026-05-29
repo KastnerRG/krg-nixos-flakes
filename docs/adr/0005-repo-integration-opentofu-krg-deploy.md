@@ -18,12 +18,12 @@ krg-prod monitoring compose, a `terraform/` (OpenTofu) per-target scaffold, and 
 - **NAS management split:**
   - **OpenTofu** (`terraform/e4e-nas/`) — what the `synology` provider covers:
     shared folders, Container Manager (Garage), VMM, file uploads.
-  - **Ansible** (`ansible/roles/synology_*`, a `synology` inventory group with host
+  - **Ansible** (`ansible/synology/roles/synology_*`, a `synology` inventory group with host
     `e4e-nas`) — everything the provider can't reach: ACLs, NFS exports, SMB globals,
     snapshot/scrub schedules, SSH keys, firewall, packages, users/groups. Roles wrap
     DSM CLI (`synouser`, `synogroup`, `synoshare`, `synoacltool`, `synoservicectl`,
     `synopkg`, `synosetkeyvalue`) idempotently, each with a paired `--check` exporter.
-  - **`spec/krg-prod/*.yml`** — declarative source of truth (users, groups, shares,
+  - **`spec/e4e-nas/*.yml`** — declarative source of truth (users, groups, shares,
     acls, nfs-exports, smb-globals, garage), consumed by the Ansible roles. Seeded
     from the e4e-nas build sheet in `docs/e4e-nas-dsm.md`.
 - **VM management:** the **`nix/` flake** (host `krg-prod`); the VM is **not** in the

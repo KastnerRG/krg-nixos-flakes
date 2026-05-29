@@ -1,6 +1,6 @@
 ---
 # synology_hyper_backup — declarative Hyper Backup jobs from
-# spec/krg-prod/hyper-backup.yml. The OFF-BOX DR layer (runbook §5):
+# spec/e4e-nas/hyper-backup.yml. The OFF-BOX DR layer (runbook §5):
 # snapshots are local recovery; this is the remote-disaster copy.
 #
 # CROSS-REFERENCE: there's no Linux counterpart in this repo today —

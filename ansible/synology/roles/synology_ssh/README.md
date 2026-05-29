@@ -2,7 +2,7 @@
 
 THE breach-fix piece, applied to DSM. Manage SSH/Telnet/SFTP + the sshd
 hardening drop-in on e4e-nas from
-[`spec/krg-prod/ssh.yml`](../../../spec/krg-prod/ssh.yml).
+[`spec/e4e-nas/ssh.yml`](../../../spec/e4e-nas/ssh.yml).
 
 CROSS-REFERENCE: counterpart of `services.openssh.settings` in
 [`nix/profiles/base.nix`](../../../nix/profiles/base.nix) and

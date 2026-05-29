@@ -3,7 +3,7 @@
 Manage **local** DSM users and groups on the Synology (e4e-nas) by wrapping the DSM
 CLI (`synouser` / `synogroup`) idempotently — DSM is not Debian, so the native
 `ansible.builtin.user`/`group` modules don't apply. Driven by the declarative spec
-in [`spec/krg-prod/`](../../../spec/krg-prod/); git is the source of truth, UI changes
+in [`spec/e4e-nas/`](../../../spec/e4e-nas/); git is the source of truth, UI changes
 are drift ([ADR 0001](../../../docs/adr/0001-iac-source-of-truth.md)).
 
 This is the **proof-of-pattern** every `synology_*` role copies: *probe → create-if-missing

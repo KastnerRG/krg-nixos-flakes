@@ -1,14 +1,14 @@
 ---
-# Declarative spec files consumed by this role (see group_vars/synology.yml for krg_spec_dir).
-synology_groups_spec: "{{ krg_spec_dir }}/groups.yml"
-synology_users_spec: "{{ krg_spec_dir }}/users.yml"
+# Declarative spec files consumed by this role (see group_vars/synology.yml for nas_spec_dir).
+synology_groups_spec: "{{ nas_spec_dir }}/groups.yml"
+synology_users_spec: "{{ nas_spec_dir }}/users.yml"
 
 # Where the exporter writes the live-state snapshot (read by the drift_exporter).
 # On the control node (krg-deploy); keep out of git.
 synology_export_dir: "/var/lib/krg-deploy/synology-export"
 
 # Secret: map of local-user-name -> password, supplied via ansible-vault or
-# -e @secrets.yml. NEVER put passwords in spec/krg-prod/users.yml.
+# -e @secrets.yml. NEVER put passwords in spec/e4e-nas/users.yml.
 synology_user_passwords: {}
 
 # Shared admin keys file (nix/keys/admins.json — same one read by

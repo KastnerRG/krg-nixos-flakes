@@ -2,7 +2,7 @@
 # Consumed by the `synology_hyper_backup` Ansible role.
 #
 # Off-box DR copy of critical shares (runbook §5). Snapshots in
-# spec/krg-prod/snapshots.yml are the LOCAL recovery story; Hyper Backup is the
+# spec/e4e-nas/snapshots.yml are the LOCAL recovery story; Hyper Backup is the
 # REMOTE one (different failure domains — disk pool dead, NAS stolen, room
 # burned). At least one off-box destination per critical share.
 #

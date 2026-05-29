@@ -18,8 +18,8 @@ Git is the source of truth; UI/by-hand changes are drift (ADR 0001).
 | systemd-wraps-compose | `nix/modules/services/compose-stack.nix` (`krg.composeStacks`) | NixOS |
 | Monitoring stack | `nix/docker-compose/krg-prod/` (extend: alertmanager, `drift_exporter/`, `prometheus/rules/`, grafana provisioning + JSON dashboards) | compose |
 | NAS — provider-covered (shares, Garage container, files) | `terraform/e4e-nas/` (add `backend.tf`, `nas-shares.tf`, `nas-containers.tf`) | OpenTofu |
-| NAS — CLI-only (ACLs, NFS, SMB globals, snapshots, SSH, firewall, packages, users/groups) | `ansible/roles/synology_*` + `synology` group (host `e4e-nas`) | Ansible |
-| Declarative DSM spec | `spec/krg-prod/*.yml` (seeded from the build sheet) | data |
+| NAS — CLI-only (ACLs, NFS, SMB globals, snapshots, SSH, firewall, packages, users/groups) | `ansible/synology/roles/synology_*` + `synology` group (host `e4e-nas`) | Ansible |
+| Declarative DSM spec | `spec/e4e-nas/*.yml` (seeded from the build sheet) | data |
 | Test rig | new `nix/` flake outputs (`apps.dsm-vm`, `apps.test-pr`) + `nix/test/dsm-rig.nix` | NixOS/libvirt |
 | Decisions / break-glass | `docs/adr/`, `docs/e4e-nas-dsm.md` (→ break-glass) | docs |
 | Deploy control node + state | `krg-deploy` (runs tofu/ansible/nixos-rebuild; holds encrypted state) | — |
@@ -42,16 +42,16 @@ that minimal and documented as break-glass; everything after is repeatable IaC.
 **IaC (repeatable, from `krg-deploy`):**
 5. OpenTofu `terraform/e4e-nas/`: shared folders (`nas-shares.tf`), Garage container
    (`nas-containers.tf`), file provisioning.
-6. Ansible `synology_*` roles from `spec/krg-prod/`: groups → users → shares → ACLs
+6. Ansible `synology_*` roles from `spec/e4e-nas/`: groups → users → shares → ACLs
    (recursive re-apply over the preserved data — old SIDs are dead) → SMB globals →
    NFS exports → firewall → packages → snapshot/scrub schedules.
-7. `garage_config` role: buckets/keys/policies from `spec/krg-prod/garage.yml`.
+7. `garage_config` role: buckets/keys/policies from `spec/e4e-nas/garage.yml`.
 8. UI lockdown cutover (LAST — only once automation creds + break-glass + audit
    shipping are proven, or you lock yourself out).
 
 ## NAS-focused milestone order
 
-0. **Seed `spec/krg-prod/`** from the build sheet (`docs/e4e-nas-dsm.md`: 55 shares,
+0. **Seed `spec/e4e-nas/`** from the build sheet (`docs/e4e-nas-dsm.md`: 55 shares,
    16 groups, service settings → `shares.yml`/`groups.yml`/`smb-globals.yml`/
    `nfs-exports.yml`). Pure data; unblocks every role.
 1. **Test rig** (XPEnology **DS3622xs+/`broadwellnk`, DSM 7.3** in libvirt via the RR

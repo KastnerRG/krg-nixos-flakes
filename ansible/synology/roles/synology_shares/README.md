@@ -3,7 +3,7 @@
 Manage DSM **shared folders** on the Synology (e4e-nas) by wrapping the DSM CLI
 (`synoshare`) idempotently — DSM is not Debian, so there is no native ansible
 shared-folder module. Driven by the declarative spec in
-[`spec/krg-prod/shares.yml`](../../../spec/krg-prod/shares.yml); git is the source of
+[`spec/e4e-nas/shares.yml`](../../../spec/e4e-nas/shares.yml); git is the source of
 truth, UI changes are drift ([ADR 0001](../../../docs/adr/0001-iac-source-of-truth.md)).
 
 Copies the [`synology_users`](../synology_users/) proof-of-pattern: *probe →

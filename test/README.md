@@ -90,7 +90,7 @@ the baseline.
   real NAS.
 - **`dsm-pr`** — ephemeral per PR: clone the mirror snapshot → `tofu plan` +
   `ansible-playbook --check --diff` → apply → exporter playbooks → structural diff vs
-  `../spec/krg-prod/` → pass/fail → destroy.
+  `../spec/e4e-nas/` → pass/fail → destroy.
 - **`dsm-upgrade`** — occasional: DSM minor update first, then full IaC apply, to
   catch upgrade-induced breakage.
 

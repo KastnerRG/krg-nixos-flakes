@@ -1,5 +1,5 @@
 ---
-# synology_dsm_updates — manage DSM auto-update policy from spec/krg-prod/dsm-updates.yml
+# synology_dsm_updates — manage DSM auto-update policy from spec/e4e-nas/dsm-updates.yml
 # via synowebapi (SYNO.Core.Upgrade.Setting / .Server, full-object set — logic in
 # files/apply_dsm_updates.py, shipped via the `script` module, DSM py3.8).
 #

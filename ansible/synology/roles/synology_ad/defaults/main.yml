@@ -1,5 +1,5 @@
 ---
-synology_ad_spec: "{{ krg_spec_dir }}/ad.yml"
+synology_ad_spec: "{{ nas_spec_dir }}/ad.yml"
 synology_export_dir: "/var/lib/krg-deploy/synology-export"
 
 # One-time AD join credentials — pass at runtime, NEVER stored:

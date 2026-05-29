@@ -1,6 +1,6 @@
 ---
 # synology_ad — DSM domain join (KRG.LOCAL) + winbind idmap reconciliation from
-# spec/krg-prod/ad.yml. Counterpart of nix `krg.adClient` and ansible
+# spec/e4e-nas/ad.yml. Counterpart of nix `krg.adClient` and ansible
 # `roles/ad_client`. DSM uses winbind, not SSSD — the role's main complication is
 # making winbind's idmap line up with SSSD's algorithmic mapping so the
 # fabricant-prod NFS export sees the same uid/gid on both sides.
