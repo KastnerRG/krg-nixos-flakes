@@ -20,6 +20,9 @@ proxmox_guests:
   - vmid: 101
     name: krg-vault       # OpenBao secrets manager
     fw_file: krg-vault.fw
+  - vmid: 102
+    name: krg-deploy      # Ansible control node + OpenTofu
+    fw_file: krg-deploy.fw
   - vmid: 103
     name: krg-prod        # Lab-wide production stack (Traefik + Authentik + services)
     fw_file: krg-prod.fw

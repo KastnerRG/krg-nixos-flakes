@@ -91,6 +91,7 @@
       waiter      = mkSystem "waiter";
       krg-ldap    = mkSystem "krg-ldap";
       krg-vault   = mkSystem "krg-vault";   # OpenBao secrets manager
+      krg-deploy  = mkSystem "krg-deploy";  # Ansible control node + OpenTofu
     };
   };
 }
