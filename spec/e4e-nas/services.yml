@@ -65,8 +65,13 @@ snmp:
   # USM (User-based Security Model) — v3 user; the credential goes via vault/bootstrap,
   # NOT in this spec. The role's apply step takes the password as a separate input.
   v3_user: krg-monitor                 # the username the krg-prod scraper uses
-  # Allow-list of scrape sources — reference the existing IPSet rather than re-listing.
-  allow_source_ref: nix/networks/trusted.json#monitoring
+  # Allow-list of scrape sources — point at the shared single source of truth.
+  # `monitoring_host` is a SCALAR (the Prometheus IP) in trusted.json, NOT an
+  # IPSet — there's no `monitoring` IPSet today. The SNMP allow-list itself is
+  # enforced by the firewall (synology_security) when its rule-push lands, not
+  # by SNMP itself — this ref is operator-facing documentation pointing at
+  # what the rule should grant.
+  allow_source_ref: nix/networks/trusted.json#monitoring_host
 
 # --- Hardening notes (drift the role will fix on apply) ---
 # - FTPS: was on → spec off (decision: re-enable only if a client requires it)

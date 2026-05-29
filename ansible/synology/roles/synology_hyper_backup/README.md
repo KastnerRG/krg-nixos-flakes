@@ -36,6 +36,17 @@ extra-vars file is the bridge.
 The helper SKIPS creating any job marked `encrypt: true` that lacks a secret —
 better to skip than create a job without a key.
 
+> **Process-table window.** Backup-destination passwords pass to the DSM
+> webapi as positional argv (e.g. `dest_password=<value>`). For the brief
+> lifetime of each `synowebapi --exec` invocation, the password is visible
+> in `/proc/<pid>/cmdline` to anyone with shell access on the NAS. `no_log`
+> hides it from Ansible's logs but can't change DSM's CLI shape. Mitigation:
+> the only accounts on the NAS are administrators (synology_users) + AD
+> users gated by group filter; `synouser`'s `--enum disabled` confirms
+> the built-in `admin`/`guest` are off. Acceptable risk given the
+> already-restrictive access posture; flagged here for completeness
+> per reviewer 4577021512.
+
 ## Field mapping (best-known; verify on first rig apply)
 
 | Spec field | DSM field |

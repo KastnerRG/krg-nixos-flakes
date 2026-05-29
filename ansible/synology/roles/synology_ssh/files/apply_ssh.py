@@ -6,7 +6,9 @@ Subcommands:
                 sftp.enable. FULL-OBJECT (partial = err 2001): GET → overlay → SET.
   sshd-drop-in  Write /etc/ssh/sshd_config.d/10-krg-hardening.conf
                 (PasswordAuthentication no / PermitRootLogin no / pubkey algos).
-                Validates with `sshd -t` BEFORE replacing; restarts sshd via
+                Writes the candidate atomically, then validates with `sshd -t`
+                and rolls back if validation fails (BEFORE any restart, so the
+                running daemon never reads a broken config). Restarts sshd via
                 `synoservicectl --restart sshd` only on change. DSM has no UI
                 toggle for these settings, so they must live in sshd_config —
                 and `template:` / `copy:` ansible modules don't work on DSM's
@@ -157,10 +159,15 @@ def do_sshd_drop_in(a):
         print("WOULD-CHANGE " + json.dumps(drift_summary, sort_keys=True))
         return 0
 
-    # Validate via a temp file BEFORE replacing the real drop-in — sshd -t reads
-    # the entire sshd_config; -f points at a tempfile assembled from the live
-    # sshd_config + this drop-in candidate, so a syntactically-bad drop-in fails
-    # validation and leaves the running drop-in untouched.
+    # Write the candidate via a tempfile + os.replace (atomic), THEN validate
+    # with `sshd -t`. If validation fails, restore the previous drop-in
+    # content (or remove the file if there was none) BEFORE restarting sshd,
+    # so the running daemon never reads a broken config. Net effect = safe;
+    # a sibling "validate-before-replace" approach was considered but reading
+    # sshd's full config-load path from a tempfile is brittle (Include
+    # directives + ordering), so we use the replace-then-validate-with-rollback
+    # variant. The comment near the docstring used to claim the other order —
+    # corrected here per reviewer 4577021512.
     try:
         os.makedirs(os.path.dirname(SSHD_DROP_IN), exist_ok=True)
         with tempfile.NamedTemporaryFile("w", dir=os.path.dirname(SSHD_DROP_IN),
