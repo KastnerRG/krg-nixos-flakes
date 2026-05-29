@@ -31,7 +31,11 @@ in {
       xfce.xfce4-session
       xfce.xfwm4
       xfce.xfce4-panel
+      xfce.xfdesktop       # <--- This handles the wallpaper
+      xfce.xfce4-settings  # <--- This provides the menu to change wallpapers
+      xfce.xfconf          # <--- The configuration storage system
       firefox
+      xhost
     ];
 
     # RDP access group: created AND assigned only when XRDP is enabled, so it's not
