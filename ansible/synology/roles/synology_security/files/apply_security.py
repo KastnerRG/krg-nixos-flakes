@@ -101,6 +101,45 @@ def do_autoblock(a):
     return apply_full_object("SYNO.Core.Security.AutoBlock", 1, desired, a.check)
 
 
+# --- Anti-lockout probe (H2) ---------------------------------------------------
+# Enabling SYNO.Core.Security.Firewall on a profile with NO rules is a
+# default-deny posture — DSM blocks all inbound, including the SSH session
+# Ansible is running over. Probe the active profile's rule list FIRST and
+# print one of:
+#   PROFILE-EMPTY              — would lock us out; role asserts and halts
+#   PROFILE-HAS-RULES count=N  — rules present; safe to proceed
+#   PROFILE-UNKNOWN <reason>   — couldn't determine; role asserts and halts
+# Best-known API: SYNO.Core.Security.Firewall.Profile method=get name=<n>
+# returns rules under data.rules. First apply will surface the actual shape;
+# flip RULE_KEYS if needed.
+RULE_KEYS = ("rules", "rule_list", "fw_rules")
+
+
+def do_probe_profile(a):
+    try:
+        res = _exec("SYNO.Core.Security.Firewall.Profile", "version=1",
+                    "method=get", "name=" + a.profile)
+    except RuntimeError as e:
+        print("PROFILE-UNKNOWN " + json.dumps({"error": str(e)[:200]}))
+        return 0
+    data = res.get("data", {}) if res.get("success") else {}
+    if not data:
+        print("PROFILE-UNKNOWN " + json.dumps({"raw": res})[:200])
+        return 0
+    for k in RULE_KEYS:
+        rules = data.get(k)
+        if isinstance(rules, list):
+            if not rules:
+                print("PROFILE-EMPTY")
+            else:
+                print("PROFILE-HAS-RULES count=" + str(len(rules)))
+            return 0
+    # API shape we don't recognize. Treat as UNKNOWN so the role refuses to
+    # blindly enable the firewall.
+    print("PROFILE-UNKNOWN " + json.dumps({"keys": sorted(data.keys())}))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -123,6 +162,11 @@ def main(argv=None):
     ab.add_argument("--expire-day", dest="expire_day")
     ab.add_argument("--check", action="store_true")
     ab.set_defaults(func=do_autoblock)
+
+    pp = sub.add_parser("probe-profile",
+                        help="Read-only: report whether the named firewall profile has any rules.")
+    pp.add_argument("--profile", required=True)
+    pp.set_defaults(func=do_probe_profile)
 
     a = ap.parse_args(argv)
     return a.func(a)

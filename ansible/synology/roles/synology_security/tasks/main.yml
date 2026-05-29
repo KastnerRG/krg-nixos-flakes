@@ -50,6 +50,38 @@
       allow-list manually in the DSM UI to match.
   changed_when: false
 
+# --- Anti-lockout probe (H2) -------------------------------------------------
+# Enabling the DSM firewall on an empty profile = default-deny inbound, which
+# severs the SSH session this play is running over. The role's per-rule push
+# is still deferred (capture errored 120 on Firewall.Profile.Rules), so we
+# can't populate the profile ourselves yet — but we MUST refuse to flip
+# `enable_firewall: true` while the active profile is empty.
+- name: Probe the active firewall profile (anti-lockout — see role README)
+  ansible.builtin.script: >-
+    apply_security.py probe-profile
+    --profile {{ security_spec.firewall.active_profile | default('default') | quote }}
+  register: profile_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: security_spec.firewall.enable | default(true)
+
+- name: Refuse to enable firewall when the active profile has no rules (anti-lockout)
+  ansible.builtin.assert:
+    that:
+      - "'PROFILE-EMPTY' not in profile_probe.stdout"
+      - "'PROFILE-UNKNOWN' not in profile_probe.stdout"
+    fail_msg: >-
+      Refusing to enable the DSM firewall on host {{ inventory_hostname }}:
+      the active profile ({{ security_spec.firewall.active_profile | default('default') }})
+      reports {{ profile_probe.stdout | trim }}. Enabling now would deny ALL
+      inbound (including this SSH session). Populate the profile rules
+      manually in the DSM UI first (or set firewall.enable: false in
+      spec/e4e-nas/security.yml). The role's per-rule push is deferred until
+      SYNO.Core.Security.Firewall.Profile.Rules param shape is empirically
+      probed (capture errored 120) — see plan.md deferred items.
+  when: security_spec.firewall.enable | default(true)
+
 # --- Globals (full-object SETs) -----------------------------------------------
 - name: Apply firewall (Firewall set — enable + active profile)
   ansible.builtin.script: >-

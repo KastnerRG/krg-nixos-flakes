@@ -40,9 +40,19 @@ auto_block:
   within_mins: 1440
   # CONFIRMED 2026-05-28: keep 0 (never expire). The NAS is internet-exposed
   # so attackers SHOULD stay blocked permanently — the trade-off (operator
-  # has to manually unblock a misfire) is right here. The autoblock allow-list
-  # (sealab + machines + monitoring, wired in synology_security tasks/main.yml)
-  # exempts every legitimate management/probe source, so the misfire risk is low.
+  # has to manually unblock a misfire) is right here.
+  #
+  # ⚠️ HONESTY UPDATE (2026-05-29 code review): the allow-list (sealab +
+  # machines + monitoring) is currently INFORMATIONAL ONLY — `synology_security`
+  # debug-prints it but does NOT push it to DSM, because the
+  # SYNO.Core.Security.AutoBlock.Rules param shape errored 5100 in the live
+  # captures and is deferred. So until that API is implemented, a misfire
+  # (bad credential rotation, an unannounced new scraper IP) results in a
+  # PERMANENT manual-unblock chore. Two ways to live with this:
+  #   (a) accept the operational cost (current posture) — IP-based ops are
+  #       low-volume, the sealab/machines hosts have known stable IPs;
+  #   (b) soften to expire_day: 7 until allow-list push lands, then revisit.
+  # Leaving at 0 — explicit choice — and tracking the API gap in plan.md.
   expire_day: 0
 
   # Allow-list (never block) + deny-list (always block). The allow-list is

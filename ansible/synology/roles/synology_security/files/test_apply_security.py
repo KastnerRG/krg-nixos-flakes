@@ -76,3 +76,47 @@ def test_fail_on_unsuccessful_set(monkeypatch, capsys):
     monkeypatch.setattr(m, "_exec", fake)
     rc = m.main(["firewall", "--enable", "true"])
     assert rc == 1 and capsys.readouterr().out.startswith("FAIL")
+
+
+# --- H2: anti-lockout probe-profile subcommand ----------------------------------
+def test_probe_profile_empty(monkeypatch, capsys):
+    """An active profile with no rules → PROFILE-EMPTY (role refuses enable)."""
+    def fake(api, *params):
+        return {"success": True, "data": {"rules": []}}
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["probe-profile", "--profile", "default"])
+    assert rc == 0
+    out = capsys.readouterr().out.strip()
+    assert out == "PROFILE-EMPTY"
+
+
+def test_probe_profile_has_rules(monkeypatch, capsys):
+    """Rules present → PROFILE-HAS-RULES count=N (role proceeds)."""
+    def fake(api, *params):
+        return {"success": True, "data": {"rules": [{"id": 1}, {"id": 2}, {"id": 3}]}}
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["probe-profile", "--profile", "default"])
+    assert rc == 0
+    assert capsys.readouterr().out.strip() == "PROFILE-HAS-RULES count=3"
+
+
+def test_probe_profile_unknown_shape(monkeypatch, capsys):
+    """If DSM returns a shape we don't recognize → PROFILE-UNKNOWN (role refuses)."""
+    def fake(api, *params):
+        return {"success": True, "data": {"some_other_key": "weird"}}
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["probe-profile", "--profile", "default"])
+    assert rc == 0
+    assert capsys.readouterr().out.startswith("PROFILE-UNKNOWN")
+
+
+def test_probe_profile_exec_failure_is_unknown(monkeypatch, capsys):
+    """Any RuntimeError from _exec must be reported as PROFILE-UNKNOWN — never EMPTY (which would let the role proceed)."""
+    def fake(api, *params):
+        raise RuntimeError("connection refused")
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["probe-profile", "--profile", "default"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert out.startswith("PROFILE-UNKNOWN")
+    assert "PROFILE-EMPTY" not in out   # critical: must NOT be misclassified
