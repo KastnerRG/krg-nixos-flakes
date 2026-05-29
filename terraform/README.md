@@ -17,15 +17,23 @@ and secrets. A NAS `apply` must not be able to touch Vault's state.
 
 | Target | Provider | Manages | Status |
 |---|---|---|---|
-| [`e4e-nas/`](e4e-nas/) | `synology-community/synology` | Synology DSM: Container Manager, packages, tasks, files, VMs (+ runbook for the rest) | **built (scaffold)** |
-| [`authentik/`](authentik/) | `goauthentik/authentik` | Authentik **SSO config**: applications, OAuth2/OIDC + proxy providers, flows/stages, groups | planned |
-| [`vault/`](vault/) | `hashicorp/vault` | Vault **structure**: auth methods, policies, secret engines/mounts | planned |
+| [`e4e-nas/`](e4e-nas/) | `synology-community/synology` | Synology DSM: Container Manager, packages, tasks, files, VMs (+ runbook for the rest) | **built (scaffold)** — resources still commented pending provider-attr verification |
+| [`authentik/`](authentik/) | `goauthentik/authentik` + `hashicorp/vault` | Authentik **SSO config**: applications, OAuth2/OIDC + proxy providers, LDAP outpost, groups; writes OIDC client secrets into OpenBao | **built** |
+| [`openbao/`](openbao/) | `hashicorp/vault` (OpenBao is API-compatible) | OpenBao **structure**: KV-v2 mount, AppRole auth, per-consumer policies (krg-deploy, krg-prod) | **built** |
+| [`grafana/`](grafana/) | `grafana/grafana` + `hashicorp/vault` | Grafana objects: data sources, folders, dashboards, SSO via Authentik (creds from OpenBao) | **built** |
 
-> `authentik/` and `vault/` manage the *configuration of* services that are
-> **deployed elsewhere** (Authentik is a compose stack on krg-prod; Vault is the
-> future secrets store). Terraform owns their objects, not their deployment.
-> Each needs the service running + an API token before it can plan — see each
-> subdir's README.
+> `authentik/`, `openbao/`, and `grafana/` manage the *configuration of* services
+> that are **deployed elsewhere** (Authentik + Grafana are compose stacks on
+> krg-prod; OpenBao runs on krg-vault). Terraform owns their objects, not their
+> deployment. Each needs the service running + an API token before it can plan
+> — see each subdir's README.
+>
+> **Replaced HashiCorp Vault with OpenBao.** The original plan was a `vault/`
+> target using `hashicorp/vault`; we switched to OpenBao (the fully-FOSS Vault
+> fork) — see `openbao/`. The `vault/` README stub has been removed. The
+> `grafana/` + `authentik/` workspaces use the `hashicorp/vault` *provider*
+> (it speaks the same API OpenBao implements) to read/write secrets against
+> the OpenBao server.
 
 ## Secrets & state (shared rules)
 
