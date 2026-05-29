@@ -242,18 +242,16 @@ in {
       '';
     };
 
-    # Defense-in-depth: call the key-fetch helper DIRECTLY, not via /bin/sh.
-    # `sshAuthorizedKeysIntegration` makes sshd run AuthorizedKeysCommand for every
-    # key-only login, and upstream installs it as a `#!/bin/sh` wrapper
-    # (/etc/ssh/authorized_keys_command). On these hosts /bin/sh is served by the envfs
-    # FUSE daemon (services.envfs, oec module); if that daemon ever wedges, the exec
-    # blocks UNINTERRUPTIBLY and every AD login hangs — while local break-glass users
-    # (key in ~/.ssh/authorized_keys, matched before the command runs) stay fine. The
-    # envfs 1.2.0 pin (flake.nix) fixes the known deadlock; this removes the dependency
-    # entirely. sss_ssh_authorizedkeys is a plain ELF, and its nix-store path is
-    # root-owned + non-writable, so sshd's safe-path check accepts it directly.
-    services.openssh.authorizedKeysCommand =
-      mkIf cfg.sshKeysFromAD (mkForce "${pkgs.sssd}/bin/sss_ssh_authorizedkeys");
+    # NOTE: key-only AD login depends on sshd's AuthorizedKeysCommand, which upstream's
+    # sshAuthorizedKeysIntegration installs as a `#!/bin/sh` wrapper at
+    # /etc/ssh/authorized_keys_command. /bin/sh is served by the envfs FUSE mount
+    # (services.envfs, oec module), so a wedged envfs daemon would hang every AD login.
+    # We do NOT try to bypass it by pointing AuthorizedKeysCommand straight at the
+    # sss_ssh_authorizedkeys store binary: sshd rejects that ("Unsafe AuthorizedKeysCommand
+    # ... bad ownership or modes for directory /nix/store" — /nix/store is group-writable),
+    # so the wrapper-in-/etc is required. The real fix for the hang is the envfs 1.2.0
+    # pin (flake.nix / oec module); break-glass krg-admin stays usable regardless (its key
+    # comes from /etc/ssh/authorized_keys.d, not this command).
 
     # Enforce the access filter for key-based SSH: pam_sss runs in the account
     # phase as [default=bad success=ok user_unknown=ignore] — denies non-permitted
