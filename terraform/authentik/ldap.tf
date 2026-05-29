@@ -16,8 +16,15 @@ resource "authentik_source_ldap" "samba_ad" {
   bind_password = var.ldap_bind_password
   base_dn       = "DC=KRG,DC=LOCAL"
 
+  # Samba AD default provisioning puts built-in groups (Domain Admins, Domain
+  # Users, Schema Admins, …) under CN=Users — NOT under a CN=Groups OU. Pointing
+  # group search at CN=Users mirrors what SSSD uses on the fleet (see
+  # nix/modules/sssd-ad-client.nix) and is required for the
+  # 'Domain Admins → GrafanaAdmin' JMESPath in terraform/grafana/sso.tf to
+  # find anything. group_object_filter (objectClass=group) keeps users out
+  # of the group result set even though they share a DN.
   additional_user_dn  = "CN=Users"
-  additional_group_dn = "CN=Groups"
+  additional_group_dn = "CN=Users"
 
   user_object_filter      = "(objectClass=person)"
   group_object_filter     = "(objectClass=group)"
