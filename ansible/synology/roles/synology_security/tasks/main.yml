@@ -22,13 +22,22 @@
 # This is the SAME object the Debian fail2ban role uses for ignoreip. Mirror the
 # nix `krg.firewall.trustedNets` pattern here so any change to trusted.json
 # flows to every layer.
-- name: Compute autoblock allow-list from nix/networks/trusted.json (sealab + monitoring)
+- name: Compute autoblock allow-list from nix/networks/trusted.json (sealab + machines + monitoring, deduped)
   ansible.builtin.set_fact:
     autoblock_allow_ips: >-
       {{
-        (krg_trusted.ipsets.sealab | map(attribute='cidr') | list)
-        + [krg_trusted.monitoring_host]
+        (
+          (krg_trusted.ipsets.sealab | map(attribute='cidr') | list)
+          + (krg_trusted.ipsets.machines | default([]) | map(attribute='cidr') | list)
+          + [krg_trusted.monitoring_host]
+        ) | unique
       }}
+  # `machines` was added to trusted.json after PR #79/#80 stood up krg-deploy
+  # and krg-vault (137.110.161.122 / .123). Those IPs are NOT in sealab today,
+  # and they DO talk to the NAS (krg-deploy runs the ansible-apply timer that
+  # invokes this playbook; krg-vault may probe for SNMP later). Without
+  # `machines` they would trip the 3-strike autoblock on a bad credential
+  # rotation or a misconfigured probe.
 
 - name: Surface the intended autoblock allow-list (drift-detector / operator visibility)
   ansible.builtin.debug:

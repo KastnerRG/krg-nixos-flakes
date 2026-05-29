@@ -39,8 +39,15 @@ accounts bypass winbind).
 
 The join needs Domain Admin credentials, passed at runtime (NEVER stored):
 
-    ansible-playbook playbooks/synology.yml \
+    ansible-playbook playbook.yml \
       -e ad_join_user=Administrator -e ad_join_password='<PASSWORD>'
+
+**Forward direction:** the long-term source is **OpenBao** at
+`secret/e4e-nas/ad/join-credential` (KV-v2, same convention as
+`secret/krg-prod/*` in the krg-prod-side workspaces). A vault-agent template
+on `krg-deploy` reads it at apply time and supplies `ad_join_password` as an
+extra-var; the secret rotates in OpenBao without re-typing anything. After the
+NAS is joined, no creds are needed on routine runs.
 
 A run **without** the password on an un-joined NAS stages config and warns
 rather than failing the play (mirrors `ad_client`'s ergonomics) — re-run with

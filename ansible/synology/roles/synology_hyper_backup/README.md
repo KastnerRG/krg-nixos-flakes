@@ -19,12 +19,19 @@ deleted.
 
 Destination passwords/keys live OUTSIDE the spec (per-job). Supply at runtime:
 
-    ansible-playbook playbooks/synology.yml -e @secrets-hb.yml
+    ansible-playbook playbook.yml -e @secrets-hb.yml
 
 Where `secrets-hb.yml` is:
 
     hyper_backup_secrets:
       critical-shares-offbox: <password-or-key>
+
+**Forward direction:** the long-term source is **OpenBao** at
+`secret/e4e-nas/hyper-backup/<job-name>` (KV-v2, same convention as
+`secret/krg-prod/grafana-admin` in [`../../../../terraform/grafana/providers.tf`](../../../../terraform/grafana/providers.tf)).
+A vault-agent template on `krg-deploy` would render those into
+`hyper_backup_secrets` at apply time. Until that wiring lands, the ansible
+extra-vars file is the bridge.
 
 The helper SKIPS creating any job marked `encrypt: true` that lacks a secret —
 better to skip than create a job without a key.

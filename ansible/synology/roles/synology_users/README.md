@@ -29,8 +29,18 @@ ansible-playbook playbooks/synology.yml --check --diff
 ansible-playbook playbooks/synology.yml --tags export
 ```
 
-Passwords for local users come from a **vaulted** `synology_user_passwords` map
-(`-e @secrets.yml` / ansible-vault) — never from the spec.
+Passwords for local users come from a **secret-store-backed** `synology_user_passwords`
+map (`-e @secrets.yml` / ansible-vault today) — never from the spec.
+
+**Forward direction (per issue #75):** the eventual source is **OpenBao** at
+`secret/e4e-nas/users/<name>` (KV-v2, same convention as
+`secret/krg-prod/grafana-oidc` in [`../../../../terraform/grafana/sso.tf`](../../../../terraform/grafana/sso.tf)).
+A vault-agent template on `krg-deploy` would render those values into
+`synology_user_passwords` at run time. Until that lands, ansible-vault is the
+bridge. **Note:** the SHA-512 hash in `nix/keys/admin-passwords.json#e4e-admin`
+is for the Linux *console* fallback only — DSM web UI auth uses its own user
+database and needs a plaintext password applied via `synouser --setpw` (issue
+#75 tracks the role extension for that).
 
 ## Prereqs on the box
 

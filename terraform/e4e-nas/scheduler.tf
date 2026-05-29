@@ -47,6 +47,22 @@
 #   description = "Off-box destination for the weekly DSM .dss export (e.g. /mnt/krg-prod-backup/e4e-nas/configs)."
 #   type        = string
 # }
+#
+# Forward direction (consistent with the rest of this workspace, once we
+# wire the synology provider's credentials through OpenBao too): read this
+# from OpenBao at `secret/e4e-nas/config-backup/destination`, matching the
+# pattern terraform/grafana/providers.tf uses:
+#
+#   data "vault_kv_secret_v2" "config_backup_dest" {
+#     mount = "secret"
+#     name  = "e4e-nas/config-backup/destination"
+#   }
+#   locals { dss_dest_path = data.vault_kv_secret_v2.config_backup_dest.data["path"] }
+#
+# That waits on (a) the `e4e-nas` AppRole + policy landing in
+# terraform/openbao/main.tf and (b) deciding the off-box destination (open
+# decision: Hyper Backup target on krg-prod NFS? Garage S3 once it stands
+# up? external NAS?).
 
 # resource "synology_core_event" "weekly_config_backup_export" {
 #   # Provider attribute names — verify against the registry docs before un-commenting.
