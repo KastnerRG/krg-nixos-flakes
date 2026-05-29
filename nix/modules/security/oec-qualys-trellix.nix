@@ -20,7 +20,7 @@
 # so the credentials it contains never land in the world-readable Nix store.
 # Place it out-of-band at krg.oecQualysTrellix.installerArchive (default
 # /var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz).
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, ... }:
 with lib;
 let
   cfg = config.krg.oecQualysTrellix;
@@ -158,6 +158,13 @@ in {
     # /usr/bin/* resolve to whatever is on PATH, so those work at install and
     # runtime without per-path symlinks.
     services.envfs.enable = true;
+    # Pin envfs 1.2.0 (flake input) over nixpkgs 25.11's deadlock-prone 1.1.0. The
+    # 1.1.0 mount.envfs FUSE daemon wedges (processes hang uninterruptibly in
+    # request_wait_answer); since /bin/sh + /usr/bin/env exec through this mount, one
+    # stuck daemon blocks every new process launch and every AD SSH login. Fixed by
+    # 1.2.0's O_PATH path resolution. See flake.nix for the full story + when to drop
+    # the input. Applies wherever envfs is enabled (fleet-wide, via base -> oec).
+    services.envfs.package = inputs.envfs.packages.${pkgs.system}.default;
 
     # Where the admin drops the installer archive.
     systemd.tmpfiles.rules = [ "d /var/lib/krg/oec 0700 root root -" ];

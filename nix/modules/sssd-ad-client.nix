@@ -242,6 +242,19 @@ in {
       '';
     };
 
+    # Defense-in-depth: call the key-fetch helper DIRECTLY, not via /bin/sh.
+    # `sshAuthorizedKeysIntegration` makes sshd run AuthorizedKeysCommand for every
+    # key-only login, and upstream installs it as a `#!/bin/sh` wrapper
+    # (/etc/ssh/authorized_keys_command). On these hosts /bin/sh is served by the envfs
+    # FUSE daemon (services.envfs, oec module); if that daemon ever wedges, the exec
+    # blocks UNINTERRUPTIBLY and every AD login hangs — while local break-glass users
+    # (key in ~/.ssh/authorized_keys, matched before the command runs) stay fine. The
+    # envfs 1.2.0 pin (flake.nix) fixes the known deadlock; this removes the dependency
+    # entirely. sss_ssh_authorizedkeys is a plain ELF, and its nix-store path is
+    # root-owned + non-writable, so sshd's safe-path check accepts it directly.
+    services.openssh.authorizedKeysCommand =
+      mkIf cfg.sshKeysFromAD (mkForce "${pkgs.sssd}/bin/sss_ssh_authorizedkeys");
+
     # Enforce the access filter for key-based SSH: pam_sss runs in the account
     # phase as [default=bad success=ok user_unknown=ignore] — denies non-permitted
     # AD users while leaving local users (krg-admin) to fall through to pam_unix.
