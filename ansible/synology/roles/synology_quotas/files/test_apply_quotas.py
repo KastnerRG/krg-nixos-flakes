@@ -14,18 +14,51 @@ class _R:
 
 
 # --- _parse_current ---------------------------------------------------------
-def test_parse_current_recognized_forms():
-    assert m._parse_current("Quota: 500 GB (Hard)") == (500, True)
+# M3 (reviewer 4577021512): DSM displays decimal GB; the setter writes binary
+# GiB. The parser must convert so equal-intent values compare equal.
+#
+#   500 GiB  ==  500 * 2^30 bytes  ≈  537 GB (decimal)
+#   500 GB   ==  500 * 10^9 bytes  ≈  465 GiB (binary)
+#
+# So a setter that wrote 500 GiB and a reader that sees "Quota: 537 GB"
+# should both reduce to 500 GiB on comparison.
+def test_parse_current_gib_unchanged():
     assert m._parse_current("Quota: 500 GiB") == (500, False)
-    assert m._parse_current("Quota: 2 TB (Soft)") == (2048, False)
+    assert m._parse_current("Quota: 500 GiB (Hard)") == (500, True)
+
+
+def test_parse_current_decimal_gb_converts_to_gib():
+    # 537 GB ≈ 500 GiB (round-trip from a 500-GiB setter write)
+    assert m._parse_current("Quota: 537 GB (Hard)") == (500, True)
+
+
+def test_parse_current_decimal_tb_converts_to_gib():
+    # 2 TB = 2 * 10^12 bytes = 1862.65 GiB → rounds to 1863
+    assert m._parse_current("Quota: 2 TB (Soft)") == (1863, False)
+
+
+def test_parse_current_binary_tib():
+    # 2 TiB = 2048 GiB exactly
+    assert m._parse_current("Quota: 2 TiB") == (2048, False)
+
+
+def test_parse_current_no_quota_or_unparseable():
     assert m._parse_current("No quota set") == (None, None)
-    # Unparseable -> sentinel
     assert m._parse_current("???")[0] == "UNPARSEABLE"
 
 
 # --- share quota -----------------------------------------------------------
-def test_share_no_change(monkeypatch, capsys):
-    monkeypatch.setattr(m, "_run", lambda cmd: _R("Quota: 500 GB (Hard)"))
+def test_share_no_change_after_decimal_gb_round_trip(monkeypatch, capsys):
+    """Regression: setter wrote 500 GiB earlier; DSM now displays it as 537 GB.
+    Without the M3 fix, this would forever report CHANGED."""
+    monkeypatch.setattr(m, "_run", lambda cmd: _R("Quota: 537 GB (Hard)"))
+    rc = m.main(["share", "--share", "temp", "--size-gib", "500", "--hard", "true"])
+    assert rc == 0 and "OK no-change" in capsys.readouterr().out
+
+
+def test_share_no_change_gib_display(monkeypatch, capsys):
+    """DSM that displays GiB directly — also OK no-change."""
+    monkeypatch.setattr(m, "_run", lambda cmd: _R("Quota: 500 GiB (Hard)"))
     rc = m.main(["share", "--share", "temp", "--size-gib", "500", "--hard", "true"])
     assert rc == 0 and "OK no-change" in capsys.readouterr().out
 

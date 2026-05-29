@@ -61,23 +61,45 @@ QUOTA_RE = re.compile(r"Quota[:\s]*([\d.]+)\s*(GB|GiB|MB|MiB|TB|TiB)?\s*(\(Hard\
 
 
 def _parse_current(text):
-    """Return (size_gib_int_or_None, hard_bool_or_None). None size = no quota set."""
+    """Return (size_gib_int_or_None, hard_bool_or_None). None size = no quota set.
+
+    Unit handling (M3 fix from reviewer 4577021512):
+      The setter writes bytes computed as `desired * (1<<30)` — i.e. desired is
+      ALWAYS interpreted as GiB (binary). The reader must convert DSM's display
+      units to the same GiB scale before comparing, or every run sees drift and
+      re-applies forever (500 GiB == 537 GB; 500 != 537 → CHANGED again).
+
+      GB / MB / TB  = decimal (10^9 / 10^6 / 10^12 bytes)
+      GiB / MiB / TiB = binary (2^30 / 2^20 / 2^40 bytes)
+
+      We normalize everything to GiB. Implicit unit (no unit suffix) is
+      ambiguous; DSM 7.x typically prints "GB" for the decimal form, so we
+      default to GB → GiB conversion. If the first apply shows drift purely
+      because of a unit-default mismatch, flip DEFAULT_UNIT to "gib".
+    """
     if not text or re.search(r"no quota", text, re.IGNORECASE):
         return (None, None)
     m = QUOTA_RE.search(text)
     if not m:
-        # Couldn't parse — treat as "unknown" so the caller can FAIL safely.
         return ("UNPARSEABLE", None)
-    size, unit, hard_tag = m.group(1), (m.group(2) or "GB").lower(), m.group(3)
+    size, raw_unit, hard_tag = m.group(1), (m.group(2) or "").lower(), m.group(3)
     val = float(size)
-    if unit.startswith("t"):
-        val *= 1024
-    elif unit.startswith("m"):
-        val /= 1024
-    # Round to int GiB; DSM stores integer-ish values here.
-    val_gib = int(round(val))
+
+    DEFAULT_UNIT = "gb"   # treat bare numbers as decimal; flip to "gib" if DSM proves otherwise
+    unit = raw_unit or DEFAULT_UNIT
+
+    if unit in ("gb", "mb", "tb"):
+        # Decimal -> bytes -> GiB.
+        decimal_bytes = {"mb": 10 ** 6, "gb": 10 ** 9, "tb": 10 ** 12}[unit]
+        val_gib = (val * decimal_bytes) / (1 << 30)
+    else:
+        # Binary -> GiB directly.
+        binary_scale = {"mib": 1 / 1024.0, "gib": 1.0, "tib": 1024.0}[unit]
+        val_gib = val * binary_scale
+
+    val_gib_int = int(round(val_gib))
     hard = (hard_tag is not None and "hard" in hard_tag.lower())
-    return (val_gib, hard)
+    return (val_gib_int, hard)
 
 
 def _result(drift, check, apply_fn):
