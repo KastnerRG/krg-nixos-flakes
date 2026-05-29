@@ -1,8 +1,12 @@
 # Scratch storage redesign — decision proposal
 
-> **Status:** Proposed — seeking buy-off · 2026-05-24
-> **Scope:** `/scratch` on **waiter** (the KRG research/compute box). Does **not** touch `/home`.
-> **Decision needed:** approve **Option A (rebuild now)** vs **Option B (no rebuild)** — see [Recommendation](#recommendation).
+> **Status:** Historical — **Option A approved + built + deployed on waiter.** Kept as the
+> as-of-decision record (autotier symptoms, the brownfield alternative we rejected, the cost
+> analysis). The as-built design lives in [scratch-greenfield.md](scratch-greenfield.md);
+> the running config is [`nix/modules/scratch.nix`](../nix/modules/scratch.nix) +
+> [`nix/hosts/waiter/disko-config.nix`](../nix/hosts/waiter/disko-config.nix).
+> **Original proposal date:** 2026-05-24.
+> **Scope (at the time):** `/scratch` on **waiter** (the KRG research/compute box). Does **not** touch `/home`.
 
 ## TL;DR
 
