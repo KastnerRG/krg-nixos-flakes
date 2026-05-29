@@ -1,6 +1,15 @@
-# Write generated OIDC client secrets into vault so downstream services
-# (Grafana compose, Outline secrets.env) can read them without manual copy-paste.
-# The grafana/ Terraform workspace reads grafana-oidc from here.
+# Write generated OIDC client secrets into vault.
+#
+# Consumption today is MIXED:
+#   - terraform/grafana/ DOES read grafana-oidc from vault programmatically
+#     (data "vault_kv_secret_v2" in grafana/sso.tf — wired through to the
+#     grafana_sso_settings resource).
+#   - Outline, MLflow, and any other compose-stack consumer still read from
+#     local /var/lib/krg/krg-prod/.secrets/*.env files at container start.
+#     The vault entries here are staged for future vault-agent/template
+#     rendering of those files; until then they must be populated manually
+#     (e.g. `bao kv get -field=client_secret secret/krg-prod/outline-oidc`
+#     into the matching .secrets file).
 
 resource "vault_kv_secret_v2" "grafana_oidc" {
   mount = "secret"
