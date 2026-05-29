@@ -20,7 +20,7 @@
 # so the credentials it contains never land in the world-readable Nix store.
 # Place it out-of-band at krg.oecQualysTrellix.installerArchive (default
 # /var/lib/krg/oec/oec-qualystrellixinstallers-linux.tgz).
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, ... }:
 with lib;
 let
   cfg = config.krg.oecQualysTrellix;
@@ -158,6 +158,30 @@ in {
     # /usr/bin/* resolve to whatever is on PATH, so those work at install and
     # runtime without per-path symlinks.
     services.envfs.enable = true;
+    # Pin envfs 1.2.0 over nixpkgs 25.11's deadlock-prone 1.1.0. The 1.1.0 mount.envfs
+    # FUSE daemon wedges (processes hang uninterruptibly in request_wait_answer); since
+    # /bin/sh + /usr/bin/env exec through this mount, one stuck daemon blocks every new
+    # process launch and every AD SSH login. Fixed by 1.2.0's O_PATH path resolution.
+    # See flake.nix for the full story + when to drop this (tracked in
+    # KastnerRG/krg-infra#82). Applies wherever envfs is enabled (fleet-wide, base->oec).
+    #
+    # We build from the pinned source ourselves rather than use the envfs flake's own
+    # package output: upstream's default.nix vendors with `cargoLock.lockFile`, which on
+    # nixpkgs 25.11 fetches crates via the legacy crates.io/api/v1 endpoint — that now
+    # returns HTTP 403, so the build dies (e.g. concurrent-hashmap). Using `cargoHash`
+    # instead routes through fetchCargoVendor -> static.crates.io (the default vendorer
+    # in 25.11), which works. Upstream tracking: Mic92/envfs#145. If the pinned rev
+    # changes, recompute cargoHash (build once with lib.fakeHash, read the "got:" hash).
+    services.envfs.package = pkgs.rustPlatform.buildRustPackage {
+      pname   = "envfs";
+      version = "1.2.0-unstable-8a2a7066";   # Cargo.toml still says 1.1.0; rev 8a2a7066 carries the fix
+      src     = inputs.envfs;
+      cargoHash = "sha256-dz3gpE464jnmSDsAsmJHcxUsEKeUURNoUjgGU2214Xg=";
+      postInstall = ''
+        ln -s envfs $out/bin/mount.envfs
+        ln -s envfs $out/bin/mount.fuse.envfs
+      '';
+    };
 
     # Where the admin drops the installer archive.
     systemd.tmpfiles.rules = [ "d /var/lib/krg/oec 0700 root root -" ];

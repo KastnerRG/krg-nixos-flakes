@@ -242,6 +242,17 @@ in {
       '';
     };
 
+    # NOTE: key-only AD login depends on sshd's AuthorizedKeysCommand, which upstream's
+    # sshAuthorizedKeysIntegration installs as a `#!/bin/sh` wrapper at
+    # /etc/ssh/authorized_keys_command. /bin/sh is served by the envfs FUSE mount
+    # (services.envfs, oec module), so a wedged envfs daemon would hang every AD login.
+    # We do NOT try to bypass it by pointing AuthorizedKeysCommand straight at the
+    # sss_ssh_authorizedkeys store binary: sshd rejects that ("Unsafe AuthorizedKeysCommand
+    # ... bad ownership or modes for directory /nix/store" — /nix/store is group-writable),
+    # so the wrapper-in-/etc is required. The real fix for the hang is the envfs 1.2.0
+    # pin (flake.nix / oec module); break-glass krg-admin stays usable regardless (its key
+    # comes from /etc/ssh/authorized_keys.d, not this command).
+
     # Enforce the access filter for key-based SSH: pam_sss runs in the account
     # phase as [default=bad success=ok user_unknown=ignore] — denies non-permitted
     # AD users while leaving local users (krg-admin) to fall through to pam_unix.

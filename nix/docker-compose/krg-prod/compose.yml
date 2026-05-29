@@ -1,8 +1,7 @@
 include:
   - compose.authentik.yml
-  # Temporarily disabled — only Authentik is being brought up right now.
-  # Re-enable each as it's verified (the per-stack fixes are already applied).
-  # - compose.grafana.yml
+  - compose.grafana.yml
+  # Temporarily disabled — bring up once verified.
   # - compose.label-studio.yml
   # - compose.outline.yml
   # - compose.mlflow.yml
@@ -48,6 +47,7 @@ services:
       traefik_proxy:
         aliases:
           - auth.fabricant.ucsd.edu
+          - dashboard.waiter.ucsd.edu
           # Aliases for the temporarily-disabled stacks — re-enable alongside their
           # compose includes above:
           # - s3.fabricant.ucsd.edu
