@@ -85,6 +85,43 @@
   loop_control:
     label: "{{ item.item.name }}"
 
+# --- Group membership (M1: honor spec `groups:` field) --------------------------
+# `synouser --add` doesn't accept a group list, so users land in `users` only.
+# `synogroup --memberadd <group> <user> [...users]` (DSM 7.x) adds members
+# idempotently — adding an already-member is a no-op (rc=0, "already in").
+# We iterate per-(user, group) so each pair is one raw call and the loop
+# label is human-readable.
+#
+# WHY this matters: e4e-automation is the Terraform `dsm_user`; without
+# `administrators` group membership it cannot drive the synology-community
+# provider. e4e-admin without `administrators` is a non-admin break-glass
+# (useless). The reviewer flagged the silent-ignore in 4577021512 (M1).
+- name: Build flat (user, group) pairs for membership add
+  ansible.builtin.set_fact:
+    _user_group_pairs: >-
+      {{
+        users_spec.users | default([])
+        | subelements('groups', skip_missing=True)
+        | map('list') | list
+      }}
+  no_log: true
+
+- name: Apply group membership (synogroup --memberadd; idempotent at DSM level)
+  ansible.builtin.raw: >-
+    PATH={{ syno_path }}:$PATH synogroup --memberadd {{ item[1] | quote }} {{ item[0].name | quote }}
+  loop: "{{ _user_group_pairs }}"
+  loop_control:
+    label: "{{ item[0].name }} -> @{{ item[1] }}"
+  register: group_memberadd
+  # DSM prints "already in" / "is a member" on no-op; suppress CHANGED for
+  # those so a converged box doesn't spam. Anything else (success on a real
+  # add, or actual error) keeps CHANGED/FAIL semantics.
+  changed_when:
+    - group_memberadd.rc == 0
+    - "'already' not in (group_memberadd.stdout | default('') | lower)"
+    - "'is a member' not in (group_memberadd.stdout | default('') | lower)"
+  failed_when: group_memberadd.rc != 0
+
 # --- Disable built-in attack-surface accounts (admin, guest) — runbook §1 -------
 # `synouser --enum disabled` lists already-disabled accounts so re-runs are
 # no-ops (no CHANGED spam on a converged box). `synouser --get` confirms
