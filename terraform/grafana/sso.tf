@@ -22,11 +22,16 @@ resource "grafana_sso_settings" "authentik" {
     token_url         = "${var.authentik_url}/application/o/token/"
     api_url           = "${var.authentik_url}/application/o/userinfo/"
     scopes            = "openid email profile"
-    # Domain Admins get full admin; everyone else is a Viewer with folder-level restrictions.
-    role_attribute_path   = "contains(groups[*], 'Domain Admins') && 'GrafanaAdmin' || 'Viewer'"
-    groups_attribute_path = "groups"
-    allow_sign_up         = true
-    use_pkce              = true
-    use_refresh_token     = true
+    # Domain Admins → GrafanaAdmin (server admin); everyone else → Viewer (org-wide,
+    # no folder restrictions — folder/team RBAC needs Grafana Enterprise; tracked in #73).
+    # allow_assign_grafana_admin MUST be true for the GrafanaAdmin branch to take effect;
+    # without it Grafana silently caps OAuth-assigned roles at org Admin and ignores the
+    # GrafanaAdmin role string.
+    role_attribute_path        = "contains(groups[*], 'Domain Admins') && 'GrafanaAdmin' || 'Viewer'"
+    groups_attribute_path      = "groups"
+    allow_assign_grafana_admin = true
+    allow_sign_up              = true
+    use_pkce                   = true
+    use_refresh_token          = true
   }
 }
