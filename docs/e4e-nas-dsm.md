@@ -61,20 +61,72 @@ is IaC.
 
 ## Initial DSM install (one-time, post-Mode-2 reset)
 
-1. Reset to DSM install with **volumes preserved** (Mode 2 — front-panel reset
-   button × 2; *not* Mode 1, which reformats).
-2. Walk the DSM install wizard in a browser at `http://<box>:5000`:
+> ⚠️ **Mode 2 reset wipes network config.** The NAS comes back up requesting
+> DHCP — its previous static IP (`132.239.17.124`) is gone until you re-set
+> it in the install wizard. **Pre-stage a discovery path before pressing
+> reset** so you can find the NAS again:
+>
+> - Best case: a laptop on the same VLAN running **Synology Assistant**
+>   (`nix run nixpkgs#synology-assistant` or download from synology.com).
+>   Assistant uses link-local discovery (mDNS / Synology's own protocol),
+>   so it works even with no DHCP.
+> - Or: have **DHCP available on the subnet** — the NAS picks up an
+>   address, you find it via DHCP-leases on the router, then re-assign
+>   static in the wizard.
+> - Worst case: physical/serial console — DSM's recovery interface is on
+>   the box itself if you've lost it on the network entirely.
+
+1. **Pre-flight (before reset):** open Synology Assistant or confirm DHCP is
+   available. Have the values from the table below ready to type.
+2. **Reset** to DSM install with **volumes preserved** (Mode 2 — front-panel
+   reset button × 2; *not* Mode 1, which reformats).
+3. **Find the NAS** with Synology Assistant or via DHCP leases. Note the
+   temporary IP it picked up.
+4. **Walk the DSM install wizard** in a browser at `http://<temporary-ip>:5000`:
    - Pick a hostname (`e4e-nas`) and DSM admin password (one-time bootstrap;
      `synology_users` will replace it).
    - Confirm the volumes are auto-detected (they should — Mode 2 leaves them).
    - Pick the timezone (`America/Los_Angeles`).
-3. Log in once via the browser to clear the welcome dialogs and the
+5. **Re-enter the static IP in Control Panel → Network → Network Interface
+   → LAN 1 → Edit** with EXACTLY these values (from
+   [`spec/e4e-nas/dsm-system.yml`](../spec/e4e-nas/dsm-system.yml)) — so the
+   subsequent IaC apply sees no drift and the NAS sits back at its
+   permanent address:
+
+   | Field | Value |
+   |---|---|
+   | Hostname | `e4e-nas` |
+   | Interface | LAN 1 (eth0) |
+   | IPv4 mode | Manual |
+   | IP address | `132.239.17.124` |
+   | Netmask | `255.255.0.0` (/16) |
+   | Gateway | `132.239.17.1` |
+   | Manual DNS | yes (do NOT take from DHCP) |
+   | Primary DNS | `132.239.95.109` (UCSD recursive) |
+   | Secondary DNS | `1.1.1.1` |
+   | MTU | 1500 |
+   | IPv6 | disabled |
+
+   Apply. The NAS reboots its network stack; reconnect to
+   `https://e4e-nas.ucsd.edu:6021/` (or directly to
+   `https://132.239.17.124:6021/`).
+
+6. Log in once via the browser to clear the welcome dialogs and the
    "QuickConnect setup" prompt (do NOT enable QuickConnect —
    `synology_external_access` will assert it off, but it's tidier to skip
    here).
-4. Switch into `synology` group in inventory; first
-   `ansible-playbook playbooks/synology.yml --check --diff` to confirm the
-   baseline run is sane, then apply. The IaC takes over from here.
+7. **Bootstrap the IaC connection account**: Control Panel → User & Group
+   → Create `e4e-admin` (administrators group). Drop the SSH key from
+   [`nix/keys/admins.json#e4e-admin`](../nix/keys/admins.json) into
+   `/var/services/homes/e4e-admin/.ssh/authorized_keys` (0600, parent
+   0700). Enable SSH (Control Panel → Terminal & SNMP) and the User Home
+   service (Control Panel → User & Group → Advanced). Add NOPASSWD sudo
+   for `e4e-admin` via `/etc/sudoers.d/e4e-admin` (`e4e-admin ALL=(ALL) NOPASSWD: ALL`).
+8. **Switch into `synology` group in inventory** and dry-run:
+   `cd ansible/synology && ansible-playbook playbook.yml --check --diff`
+   to confirm the baseline run is sane (the network section should
+   report `OK no-change` — that's the goal of typing the values into the
+   wizard exactly). Then apply. The IaC takes over from here.
 
 ## Hardware swap / recovery
 
