@@ -58,6 +58,35 @@ def _bool(s):
     return str(s).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _coerce_like(target, current_val):
+    """Coerce current_val to the type of target for diff comparison.
+
+    M5 fix (reviewer 4577021512): DSM JSON sometimes returns ints/bools as
+    strings ("7", "true"), so a `current != desired` after `int(...)`/`bool(...)`
+    coercion of the desired side is always true → perpetual `CHANGED`/re-SET.
+    Normalize current to the target's shape before comparing.
+    """
+    if current_val is None or current_val == target:
+        return current_val
+    # bool BEFORE int (bool is a subclass of int in Python)
+    if isinstance(target, bool) and not isinstance(current_val, bool):
+        if isinstance(current_val, str):
+            return current_val.strip().lower() in ("1", "true", "yes", "on")
+        if isinstance(current_val, (int, float)):
+            return bool(current_val)
+    if isinstance(target, int) and not isinstance(target, bool):
+        if isinstance(current_val, str):
+            try:
+                return int(current_val)
+            except ValueError:
+                pass
+        if isinstance(current_val, float):
+            return int(current_val)
+    if isinstance(target, str) and not isinstance(current_val, str):
+        return str(current_val)
+    return current_val
+
+
 def _args_from(data):
     """dict -> synowebapi key=value tokens (bool->true/false, null skipped, list/dict->JSON)."""
     args = []
@@ -99,7 +128,7 @@ def do_setting(a):
     }
     current = _exec(UPD_SETTING_API, "version=1", "method=get")["data"]
     drift = {k: {"current": current.get(k), "desired": v}
-             for k, v in desired.items() if current.get(k) != v}
+             for k, v in desired.items() if _coerce_like(v, current.get(k)) != v}
 
     def apply():
         current.update(desired)
@@ -113,7 +142,7 @@ def do_channel(a):
     desired = {"type": a.channel}
     current = _exec(UPD_SERVER_API, "version=1", "method=get")["data"]
     drift = {k: {"current": current.get(k), "desired": v}
-             for k, v in desired.items() if current.get(k) != v}
+             for k, v in desired.items() if _coerce_like(v, current.get(k)) != v}
 
     def apply():
         current.update(desired)

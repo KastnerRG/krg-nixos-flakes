@@ -121,3 +121,26 @@ def test_channel_drift(monkeypatch, capsys):
     assert out.startswith("CHANGED")
     set_call = next(p for a, p in captured if a == m.UPD_SERVER_API)
     assert "type=stable" in set_call
+
+
+# --- M5 regression: type-coerced diff comparison ---------------------------------
+def test_setting_string_int_returned_by_dsm_is_not_drift(monkeypatch, capsys):
+    """DSM returns upgrade_hour as a STRING "3" but spec is int 3 → no drift.
+
+    Pre-M5 this reported CHANGED on every run (string "3" != int 3).
+    """
+    fake, _ = _factory({m.UPD_SETTING_API: {"get": {
+        "auto_update_type": "hotfix-security",
+        "enable_auto_update": "true",     # string instead of bool
+        "notify_email": "1",              # legacy bool-ish
+        "upgrade_day": "Sun",
+        "upgrade_hour": "3",              # string instead of int
+        "upgrade_min": "0",               # ditto
+    }}})
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main([
+        "setting", "--policy", "hotfix-security", "--auto-install", "true",
+        "--notify-email", "true", "--day", "Sun", "--hour", "3", "--minute", "0",
+    ])
+    assert rc == 0
+    assert "OK no-change" in capsys.readouterr().out

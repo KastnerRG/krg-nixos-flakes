@@ -62,6 +62,32 @@ def _bool(s):
     return str(s).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _coerce_like(target, current_val):
+    """Coerce current_val to the type of target for diff comparison (M5 fix).
+
+    DSM JSON sometimes returns ints/bools as strings; this normalizes so a
+    type-only mismatch doesn't false-positive drift. See reviewer 4577021512.
+    """
+    if current_val is None or current_val == target:
+        return current_val
+    if isinstance(target, bool) and not isinstance(current_val, bool):
+        if isinstance(current_val, str):
+            return current_val.strip().lower() in ("1", "true", "yes", "on")
+        if isinstance(current_val, (int, float)):
+            return bool(current_val)
+    if isinstance(target, int) and not isinstance(target, bool):
+        if isinstance(current_val, str):
+            try:
+                return int(current_val)
+            except ValueError:
+                pass
+        if isinstance(current_val, float):
+            return int(current_val)
+    if isinstance(target, str) and not isinstance(current_val, str):
+        return str(current_val)
+    return current_val
+
+
 def _result(drift, check, apply_fn):
     """Shared OK/WOULD-CHANGE/CHANGED/FAIL flow given a drift dict and an apply callable."""
     if not drift:
@@ -91,7 +117,7 @@ def do_global(a):
     drift = {
         k: {"current": current.get(k), "desired": v}
         for k, v in desired.items()
-        if current.get(k) != v
+        if _coerce_like(v, current.get(k)) != v
     }
 
     def apply():
