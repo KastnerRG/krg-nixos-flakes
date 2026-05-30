@@ -15,12 +15,18 @@
     file: "{{ synology_dsm_updates_spec }}"
     name: upd_spec
 
-- name: Apply DSM update policy (Upgrade.Setting set — full-object; partial = err 2001)
+- name: Apply DSM update policy (Upgrade.Setting set v2 — full-object; partial = err 2001)
+  # EMPIRICAL note (2026-05-29): live `Upgrade.Setting v2 get` exposes
+  # `autoupdate_enable`, `autoupdate_type`, and a NESTED `schedule.{week_day,
+  # hour, minute}` — the helper merges nested. `--notify-email` and
+  # `--update-channel` are accepted but no-op (Notification.Event owns email;
+  # Upgrade.Server has no set method on this DSM). See apply_dsm_updates.py.
   ansible.builtin.script: >-
     apply_dsm_updates.py setting
     --policy {{ upd_spec.dsm_updates.policy | default('hotfix-security') | quote }}
     --auto-install {{ upd_spec.dsm_updates.auto_install_enabled | default(true) }}
     --notify-email {{ upd_spec.dsm_updates.notify_email_on_install | default(true) }}
+    --update-channel {{ upd_spec.dsm_updates.update_channel | default('stable') | quote }}
     --day {{ upd_spec.dsm_updates.schedule.day | default('Sun') | quote }}
     --hour {{ upd_spec.dsm_updates.schedule.hour | default(3) }}
     --minute {{ upd_spec.dsm_updates.schedule.minute | default(0) }}
@@ -29,16 +35,6 @@
   changed_when: "'CHANGED' in upd_apply.stdout or 'WOULD-CHANGE' in upd_apply.stdout"
   failed_when: "upd_apply.rc != 0 or 'FAIL' in upd_apply.stdout"
   check_mode: false  # script self-gates on --check
-
-- name: Apply DSM update channel (Upgrade.Server set — full-object)
-  ansible.builtin.script: >-
-    apply_dsm_updates.py channel
-    --channel {{ upd_spec.dsm_updates.update_channel | default('stable') | quote }}
-    {{ '--check' if ansible_check_mode else '' }}
-  register: chn_apply
-  changed_when: "'CHANGED' in chn_apply.stdout or 'WOULD-CHANGE' in chn_apply.stdout"
-  failed_when: "chn_apply.rc != 0 or 'FAIL' in chn_apply.stdout"
-  check_mode: false
 
 # --- Drift export (read-only) — only with `--tags export` -----------------------
 - name: Export live state for drift detection
