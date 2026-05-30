@@ -1,0 +1,8 @@
+{
+  "_comment": "AUTO-GENERATED — DO NOT EDIT MANUALLY. Refreshed weekly by the fetch-geoip systemd timer on krg-deploy from MaxMind GeoLite2-Country. Edits get overwritten. Source: nix/modules/security/firewall-geoip/fetch-geoip.py. Consumer: nix/modules/security/firewall-geoip.nix (krg.firewall.geoip option). Seeded EMPTY so a fresh deploy fails closed: until the timer produces real data, geoIP-gated ports are only reachable from krg.firewall.geoip.allowedSources (trusted IPSets in trusted.json — `ops` is the manual-override slot per docs/working-remotely.md).",
+  "country": "US",
+  "ip_version": "v4",
+  "generated_at": null,
+  "source": "MaxMind GeoLite2-Country-CSV (https://www.maxmind.com/en/geolite2)",
+  "cidrs": []
+}

@@ -3,6 +3,7 @@
     ../../profiles/base.nix
     ../../modules/users.nix
     ../../users/admin.nix
+    ../../modules/security/firewall-geoip/maintainer.nix
     ./hardware-configuration.nix
   ];
 
@@ -17,7 +18,9 @@
   };
 
   krg.firewall = {
-    allowedTCPPorts = [ 22 ];
+    # SSH (22) inherits from base.nix's default allowedTCPPorts = [22];
+    # serviceHost = true (also from base.nix default) restricts it to
+    # ucsd + ops via sshSources. node-exporter monitoring on 9100.
     monitoringPorts = [ 9100 ];
   };
 
@@ -82,6 +85,17 @@
       OnCalendar = "04:30";   # 30 min after NixOS autoUpgrade so NixOS lands first
       Persistent = true;      # catch up if the machine was off at fire time
     };
+  };
+
+  # GeoIP CIDR-data maintainer (issue #74). The fetcher is OFF by default —
+  # operator turns on after wiring the MaxMind license key in OpenBao and a
+  # git deploy key for the push step. Staleness textfile metric stays ON so
+  # the monitoring layer can alert if data ages without the operator
+  # noticing (e.g. license expired, deploy key rotated and not updated).
+  krg.firewallGeoip.maintainer = {
+    fetch.enable      = false;   # flip true after maxmind + git deploy creds wired
+    fetch.countries   = [ "US" ];
+    staleness.enable  = true;
   };
 
   system.stateVersion = "25.11";

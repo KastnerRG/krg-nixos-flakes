@@ -36,15 +36,18 @@
   #   krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
 
   # Ingress for the server role. The in-guest firewall is ON on every host
-  # (base.nix); serviceHost = true (set in krg.base above) source-restricts SSH
-  # to the trusted UCSD nets in-guest, and the Proxmox perimeter restricts the rest.
+  # (base.nix); serviceHost = true (inherited from base.nix default)
+  # source-restricts SSH (22) to ucsd + ops via sshSources; the Proxmox
+  # perimeter is the additive outer layer.
   krg.firewall = {
-    # 80/443 open globally (Traefik ingress); SSH (22) is source-restricted
-    # (serviceHost), so the firewall module moves it from the open list to a
-    # per-source rule. Traefik's 8080 (API/metrics) is intentionally NOT published
-    # to the host (docker-compose/krg-prod/compose.yml). When Prometheus is
-    # re-enabled it will scrape traefik:8080 over the Docker network instead of
-    # the host port (add prometheus to traefik_proxy at that time).
+    # 80/443: Traefik ingress. The fleet-default geoIP gate (base.nix)
+    # routes these to US+trusted — Authentik-gated lab web is reachable
+    # from US clients without an `ops` entry; international travelers
+    # add themselves to `ops` per docs/working-remotely.md (same workflow
+    # as compute SSH). If a service genuinely needs global reach (rare),
+    # move those ports to `krg.firewall.publicPorts` with a reason comment.
+    # 22 comes from base.nix's default (allowedTCPPorts = [22]) and is
+    # restricted by sshSources via serviceHost.
     allowedTCPPorts = [ 22 80 443 ];
     # Native node-exporter (9100), scraped from the monitoring host only. (The old
     # 9000 "service exporter" was the Ansible deploy-monitor, gone under autoUpgrade.)

@@ -1,0 +1,8 @@
+{
+  "_comment": "AUTO-GENERATED — DO NOT EDIT MANUALLY. See geoip-us-v4.json for full notes. v6 list seeded empty for the same fail-closed reason.",
+  "country": "US",
+  "ip_version": "v6",
+  "generated_at": null,
+  "source": "MaxMind GeoLite2-Country-CSV (https://www.maxmind.com/en/geolite2)",
+  "cidrs": []
+}

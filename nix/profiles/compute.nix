@@ -19,6 +19,16 @@
   krg.base = {
     enable      = true;
     autoUpgrade = true;
+    # Compute profile RELAXES the fleet-default strict-SSH policy.
+    # base.nix sets `serviceHost = true` (sshSources = ucsd + ops only)
+    # for every host; compute opts OUT so SSH 22 routes through the
+    # geoIP gate to US+trusted instead. Reasons:
+    #   * Compute is for lab users + visiting researchers — travelers in
+    #     `ops` get through always; ucsd-restricted SSH would block them.
+    #   * Key-only auth + fail2ban are the actual security controls; the
+    #     source restriction is noise reduction.
+    # See docs/working-remotely.md for the traveling-staff workflow.
+    serviceHost = false;
   };
 
   krg.docker = {
@@ -77,8 +87,16 @@
   krg.users.defaultGroups = [ "docker" "cuda" ];
 
   # waiter is physical, so base.nix keeps the NixOS firewall enabled.
+  # SSH (22) inherits from base.nix's `allowedTCPPorts = [22]` default
+  # and is auto-routed through the fleet-default geoIP gate to
+  # US+trusted. See docs/working-remotely.md for the traveling-staff
+  # `ops` workflow.
+  # NOTE: dcgm 9400 is intentionally NOT in allowedTCPPorts — the
+  # Docker DNAT path bypasses nftables INPUT (see CLAUDE.md "Docker
+  # published-port firewall bypass"). Adding geoip there needs the
+  # DOCKER-USER follow-up to land first; meanwhile 9400 is bound to
+  # 0.0.0.0 by intention.
   krg.firewall = {
-    allowedTCPPorts = [ 22 ];
     allowRDP        = config.krg.xrdp.enable;  # 3389 only when the XRDP desktop is up
     # node-exporter (9100), docker metrics (9323), prometheus client (9000),
     # IPMI exporter (9290). DCGM (9400) is contributed by the nvidia module

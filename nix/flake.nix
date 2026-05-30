@@ -75,9 +75,11 @@
       samba-ad      = import ./modules/samba-ad.nix;
       ad-client     = import ./modules/sssd-ad-client.nix;
 
-      firewall           = import ./modules/security/firewall.nix;
-      fail2ban           = import ./modules/security/fail2ban.nix;
-      oec-qualys-trellix = import ./modules/security/oec-qualys-trellix.nix;
+      firewall              = import ./modules/security/firewall.nix;
+      firewall-geoip        = import ./modules/security/firewall-geoip.nix;
+      firewall-geoip-maint  = import ./modules/security/firewall-geoip/maintainer.nix;
+      fail2ban              = import ./modules/security/fail2ban.nix;
+      oec-qualys-trellix    = import ./modules/security/oec-qualys-trellix.nix;
 
       nvidia = import ./modules/hardware/nvidia.nix;
       fpga   = import ./modules/hardware/fpga.nix;
