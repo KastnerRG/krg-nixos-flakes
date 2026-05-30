@@ -4,7 +4,7 @@
 # CROSS-REFERENCE: counterpart of nix `krg.adClient` (`nix/modules/sssd-ad-client.nix`)
 # and ansible `roles/ad_client`. Same realm/DC. Difference: DSM uses winbind, not
 # SSSD. The winbind <-> SSSD idmap reconciliation below is the bit that matters
-# (NFS export to fabricant-prod depends on aligned uid/gid ranges).
+# (NFS export to fabricant depends on aligned uid/gid ranges).
 #
 # DSM API surface (best-known from /usr/syno/synoman/webapi/SYNO.Core.Directory*.lib —
 # empirical confirmation pending; flip field names in apply_ad.py on first-apply drift):

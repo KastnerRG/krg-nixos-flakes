@@ -27,7 +27,7 @@ exports:
   # Part of the cross-backup plan (fabricant <-> e4e-nas), so root is not squashed.
   - share: fabricant-prod-share
     rules:
-      - client: fabricant-prod.ucsd.edu
+      - client: fabricant.ucsd.edu
         privilege: rw
         root_squash: root          # "root" => no_root_squash on the wire (root NOT squashed)
         async: true                # CAPTURED: live rule uses async (was assumed false in the seed)
