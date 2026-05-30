@@ -1,28 +1,34 @@
 #!/usr/bin/env python3
-"""Apply DSM Security Advisor config idempotently via synowebapi. One subcommand:
+"""Apply DSM Security Advisor schedule idempotently via synowebapi.
 
-  main   SYNO.SDS.SecurityScan.Main set (v1) — enable + weekly schedule + categories +
-         notify-email. FULL-OBJECT pattern (partial = err 2001): GET → overlay
-         managed keys → SET, only on drift.
+Subcommand:
+  main   SYNO.Core.SecurityScan.Conf set (v1) — schedule enable + weekly time.
+         FULL-OBJECT pattern (partial = err 2001): GET → overlay managed keys
+         → SET, only on drift. Strips read-only synthetic keys
+         (`success`, `scheduleTaskId`) before SET so the round-trip is valid.
 
-Invoked by the synology_security_advisor ansible role via the `script` module (DSM's
-Python 3.8 — same constraint as apply_dsm_web). OK no-change / WOULD-CHANGE <json>
-/ CHANGED <json> / FAIL <json>; the role keys changed_when/failed_when off that.
+Invoked by the synology_security_advisor ansible role via the `script` module
+(DSM Python 3.8 — same constraint as the rest of the synology_* helpers).
+OK no-change / WOULD-CHANGE <json> / CHANGED <json> / FAIL <json>; the role
+keys changed_when/failed_when off stdout.
 
-Field mapping (DSM 7.3 best-known — empirical confirmation pending; the captured
-scheduler entry showed `SYNO.Core.SecurityScan.Operation start`, confirming Operation
-runs scans but NOT confirming the Main config-set field names. Flip OUT_KEYS below
-on first-apply drift):
-  enabled                  -> enable          (bool)
-  schedule.day             -> schedule_day    ("Sun".."Sat")
-  schedule.hour            -> schedule_hour   (int)
-  schedule.minute          -> schedule_min    (int)
-  scan_categories          -> categories      (JSON list of strings)
-  notify_email_on_finding  -> notify_email    (bool)
+Field mapping (DSM 7.3, EMPIRICALLY CONFIRMED 2026-05-29 from
+`/usr/syno/synoman/webapi/SYNO.Core.SecurityScan.lib` + a live GET):
+  enable                  -> enableSchedule    (bool)
+  schedule.day (Sun..Sat) -> weekday "0".."6"  (Unix-cron convention)
+  schedule.hour           -> hour              (int)
+  schedule.minute         -> minute            (int)
 
-If `Main` does NOT own the schedule on the live box, fall back to managing a
-SYNO.Core.EventScheduler entry that calls Operation.start (TODO follow-up; the
-captured task on the live NAS suggests this is how DSM does it under the hood).
+NOT managed here (different DSM surfaces; spec values are accepted on the CLI
+to keep the role contract stable, but applied = false until the follow-ups
+land — see role README):
+  scan_categories         -> SYNO.Core.SecurityScan.Conf.group_set
+                             (param shape needs probing on a configured box;
+                             `defaultGroup` from current live state is preserved
+                             by the full-object round-trip)
+  notify_email_on_finding -> SYNO.Core.Notification.Event
+                             (the email channel is owned by synology_notifications;
+                             SA hooks into that channel — no SA-side toggle)
 """
 import argparse
 import json
@@ -30,17 +36,31 @@ import subprocess
 import sys
 
 WEBAPI = "/usr/syno/bin/synowebapi"
-SA_MAIN_API = "SYNO.SDS.SecurityScan.Main"
+SA_CONF_API = "SYNO.Core.SecurityScan.Conf"
 
-# Spec-field -> DSM-field. Best-known; flip values here on first-apply drift.
+# Spec-field -> DSM-field. EMPIRICAL — flipped on first-apply discovery 2026-05-29
+# (original `.Main`/`enable`/`schedule_day` guess from `.lib` filename was wrong;
+# real namespace is `.Conf` and real keys are `enableSchedule`/`weekday`/etc.).
 OUT_KEYS = {
-    "enable":         "enable",
-    "day":            "schedule_day",
-    "hour":           "schedule_hour",
-    "minute":         "schedule_min",
-    "categories":     "categories",
-    "notify_email":   "notify_email",
+    "enable":  "enableSchedule",
+    "day":     "weekday",
+    "hour":    "hour",
+    "minute":  "minute",
 }
+
+# Sun..Sat -> "0".."6" (Unix-cron convention; DSM stores weekday as a string-of-digit).
+DAY_MAP = {"Sun": "0", "Mon": "1", "Tue": "2", "Wed": "3",
+           "Thu": "4", "Fri": "5", "Sat": "6"}
+
+# `Conf get` returns these keys inside `data` but `Conf set` rejects/ignores
+# them — strip before SET to keep the full-object round-trip valid.
+#   * success         — synthetic OK marker DSM stuffs into data dicts
+#   * scheduleTaskId  — DSM-internal task handle (assigned by the daemon)
+READ_ONLY_KEYS = {"success", "scheduleTaskId"}
+
+# DSM error code 102 == "API does not exist" (rare for Conf — handled
+# defensively in case a stripped/older DSM image is in play).
+ERR_API_NOT_EXIST = 102
 
 
 def _exec(api, *params):
@@ -56,16 +76,28 @@ def _exec(api, *params):
     return json.loads(txt[brace:])
 
 
+def _exec_get(api):
+    """GET; returns (data_dict, None) on success or (None, err_code) on
+    DSM-level failure. Raises only on protocol violations (no JSON / success
+    with no data — neither is a normal state).
+    """
+    resp = _exec(api, "version=1", "method=get")
+    if not resp.get("success", False):
+        return None, (resp.get("error") or {}).get("code")
+    if "data" not in resp:
+        raise RuntimeError("DSM API {} GET returned success but no `data` key: {}".format(
+            api, json.dumps(resp)))
+    return resp["data"], None
+
+
 def _bool(s):
     return str(s).strip().lower() in ("1", "true", "yes", "on")
 
 
 def _coerce_like(target, current_val):
-    """Coerce current_val to the type of target for diff comparison (M5 fix).
-
-    DSM JSON sometimes returns ints/bools as strings; this normalizes so a
-    type-only mismatch doesn't false-positive drift. See reviewer 4577021512.
-    """
+    """Coerce current_val to type of target so type-only mismatches don't
+    false-positive drift (M5 fix from reviewer 4577021512). DSM JSON sometimes
+    returns ints as strings; this normalizes for the diff comparison."""
     if current_val is None or current_val == target:
         return current_val
     if isinstance(target, bool) and not isinstance(current_val, bool):
@@ -115,48 +147,69 @@ def _result(drift, check, apply_fn):
     return 1
 
 
-# --- main (SYNO.SDS.SecurityScan.Main, full-object) -------------------------------
 def do_main(a):
-    cats = json.loads(a.categories) if a.categories else []
-    if not isinstance(cats, list):
-        raise SystemExit("--categories must be a JSON list")
+    if a.day not in DAY_MAP:
+        raise SystemExit("--day must be one of: " + ", ".join(DAY_MAP) +
+                         " (got: " + str(a.day) + ")")
+    # --categories and --notify-email are accepted but NOT applied (different
+    # DSM surfaces; see module docstring). Validate them so a typo still fails
+    # loudly, but don't push them on the wire here.
+    if a.categories:
+        try:
+            cats = json.loads(a.categories)
+            if not isinstance(cats, list):
+                raise SystemExit("--categories must be a JSON list (got type " +
+                                 type(cats).__name__ + ")")
+        except json.JSONDecodeError as e:
+            raise SystemExit("--categories must be valid JSON: " + str(e))
+
     desired = {
-        OUT_KEYS["enable"]:        _bool(a.enable),
-        OUT_KEYS["day"]:           a.day,
-        OUT_KEYS["hour"]:          int(a.hour),
-        OUT_KEYS["minute"]:        int(a.minute),
-        OUT_KEYS["categories"]:    sorted(cats),
-        OUT_KEYS["notify_email"]:  _bool(a.notify_email),
+        OUT_KEYS["enable"]: _bool(a.enable),
+        OUT_KEYS["day"]:    DAY_MAP[a.day],
+        OUT_KEYS["hour"]:   int(a.hour),
+        OUT_KEYS["minute"]: int(a.minute),
     }
-    current = _exec(SA_MAIN_API, "version=1", "method=get")["data"]
-    # Compare categories as sorted lists so order-only drift doesn't false-positive.
-    cur_norm = dict(current)
-    if isinstance(cur_norm.get(OUT_KEYS["categories"]), list):
-        cur_norm[OUT_KEYS["categories"]] = sorted(cur_norm[OUT_KEYS["categories"]])
-    drift = {k: {"current": cur_norm.get(k), "desired": v}
-             for k, v in desired.items() if _coerce_like(v, cur_norm.get(k)) != v}
+
+    current, err = _exec_get(SA_CONF_API)
+    if err is not None:
+        note = ("API not present on this DSM model — Security Advisor "
+                "scheduling cannot be managed via webapi here."
+                if err == ERR_API_NOT_EXIST else "see DSM error code table")
+        print("FAIL " + json.dumps({
+            "error": "GET failed", "api": SA_CONF_API,
+            "code": err, "note": note,
+        }))
+        return 1
+
+    set_payload = {k: v for k, v in current.items() if k not in READ_ONLY_KEYS}
+
+    drift = {k: {"current": set_payload.get(k), "desired": v}
+             for k, v in desired.items()
+             if _coerce_like(v, set_payload.get(k)) != v}
 
     def apply():
-        current.update(desired)
-        return _exec(SA_MAIN_API, "version=1", "method=set", *_args_from(current))
+        set_payload.update(desired)
+        return _exec(SA_CONF_API, "version=1", "method=set", *_args_from(set_payload))
 
     return _result(drift, a.check, apply)
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Apply DSM Security Advisor config via synowebapi.")
+    ap = argparse.ArgumentParser(description="Apply DSM Security Advisor schedule via synowebapi.")
     sub = ap.add_subparsers(dest="cmd", required=True)
-
-    s = sub.add_parser("main", help="SecurityScan.Main (enable + schedule + categories + notify)")
+    s = sub.add_parser("main", help="SecurityScan.Conf (enableSchedule + weekday + hour + minute)")
     s.add_argument("--enable", required=True)
-    s.add_argument("--day", required=True)
-    s.add_argument("--hour", required=True)
-    s.add_argument("--minute", required=True)
-    s.add_argument("--categories", required=True, help="JSON list of strings")
-    s.add_argument("--notify-email", dest="notify_email", required=True)
+    s.add_argument("--day", required=True, help="Sun|Mon|Tue|Wed|Thu|Fri|Sat")
+    s.add_argument("--hour", required=True, type=int)
+    s.add_argument("--minute", required=True, type=int)
+    # Accepted-but-deferred (see docstring); kept on the CLI so the role
+    # contract stays stable while the per-surface impls are tracked.
+    s.add_argument("--categories", required=True,
+                   help="JSON list of strings (accepted, NOT applied — needs group_set probe)")
+    s.add_argument("--notify-email", dest="notify_email", required=True,
+                   help="bool (accepted, NOT applied — owned by synology_notifications)")
     s.add_argument("--check", action="store_true")
     s.set_defaults(func=do_main)
-
     a = ap.parse_args(argv)
     return a.func(a)
 
