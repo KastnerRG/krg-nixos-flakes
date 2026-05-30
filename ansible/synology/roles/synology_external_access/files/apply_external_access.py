@@ -44,6 +44,30 @@ def _exec(api, *params):
     return json.loads(txt[brace:])
 
 
+# DSM error code 102 == "API does not exist" — surface is absent on this model
+# (e.g. SOHO/SMB units lack the Router.UPnP API; DDNS API is gated on the user
+# configuring DDNS via the wizard first). For toggle surfaces we treat this as
+# "absence == disabled" and let _toggle short-circuit to OK no-change when the
+# desired state IS disabled.
+ERR_API_NOT_EXIST = 102
+
+
+def _exec_get(api):
+    """GET; returns (data_dict, None) on success or (None, err_code) on
+    DSM-level failure. Raises RuntimeError only on protocol violations
+    (no JSON / success-but-no-data — never normal).
+    """
+    resp = _exec(api, "version=1", "method=get")
+    if not resp.get("success", False):
+        err = (resp.get("error") or {})
+        return None, err.get("code")
+    if "data" not in resp:
+        raise RuntimeError(
+            "DSM API {} GET returned success but no `data` key: {}".format(
+                api, json.dumps(resp)))
+    return resp["data"], None
+
+
 def _bool(s):
     return str(s).strip().lower() in ("1", "true", "yes", "on")
 
@@ -77,9 +101,31 @@ def _result(drift, check, apply_fn):
 
 
 def _toggle(api, key, enable, check):
-    """Common GET/diff/SET shape for the three single-toggle surfaces."""
-    desired = {key: _bool(enable)}
-    current = _exec(api, "version=1", "method=get")["data"]
+    """Common GET/diff/SET shape for the three single-toggle surfaces.
+
+    Absence handling: DSM err 102 ("API does not exist", e.g. Router.UPnP on
+    SOHO units / DDNS pre-wizard) means the surface isn't installed. If our
+    DESIRED state is `disabled`, absence == desired (no-op). If desired is
+    `enabled`, hard-fail — we can't enable a surface that isn't there.
+    """
+    desired_bool = _bool(enable)
+    desired = {key: desired_bool}
+    try:
+        current, err_code = _exec_get(api)
+    except RuntimeError as e:
+        print("FAIL " + json.dumps({"error": str(e), "api": api}))
+        return 1
+    if err_code is not None:
+        if err_code == ERR_API_NOT_EXIST and not desired_bool:
+            print("OK no-change")
+            return 0
+        print("FAIL " + json.dumps({
+            "error": "DSM GET failed", "api": api, "code": err_code,
+            "note": ("desired=enabled but API is not present on this DSM model"
+                     if err_code == ERR_API_NOT_EXIST and desired_bool else
+                     "see DSM error code table"),
+        }))
+        return 1
     drift = {k: {"current": current.get(k), "desired": v}
              for k, v in desired.items() if current.get(k) != v}
 
