@@ -228,17 +228,21 @@
   # those get mangled when args travel through `ansible script:` -> ssh ->
   # remote sh's word-splitter. base64 has no shell-special chars, so it
   # survives. See apply_users.py do_authorized_keys for the decode side.
+  # IMPORTANT: keep the --keys-b64 jinja expression on ONE line. YAML `>-`
+  # preserves the newline around a more-indented line (folded-scalar rule),
+  # which leaks a literal "\n--check" into the shell command and makes sh
+  # treat --check as a separate command (rc=127). Folding only flattens
+  # SAME-indent lines into spaces.
   ansible.builtin.script: >-
     apply_users.py authorized-keys
     --username {{ item.name | quote }}
-    --keys-b64 {{ (_all_admin_keys[(item.ssh_keys_from | regex_replace('^.*#', ''))]
-                   | default([])) | to_json | b64encode | quote }}
+    --keys-b64 {{ (_all_admin_keys[(item.ssh_keys_from | regex_replace('^.*#', ''))] | default([])) | to_json | b64encode | quote }}
     {{ '--check' if ansible_check_mode else '' }}
   register: keys_apply
   changed_when: "'CHANGED' in keys_apply.stdout or 'WOULD-CHANGE' in keys_apply.stdout"
   failed_when: "keys_apply.rc != 0 or 'FAIL' in keys_apply.stdout"
   check_mode: false
-  no_log: true   # the keys themselves are on the cmdline (now base64; still no_log just in case)
+  no_log: true   # username + keys (now base64) on the cmdline; defense in depth
   when:
     - item.ssh_keys_from is defined
     - not (item.api_only | default(false))
