@@ -40,15 +40,22 @@
   # source-restricts SSH (22) to ucsd + ops via sshSources; the Proxmox
   # perimeter is the additive outer layer.
   krg.firewall = {
-    # 80/443: Traefik ingress. The fleet-default geoIP gate (base.nix)
-    # routes these to US+trusted — Authentik-gated lab web is reachable
-    # from US clients without an `ops` entry; international travelers
-    # add themselves to `ops` per docs/working-remotely.md (same workflow
-    # as compute SSH). If a service genuinely needs global reach (rare),
-    # move those ports to `krg.firewall.publicPorts` with a reason comment.
-    # 22 comes from base.nix's default (allowedTCPPorts = [22]) and is
-    # restricted by sshSources via serviceHost.
-    allowedTCPPorts = [ 22 80 443 ];
+    # 443: Traefik ingress for Authentik-gated lab services. Fleet-default
+    # geoIP gate routes this to US+trusted; international travelers add an
+    # `ops` entry per docs/working-remotely.md (same workflow as compute
+    # SSH). 22 comes from base.nix's default and is restricted by
+    # sshSources via serviceHost.
+    allowedTCPPorts = [ 22 443 ];
+    # 80: DOCUMENTED EXCEPTION to the "US is the floor" policy. Traefik
+    # handles ACME HTTP-01 on this port for the lab's public-facing
+    # domains. Let's Encrypt's multi-perspective validation issues
+    # challenges from validators in the US + EU + Asia and requires ALL
+    # perspectives to succeed; US-gating this port would fail renewals
+    # within ~60-90 days (cert lifetime). Mirrors the krg-vault publicPorts
+    # pattern. DNS-01 migration was considered + rejected (closed issue #89);
+    # HTTP-01 + publicPorts opt-in is the long-term answer.
+    # reason: ACME HTTP-01 — LE multi-perspective validators are global
+    publicPorts = [ 80 ];
     # Native node-exporter (9100), scraped from the monitoring host only. (The old
     # 9000 "service exporter" was the Ansible deploy-monitor, gone under autoUpgrade.)
     monitoringPorts = [ 9100 ];

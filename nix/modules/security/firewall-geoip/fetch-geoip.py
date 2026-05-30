@@ -56,9 +56,28 @@ def fetch_zip(license_key, dest_path):
     """Download the GeoLite2-Country-CSV zip to dest_path."""
     url = MAXMIND_URL.format(key=license_key)
     req = urllib.request.Request(url, headers={"User-Agent": "krg-infra-fetch-geoip/1.0"})
-    with urllib.request.urlopen(req, timeout=60) as resp, open(dest_path, "wb") as f:
-        if resp.status != 200:
-            raise SystemExit("MaxMind download failed: HTTP " + str(resp.status))
+    # urllib raises HTTPError for non-2xx — the `resp.status != 200` check
+    # the obvious-looking version would do is unreachable. Surface the
+    # common failure modes (bad/revoked license key → 401, MaxMind quota
+    # → 429, MaxMind down → 5xx) as a friendly SystemExit instead of a
+    # raw urllib traceback; the workflow log gets the operator-actionable
+    # message instead of "_ssl.c:1081" noise.
+    try:
+        resp = urllib.request.urlopen(req, timeout=60)
+    except urllib.error.HTTPError as e:
+        hint = (
+            "license key rejected (check secrets.MAXMIND_LICENSE_KEY at the repo level "
+            "or the env var locally; rotate at https://www.maxmind.com/en/accounts)"
+            if e.code in (401, 403)
+            else "MaxMind quota or rate-limit"
+            if e.code == 429
+            else "MaxMind upstream error"
+        )
+        raise SystemExit(
+            "MaxMind download failed: HTTP " + str(e.code) + " — " + hint)
+    except urllib.error.URLError as e:
+        raise SystemExit("MaxMind download failed: network/TLS error — " + str(e.reason))
+    with resp, open(dest_path, "wb") as f:
         # 16MB chunks; the zip is ~10MB so this completes in one read most days.
         while True:
             chunk = resp.read(16 * 1024 * 1024)

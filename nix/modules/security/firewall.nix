@@ -52,10 +52,44 @@ with lib;
 let
   cfg = config.krg.firewall;
   # nftables uses different match keywords for v4 (`ip saddr`) vs v6
-  # (`ip6 saddr`). Pick by colon presence — only v6 has colons. Lets the
-  # geoIP module emit mixed-family CIDR lists in one go without forcing
-  # callers to split by family.
-  saddrFor = src: if hasInfix ":" src then "ip6 saddr" else "ip saddr";
+  # (`ip6 saddr`). Pick by colon presence — only v6 has colons.
+  isV6 = src: hasInfix ":" src;
+
+  # Emit ONE rule per port per family using nftables anonymous inline
+  # sets (`ip saddr { cidr1, cidr2, ... } proto dport N accept`) instead
+  # of one rule per (port × CIDR). nftables auto-builds an interval tree
+  # for CIDR-bearing inline sets, so lookup stays O(log n) regardless of
+  # set size — and one rule replaces hundreds of thousands.
+  #
+  # Why this matters NOW: the geoIP data set is real (US ~163K v4 + 254K
+  # v6 prefixes from MaxMind GeoLite2). Per-CIDR rules would have given
+  # every gated port a ~417K-line addition to `nft list ruleset` per host,
+  # with per-packet linear-scan cost on drops. Anonymous sets reduce that
+  # to 2 lines per port (one v4, one v6). Reviewer flagged this on PR #90
+  # — fix is critical before merge so the regression doesn't land on every
+  # geoIP-gated host at the same time. Issue #74's design called this out.
+  #
+  # Helper: render a `{ a, b, c }` element list for nftables. Empty list
+  # returns "", letting the caller skip emitting the rule entirely (an
+  # empty set still parses but matches nothing — wasted work).
+  inlineSet = cidrs: "{ " + concatStringsSep ", " cidrs + " }";
+
+  # Render a per-port rule for one protocol+family. Returns "" if the
+  # source list is empty (don't emit a rule that matches nothing).
+  mkPortRule = { proto, family, port, sources }:
+    if sources == [] then ""
+    else "${family} ${inlineSet sources} ${proto} dport ${toString port} accept\n";
+
+  # Render both v4 and v6 rules for a sourcedPort entry. Splits sources
+  # by family so each rule references a single-family set (nftables
+  # requires this; `ip saddr` can't reference an ipv6 set).
+  mkSourcedRules = proto: { port, sources }:
+    let
+      v4 = filter (s: !(isV6 s)) sources;
+      v6 = filter isV6 sources;
+    in
+      mkPortRule { inherit proto port; family = "ip saddr";  sources = v4; }
+      + mkPortRule { inherit proto port; family = "ip6 saddr"; sources = v6; };
 in {
   options.krg.firewall = {
     enable = mkEnableOption "KRG firewall (replaces UFW)";
@@ -71,12 +105,18 @@ in {
         (ACME HTTP-01, public-facing web that legitimately needs
         international users), use `publicPorts` INSTEAD.
 
-        Ports already tightened by `sshSources` (22 on service hosts) or
-        an explicit `sourcedPorts` entry are AUTO-EXCLUDED from the geoIP
-        auto-promotion — the tighter rule wins. Listing a port here AND
-        in sshSources/sourcedPorts is allowed but a per-PR assertion will
-        flag any overlap with publicPorts (opposite intent) or sourcedPorts
-        (misleading; pick one).
+        Interaction with the other port lists:
+          * `sshSources` (22 on service hosts) silently moves 22 out of
+            the globally-open list AND out of the geoIP auto-promotion
+            (the tighter rule wins). No assertion fires for an overlap
+            here — it's the expected configuration on service hosts.
+          * `sourcedPorts` (operator-explicit per-port restriction) wins
+            over geoIP auto-promotion. Listing a port in BOTH is
+            REDUNDANT — a per-PR assertion (`allowedTCPPorts ∩
+            sourcedPorts`) flags the duplicate so the operator drops one.
+          * `publicPorts` (intentional globally-open) is the opposite
+            intent. A per-PR assertion (`allowedTCPPorts ∩ publicPorts`)
+            fires; pick one.
 
         Default empty so a host that adds this module without explicit
         configuration gets the minimal attack surface (no in-guest ports
@@ -323,31 +363,30 @@ in {
           ++ optional (cfg.allowRDP && cfg.rdpSources == []) 3389;
         allowedUDPPorts = cfg.allowedUDPPorts;
 
-        # nftables rules: monitoring-port scraping (from monitoringSourceIp),
-        # source-restricted SSH (from sshSources, service hosts), source-
-        # restricted RDP (from rdpSources when allowRDP), and the dual-stack
-        # sourcedPorts emitter (used by the geoIP module + any operator-
-        # explicit per-port restriction).
+        # nftables rules: monitoring-port scraping, source-restricted SSH /
+        # RDP / sourcedPorts. ALL use anonymous inline sets (one rule per
+        # port per family) instead of one rule per CIDR — keeps the ruleset
+        # tractable even when the geoIP set is ~163K CIDRs. See the
+        # `mkSourcedRules` helper at the top for the per-family split.
         extraInputRules =
-          concatMapStringsSep "\n" (port: ''
-            ip saddr ${cfg.monitoringSourceIp} tcp dport ${toString port} accept
-          '') cfg.monitoringPorts
-          + concatMapStringsSep "\n" (src: ''
-            ip saddr ${src} tcp dport 22 accept
-          '') cfg.sshSources
-          + optionalString cfg.allowRDP (concatMapStringsSep "\n" (src: ''
-            ip saddr ${src} tcp dport 3389 accept
-          '') cfg.rdpSources)
-          # sourcedPorts (TCP): dual-stack (auto v4 vs v6 by `saddrFor`).
-          # Emit operator-explicit entries + auto-derived entries (geoIP)
-          # in one pass — same rule shape for both.
-          + concatMapStringsSep "\n" ({ port, sources }: concatMapStringsSep "\n" (src: ''
-            ${saddrFor src} ${src} tcp dport ${toString port} accept
-          '') sources) (cfg.sourcedPorts ++ cfg._autoSourcedPorts)
-          # sourcedUDPPorts: same shape, `udp dport` keyword.
-          + concatMapStringsSep "\n" ({ port, sources }: concatMapStringsSep "\n" (src: ''
-            ${saddrFor src} ${src} udp dport ${toString port} accept
-          '') sources) cfg.sourcedUDPPorts;
+          # Monitoring: one source IP per scrape port. Stays per-rule
+          # (the source set is a single IP each).
+          concatMapStringsSep "" (port:
+            mkPortRule { proto = "tcp"; family = "ip saddr"; port = port;
+                         sources = [ cfg.monitoringSourceIp ]; }
+          ) cfg.monitoringPorts
+          # SSH (22) from sshSources — one rule per family.
+          + mkSourcedRules "tcp" { port = 22; sources = cfg.sshSources; }
+          # RDP (3389) from rdpSources — one rule per family.
+          + optionalString cfg.allowRDP
+              (mkSourcedRules "tcp" { port = 3389; sources = cfg.rdpSources; })
+          # sourcedPorts (TCP): operator-explicit + auto-derived (geoIP).
+          # mkSourcedRules splits sources by family and emits at most one
+          # `ip saddr { ... } tcp dport N accept` + one `ip6 saddr { ... }`
+          # per entry, no matter how many CIDRs each contains.
+          + concatMapStrings (mkSourcedRules "tcp") (cfg.sourcedPorts ++ cfg._autoSourcedPorts)
+          # sourcedUDPPorts: same shape, udp.
+          + concatMapStrings (mkSourcedRules "udp") cfg.sourcedUDPPorts;
       };
     }))
   ];
