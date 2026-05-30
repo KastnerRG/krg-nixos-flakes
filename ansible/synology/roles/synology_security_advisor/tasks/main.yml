@@ -14,7 +14,18 @@
     file: "{{ synology_security_advisor_spec }}"
     name: sa_spec
 
-- name: Apply Security Advisor config (SYNO.SDS.SecurityScan.Main set — full-object; partial = err 2001)
+- name: Security Advisor schedule DEFERRED (bring-up) — synology_security_advisor_defer_set=true
+  ansible.builtin.debug:
+    msg: |
+      Skipping SA Conf SET — synology_security_advisor_defer_set is true.
+      DSM `SYNO.Core.SecurityScan.Conf.set` returns err 114 from bare
+      `synowebapi --exec` (likely needs UI-session token / different priv
+      path). SA scans still run on DSM's default schedule (live: Tue 07:42).
+      Re-run without the defer flag once the helper learns the right
+      invocation. Tracked as a follow-up.
+  when: synology_security_advisor_defer_set | bool
+
+- name: Apply Security Advisor config (SYNO.Core.SecurityScan.Conf set — schedule + enable)
   ansible.builtin.script: >-
     apply_security_advisor.py main
     --enable {{ sa_spec.security_advisor.enabled | default(true) }}
@@ -28,6 +39,7 @@
   changed_when: "'CHANGED' in sa_apply.stdout or 'WOULD-CHANGE' in sa_apply.stdout"
   failed_when: "sa_apply.rc != 0 or 'FAIL' in sa_apply.stdout"
   check_mode: false  # script self-gates on --check
+  when: not (synology_security_advisor_defer_set | bool)
 
 # --- Drift export (read-only) — only with `--tags export` -----------------------
 - name: Export live state for drift detection
