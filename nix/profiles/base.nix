@@ -14,6 +14,9 @@ in {
     ../modules/security/oec-qualys-trellix.nix
     ../modules/security/fail2ban.nix
     ../modules/security/firewall.nix
+    ../modules/security/geoipupdate.nix
+    ../modules/security/crowdsec.nix
+    ../modules/security/crowdsec-bouncer.nix
     ../modules/services/node-exporter.nix
     ../modules/sssd-ad-client.nix
   ];
@@ -53,11 +56,27 @@ in {
 
     serviceHost = mkOption {
       type        = types.bool;
-      default     = false;
+      default     = true;
       description = ''
         Service host (vs compute): restrict in-guest SSH to the trusted UCSD nets
-        (mirrors the Proxmox perimeter). Compute hosts leave this false so lab
-        users can SSH from anywhere (protected by key-only auth + fail2ban).
+        (mirrors the Proxmox perimeter). **DEFAULT TRUE** — the base policy is
+        strict SSH (ucsd + ops only). Compute hosts (waiter et al.) opt OUT
+        via `krg.base.serviceHost = false` in their profile, which clears
+        sshSources and leaves SSH globally reachable.
+
+        On compute hosts, what catches attackers behind the globally-open
+        SSH port is the fleet CrowdSec stack:
+          * Community blocklists (CAPI): ~30K-50K continuously-updated
+            known-malicious IPs pushed to the bouncer's drop set.
+            Commodity scanners pre-banned before they ever try us.
+          * Local `ssh-bf` scenario (crowdsecurity/sshd): bans an IP
+            for 4h after ~10 failed SSH auths in 10 min, catching the
+            gap between first attack and CAPI propagation.
+          * Whitelist: ucsd + sealab + ops + machines never raise alerts.
+        Geoip enrichment tags every event with country (`evt.Enriched.IsoCode`),
+        but THIS PR does NOT add a country-based ban scenario — geoip is
+        signal-only here, available for future scenarios. See
+        docs/working-remotely.md for the `ops` workflow.
       '';
     };
   };
@@ -71,9 +90,14 @@ in {
     # and only ed25519 public keys are accepted — RSA/ECDSA are rejected.
     services.openssh = {
       enable = true;
-      # Service hosts source-restrict SSH via krg.firewall.sshSources, so don't
-      # let openssh open port 22 globally; compute hosts keep it open.
-      openFirewall = !cfg.serviceHost;
+      # krg.firewall owns SSH gating (fleet policy — issue #74). 22 lives
+      # in `krg.firewall.allowedTCPPorts` (compute hosts: globally open,
+      # CrowdSec drops attackers) or moves to `sshSources` (service hosts:
+      # ucsd + ops only). Letting openssh open 22 globally here would
+      # shadow that on service hosts — concat-merge into networking.firewall
+      # would add a globally-open 22 rule alongside our source-restricted
+      # one, and globally-open wins.
+      openFirewall = false;
       settings = {
         PasswordAuthentication        = false;
         KbdInteractiveAuthentication  = false;
@@ -97,10 +121,15 @@ in {
     # sets krg.nodeExporter.enable = false to avoid a port clash.
     krg.nodeExporter.enable = mkDefault true;
 
-    # Fail2ban SSH brute-force protection on every machine. Allow-list loopback +
-    # the trusted sealab nets so an admin can't self-ban from a trusted network —
-    # mirrors the Ansible layer's fail2ban_ignoreip (same source: trusted.json).
-    krg.fail2ban.enable = mkDefault true;
+    # Fail2ban is SUPERSEDED by the CrowdSec stack (krg.crowdsec, below).
+    # CrowdSec is a fail2ban superset: same SSH brute-force jail surface,
+    # plus community blocklists, geo enrichment, and fleet-wide CTI sharing.
+    # Running both creates conflicting ban tables (fail2ban manages iptables;
+    # the bouncer manages its own nftables sets) — toggle to OFF here and
+    # leave the module in place for one release cycle so we can flip back
+    # quickly if CrowdSec misbehaves in prod. Remove the module entirely
+    # once CrowdSec has cooked for a quarter.
+    krg.fail2ban.enable = mkDefault false;
     krg.fail2ban.ignoreIP = mkDefault
       ([ "127.0.0.1/8" "::1" ] ++ map (e: e.cidr) trusted.ipsets.sealab);
 
@@ -117,8 +146,35 @@ in {
     # so the monitoring host isn't duplicated across nix / ansible / PVE.
     krg.firewall.monitoringSourceIp = mkDefault trusted.monitoring_host;
 
+    # Fleet-wide CrowdSec stack (issue #74): every host runs
+    #   * services.geoipupdate — pulls MaxMind GeoLite2-Country.mmdb
+    #     weekly to /var/lib/GeoIP/ (license key in
+    #     /var/lib/krg/maxmind/license-key, operator-distributed).
+    #   * services.crowdsec — reads sshd journalctl, runs community
+    #     scenarios + a parser whitelist for ucsd/sealab/ops; geo-enrich
+    #     parser tags each event with country.
+    #   * services.crowdsec-firewall-bouncer — pulls CrowdSec decisions
+    #     every 10s, drops banned IPs via a separate nftables table.
+    # The combination gives "no public access — US is the floor" with
+    # reactive bans instead of pre-loaded geo allowlists (which hit a
+    # netlink ENOBUFS wall at 400K MaxMind US CIDRs — see closed PR #90).
+    # Per-host disable: `krg.crowdsec.enable = false` (e.g. for a host
+    # under maintenance).
+    krg.geoipupdate.enable    = mkDefault true;
+    krg.crowdsec.enable       = mkDefault true;
+    krg.crowdsecBouncer.enable = mkDefault true;
+
+    # Every host gets SSH reachable by default. With `serviceHost = true`
+    # (the base default), sshSources tightens 22 to ucsd+ops in-guest and
+    # this `allowedTCPPorts = [22]` entry is dropped from the globally-open
+    # list (the stricter rule wins). On compute hosts (serviceHost = false),
+    # 22 stays in allowedTCPPorts and is globally reachable — CrowdSec is
+    # the gating layer there. Per-host configs only override to ADD ports
+    # (e.g. server.nix adds 443) — they shouldn't need to re-declare 22.
+    krg.firewall.allowedTCPPorts = mkDefault [ 22 ];
+
     # Service hosts restrict in-guest SSH to the trusted nets (mirrors the Proxmox
-    # perimeter); compute hosts keep SSH open (key-only auth + fail2ban).
+    # perimeter); compute hosts keep SSH globally open behind CrowdSec.
     # ucsd (institutional) + ops (explicit off-campus admin) — not "ucsd" alone,
     # so remote admin IPs aren't silently folded into the campus set.
     krg.firewall.sshSources = mkIf cfg.serviceHost
