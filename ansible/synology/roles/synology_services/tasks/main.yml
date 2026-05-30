@@ -37,7 +37,13 @@
   failed_when: "afp_apply.rc != 0 or 'FAIL' in afp_apply.stdout"
   check_mode: false
 
-- name: Apply SNMP (SYNO.Core.SNMP set; USM credential bootstrap is separate)
+- name: Apply SNMP (SYNO.Core.SNMP set + v3 USM credentials when supplied)
+  # SNMPv3 USM credentials come from secrets-syno.yml (operator-side) via the
+  # `snmp_v3_*` keys. The helper soft-defers v3-enable when creds are missing
+  # (WARN on stderr, pins to current — like the AD-aware gate on User.Home).
+  # The v3 cred passwords go on the cmdline → kept under no_log:true so they
+  # don't end up in apply logs. Field-name plumbing is best-known; expect a
+  # flip on first real apply with creds (helper has a clear note).
   ansible.builtin.script: >-
     apply_services.py snmp
     --enable {{ services_spec.snmp.enable_snmp | default(false) }}
@@ -47,11 +53,16 @@
     --location {{ (services_spec.snmp.location | default('')) | quote }}
     --name {{ (services_spec.snmp.name | default('')) | quote }}
     --rouser {{ (services_spec.snmp.v3_user | default('')) | quote }}
+    --v3-auth-protocol {{ (services_spec.snmp.v3_auth_protocol | default('SHA')) | quote }}
+    --v3-auth-password {{ (snmp_v3_auth_password | default('')) | quote }}
+    --v3-priv-protocol {{ (services_spec.snmp.v3_priv_protocol | default('AES')) | quote }}
+    --v3-priv-password {{ (snmp_v3_priv_password | default('')) | quote }}
     {{ '--check' if ansible_check_mode else '' }}
   register: snmp_apply
   changed_when: "'CHANGED' in snmp_apply.stdout or 'WOULD-CHANGE' in snmp_apply.stdout"
   failed_when: "snmp_apply.rc != 0 or 'FAIL' in snmp_apply.stdout"
   check_mode: false
+  no_log: true  # v3 USM passwords on the cmdline
 
 # --- Drift export (read-only) — only with `--tags export` -----------------------
 - name: Export live state for drift detection

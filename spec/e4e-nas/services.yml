@@ -62,9 +62,14 @@ snmp:
   contact: "e4e@ucsd.edu"              # E4E hardware — confirmed 2026-05-28
   location: "Building/Room — UCSD"     # TODO confirm
   name: e4e-nas                        # sysName
-  # USM (User-based Security Model) — v3 user; the credential goes via vault/bootstrap,
-  # NOT in this spec. The role's apply step takes the password as a separate input.
+  # USM (User-based Security Model) — v3 user + auth/priv PROTOCOL choices.
+  # The PASSWORDS go in secrets-syno.yml as `snmp_v3_auth_password` +
+  # `snmp_v3_priv_password` (operator-side; later → OpenBao). When the
+  # passwords are absent the helper SOFT-DEFERS enable_snmp_v3 (pins to
+  # current, WARN on stderr) so the rest of the apply still lands.
   v3_user: krg-monitor                 # the username the krg-prod scraper uses
+  v3_auth_protocol: SHA                # USM auth — SHA|SHA224|SHA256|SHA384|SHA512|MD5
+  v3_priv_protocol: AES                # USM priv — AES|AES192|AES256|DES
   # Allow-list of scrape sources — point at the shared single source of truth.
   # `monitoring_host` is a SCALAR (the Prometheus IP) in trusted.json, NOT an
   # IPSet — there's no `monitoring` IPSet today. The SNMP allow-list itself is

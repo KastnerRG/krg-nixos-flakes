@@ -109,8 +109,57 @@ def do_snmp(a):
         desired["location"] = a.location
     if a.name is not None:
         desired["name"] = a.name
-    if a.rouser is not None:
-        desired["rouser"] = a.rouser
+
+    # SNMPv3 USM credential gate: enable_snmp_v3=true requires a USM user +
+    # auth + priv credentials at the same SET, else DSM returns err 2202
+    # ("v3 enable without credentials"). Three cases:
+    #
+    #   (1) spec wants v3 ON and creds ARE supplied
+    #         → send rouser + v3_* fields
+    #   (2) spec wants v3 ON and creds NOT supplied (bring-up before vault wires up)
+    #         → soft-defer: pin enable_snmp_v3 to current, WARN on stderr,
+    #           same shape as the AD-aware gate on User.Home enable_domain
+    #   (3) spec wants v3 OFF
+    #         → ignore creds; let the v3 flag flip false normally
+    #
+    # FIELD-NAME NOTE: the DSM SNMP webapi v3 field names are not documented.
+    # The probes during e4e-nas first-apply (2026-05-30) eliminated
+    # `auth_protocol`/`auth_password` and `v3_auth_proto`/`v3_auth_passwd` as
+    # the actual names (both returned err 2202). The names below are a
+    # best-guess from DSM CLI conventions; expect to flip on first apply
+    # with real creds, same pattern as security_advisor / dsm_updates /
+    # external_access OUT_KEYS empirical iteration. If err 2202 fires on
+    # apply WITH creds, probe DSM UI's network capture for the right names
+    # then flip below.
+    if desired.get("enable_snmp_v3"):
+        if a.v3_auth_password and a.v3_priv_password and a.rouser:
+            desired["rouser"] = a.rouser
+            desired["v3_auth_proto"] = a.v3_auth_protocol or "SHA"
+            desired["v3_auth_passwd"] = a.v3_auth_password
+            desired["v3_priv_proto"] = a.v3_priv_protocol or "AES"
+            desired["v3_priv_passwd"] = a.v3_priv_password
+        else:
+            # Case (2): defer v3-enable until creds are bootstrapped. Pin to
+            # current value (so no drift on the field) and warn.
+            sys.stderr.write(
+                "WARN: snmp.enable_snmp_v3=true deferred — v3 USM credentials "
+                "(rouser + v3_auth_password + v3_priv_password) not supplied. "
+                "DSM would return err 2202 on the SET. Add the secrets to "
+                "secrets-syno.yml under `snmp_v3_*` and re-apply to converge.\n")
+            # Will be pinned to current value by apply_service's GET/diff;
+            # explicitly leaving enable_snmp_v3 in desired so the diff shows
+            # current=false vs desired=true and pinning by overlay below.
+            # Simplest: delete from desired so apply_service treats it as
+            # unmanaged for this run.
+            del desired["enable_snmp_v3"]
+            # Also don't push rouser (would be a v3-only field with no v3 enabled)
+            # — fall through; we never add it in this branch.
+    else:
+        # Case (3): v3 off, but still respect rouser/v1-rocommunity from spec
+        # if provided. rouser stays empty if v3 disabled; that's fine.
+        if a.rouser is not None:
+            desired["rouser"] = a.rouser
+
     return apply_service("snmp", desired, a.check)
 
 
@@ -137,6 +186,16 @@ def main(argv=None):
     s.add_argument("--location")
     s.add_argument("--name")
     s.add_argument("--rouser")
+    # SNMPv3 USM credentials (Option B credential plumbing). Operator-side
+    # secrets come from secrets-syno.yml; empty/absent triggers soft-defer.
+    s.add_argument("--v3-auth-protocol", dest="v3_auth_protocol", default=None,
+                   help="SHA|SHA224|SHA256|SHA384|SHA512|MD5 (default SHA)")
+    s.add_argument("--v3-auth-password", dest="v3_auth_password", default=None,
+                   help="USM auth password (>=8 chars; SNMPv3 requirement)")
+    s.add_argument("--v3-priv-protocol", dest="v3_priv_protocol", default=None,
+                   help="AES|AES192|AES256|DES (default AES)")
+    s.add_argument("--v3-priv-password", dest="v3_priv_password", default=None,
+                   help="USM priv password (>=8 chars; SNMPv3 requirement)")
     s.add_argument("--check", action="store_true")
     s.set_defaults(func=do_snmp)
 

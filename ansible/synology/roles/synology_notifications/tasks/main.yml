@@ -14,6 +14,16 @@
     file: "{{ synology_notifications_spec }}"
     name: notif_spec
 
+- name: Mail.Conf DEFERRED (bring-up) — operator flagged synology_notifications_defer_mail=true
+  ansible.builtin.debug:
+    msg: |
+      Skipping Mail.Conf SET — synology_notifications_defer_mail is true.
+      DSM Notification.Mail.Conf.set validates the SMTP relay path and
+      returns err 4600 when unreachable (common during bring-up before
+      the NAS is on its production network).
+      Re-run without `-e synology_notifications_defer_mail=true` to apply.
+  when: synology_notifications_defer_mail | bool
+
 - name: Apply Mail.Conf (Notification.Mail.Conf set v2)
   ansible.builtin.script: >-
     apply_notifications.py mail
@@ -31,6 +41,7 @@
   changed_when: "'CHANGED' in mail_apply.stdout or 'WOULD-CHANGE' in mail_apply.stdout"
   failed_when: "mail_apply.rc != 0 or 'FAIL' in mail_apply.stdout"
   check_mode: false
+  when: not (synology_notifications_defer_mail | bool)
 
 - name: Apply SMS.Conf (Notification.SMS.Conf set v2)
   ansible.builtin.script: >-
