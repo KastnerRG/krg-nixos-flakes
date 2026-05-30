@@ -240,3 +240,5 @@ oec-qualystrellixinstallers-linux.tgz
 *.sql
 ref/*
 secrets-*.yml
+
+SESSION-STATE-*.md
