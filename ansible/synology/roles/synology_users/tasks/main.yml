@@ -118,8 +118,14 @@
   no_log: true
 
 - name: Apply group membership (synogroup --memberadd; idempotent at DSM level)
-  ansible.builtin.raw: >-
+  # Same 255 translation as the probes — a real memberadd failure (group or
+  # user doesn't exist) returns 255 on DSM, which would be misclassified as
+  # UNREACHABLE. Translate so failed_when fires normally and the operator
+  # sees the real error instead of a spurious connection error.
+  ansible.builtin.raw: |
     PATH={{ syno_path }}:$PATH synogroup --memberadd {{ item[1] | quote }} {{ item[0].name | quote }}
+    rc=$?
+    [ "$rc" = 255 ] && exit 1 || exit $rc
   loop: "{{ _user_group_pairs }}"
   loop_control:
     label: "{{ item[0].name }} -> @{{ item[1] }}"
@@ -138,7 +144,15 @@
 # no-ops (no CHANGED spam on a converged box). `synouser --get` confirms
 # existence (some DSM installs lack `guest`).
 - name: Enumerate already-disabled accounts (so re-runs are no-ops)
-  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --enum disabled"
+  # Same 255-vs-failure translation as the --get probes above — `synouser
+  # --enum disabled` may return 255 if the argument isn't supported on this
+  # DSM version or the disabled set is empty. The downstream parser tolerates
+  # an empty/missing result (defaults to []); we just need rc!=0 to NOT trip
+  # ansible's UNREACHABLE handler.
+  ansible.builtin.raw: |
+    PATH={{ syno_path }}:$PATH synouser --enum disabled 2>&1
+    rc=$?
+    [ "$rc" = 255 ] && exit 1 || exit $rc
   register: disabled_enum
   changed_when: false
   failed_when: false
