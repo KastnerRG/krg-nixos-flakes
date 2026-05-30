@@ -1,0 +1,123 @@
+---
+# synology_security — manage DSM firewall + auto-block from spec/e4e-nas/security.yml
+# via synowebapi (full-object set; logic in files/apply_security.py via `script`).
+#
+# CROSS-REFERENCE: counterpart of nix `krg.firewall` (`nix/modules/security/firewall.nix`)
+# and ansible `roles/proxmox_firewall` + the in-guest fail2ban allow-list pattern.
+# All three layers read `nix/networks/trusted.json` (single source of truth) for
+# allow-listed source nets — edit there, not here.
+#
+# Per-rule firewall list (Firewall.Profile + Firewall.Rules load/save_start) and
+# AutoBlock allow/deny lists are CURRENTLY OUT OF SCOPE — the captures errored
+# (120, 5100) on those param shapes; see "Deferred items" in plan.md. The role
+# emits a DEBUG of the intended allow-list IPs so a drift detector / operator can
+# verify against the UI until the API is in.
+
+- name: Load the security spec
+  ansible.builtin.include_vars:
+    file: "{{ synology_security_spec }}"
+    name: security_spec
+
+# --- Shared trusted-nets data (group_vars/all.yml already loaded krg_trusted) ---
+# This is the SAME object the Debian fail2ban role uses for ignoreip. Mirror the
+# nix `krg.firewall.trustedNets` pattern here so any change to trusted.json
+# flows to every layer.
+- name: Compute autoblock allow-list from nix/networks/trusted.json (sealab + machines + monitoring, deduped)
+  ansible.builtin.set_fact:
+    autoblock_allow_ips: >-
+      {{
+        (
+          (krg_trusted.ipsets.sealab | map(attribute='cidr') | list)
+          + (krg_trusted.ipsets.machines | default([]) | map(attribute='cidr') | list)
+          + [krg_trusted.monitoring_host]
+        ) | unique
+      }}
+  # `machines` was added to trusted.json after PR #79/#80 stood up krg-deploy
+  # and krg-vault (137.110.161.122 / .123). Those IPs are NOT in sealab today,
+  # and they DO talk to the NAS (krg-deploy runs the ansible-apply timer that
+  # invokes this playbook; krg-vault may probe for SNMP later). Without
+  # `machines` they would trip the 3-strike autoblock on a bad credential
+  # rotation or a misconfigured probe.
+
+- name: Surface the intended autoblock allow-list (drift-detector / operator visibility)
+  ansible.builtin.debug:
+    msg: |
+      autoblock_allow_ips (from nix/networks/trusted.json) =
+      {{ autoblock_allow_ips }}
+      Note: pushing this list to DSM's AutoBlock allow-list is DEFERRED until
+      SYNO.Core.Security.AutoBlock.Rules param shape is empirically probed
+      (capture errored 5100). Until then, this is informational — set the
+      allow-list manually in the DSM UI to match.
+  changed_when: false
+
+# --- Anti-lockout probe (H2) -------------------------------------------------
+# Enabling the DSM firewall on an empty profile = default-deny inbound, which
+# severs the SSH session this play is running over. The role's per-rule push
+# is still deferred (capture errored 120 on Firewall.Profile.Rules), so we
+# can't populate the profile ourselves yet — but we MUST refuse to flip
+# `enable_firewall: true` while the active profile is empty.
+- name: Probe the active firewall profile (anti-lockout — see role README)
+  ansible.builtin.script: >-
+    apply_security.py probe-profile
+    --profile {{ security_spec.firewall.active_profile | default('default') | quote }}
+  register: profile_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: security_spec.firewall.enable | default(true)
+
+- name: Refuse to enable firewall when the active profile has no rules (anti-lockout)
+  ansible.builtin.assert:
+    that:
+      - "'PROFILE-EMPTY' not in profile_probe.stdout"
+      - "'PROFILE-UNKNOWN' not in profile_probe.stdout"
+    fail_msg: >-
+      Refusing to enable the DSM firewall on host {{ inventory_hostname }}:
+      the active profile ({{ security_spec.firewall.active_profile | default('default') }})
+      reports {{ profile_probe.stdout | trim }}. Enabling now would deny ALL
+      inbound (including this SSH session). Populate the profile rules
+      manually in the DSM UI first (or set firewall.enable: false in
+      spec/e4e-nas/security.yml). The role's per-rule push is deferred until
+      SYNO.Core.Security.Firewall.Profile.Rules param shape is empirically
+      probed (capture errored 120) — see plan.md deferred items.
+  when: security_spec.firewall.enable | default(true)
+
+# --- Globals (full-object SETs) -----------------------------------------------
+- name: Apply firewall (Firewall set — enable + active profile)
+  ansible.builtin.script: >-
+    apply_security.py firewall
+    --enable {{ security_spec.firewall.enable | default(true) }}
+    --profile {{ security_spec.firewall.active_profile | default('default') | quote }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: fw_apply
+  changed_when: "'CHANGED' in fw_apply.stdout or 'WOULD-CHANGE' in fw_apply.stdout"
+  failed_when: "fw_apply.rc != 0 or 'FAIL' in fw_apply.stdout"
+  check_mode: false
+
+- name: Apply firewall conf (Firewall.Conf set — port_check)
+  ansible.builtin.script: >-
+    apply_security.py fw-conf
+    --port-check {{ security_spec.firewall.port_check | default(true) }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: fwc_apply
+  changed_when: "'CHANGED' in fwc_apply.stdout or 'WOULD-CHANGE' in fwc_apply.stdout"
+  failed_when: "fwc_apply.rc != 0 or 'FAIL' in fwc_apply.stdout"
+  check_mode: false
+
+- name: Apply auto-block (AutoBlock set — thresholds)
+  ansible.builtin.script: >-
+    apply_security.py autoblock
+    --enable {{ security_spec.auto_block.enable | default(true) }}
+    --attempts {{ security_spec.auto_block.attempts | default(3) }}
+    --within-mins {{ security_spec.auto_block.within_mins | default(1440) }}
+    --expire-day {{ security_spec.auto_block.expire_day | default(0) }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: ab_apply
+  changed_when: "'CHANGED' in ab_apply.stdout or 'WOULD-CHANGE' in ab_apply.stdout"
+  failed_when: "ab_apply.rc != 0 or 'FAIL' in ab_apply.stdout"
+  check_mode: false
+
+# --- Drift export (read-only) — only with `--tags export` -----------------------
+- name: Export live state for drift detection
+  ansible.builtin.import_tasks: export.yml
+  tags: [export, never]

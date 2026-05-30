@@ -1,0 +1,35 @@
+# DSM Security Advisor schedule + scan policy for e4e-nas — declarative source of truth.
+# Consumed by the `synology_security_advisor` Ansible role.
+#
+# CROSS-REFERENCE: this is the DSM-native replacement for `oec_qualys_trellix` on
+# Linux hosts (see ADR 0006). Same intent — periodic vuln/config scan with email
+# notification on findings. Different mechanism: DSM Security Advisor is a curated
+# Synology surface that matches the appliance's threat model (vs Qualys's
+# Debian/RHEL CVE feed which mismatches DSM's curated packages).
+#
+# DSM API surface (per /usr/syno/synoman/webapi/SYNO.{Core,SDS}.SecurityScan*.lib
+# — empirical confirmation pending; best-known from the 2026-05-28 scheduler
+# capture which showed a task running `SYNO.Core.SecurityScan.Operation` start):
+#   * SYNO.SDS.SecurityScan.Main         get/set    (config: enable + schedule + categories + notify)
+#   * SYNO.Core.SecurityScan.Operation   start/get  (trigger + status of a run)
+# If `Main` doesn't own the schedule, the role falls back to a SYNO.Core.EventScheduler
+# entry that calls Operation.start — see TODO in apply_security_advisor.py.
+
+security_advisor:
+  enabled: true
+  # Weekly cadence, matching the live captured task (Wed 04:15). Early so any
+  # downstream notification arrives before working hours.
+  schedule:
+    day: Wed         # Sun..Sat (DSM weekly schedule)
+    hour: 4
+    minute: 15
+  # Categories the scan covers. DSM's Security Advisor checks these by default;
+  # listing here lets a future drift-detector flag a UI change.
+  scan_categories:
+    - system_health
+    - security
+    - performance
+    - network
+    - account
+  # Tie into synology_notifications' email channel for finding alerts.
+  notify_email_on_finding: true

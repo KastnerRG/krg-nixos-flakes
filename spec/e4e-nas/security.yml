@@ -1,0 +1,70 @@
+# DSM security perimeter for e4e-nas — firewall + auto-block.
+# Source of truth for the post-rebuild state. Values CONFIRMED / DRIFT-MARKED from the
+# 2026-05-28 live pre-reset capture (archived locally). Defense-in-depth: this is the
+# in-DSM layer, complementary to the Proxmox/in-guest layers handled elsewhere.
+#
+# IaC home: `synology_security` Ansible role — `apply_security.py` GET→merge→SET on
+# SYNO.Core.Security.Firewall + Firewall.Profile (rules) + AutoBlock + AutoBlock.Rules.
+# The Firewall API surface (per .lib) is:
+#   Firewall      get/set                          (enable + active profile_name)
+#   Firewall.Conf get/set                          (port_check, etc.)
+#   Firewall.Adapter      list                     (adapter_names: eth0..eth3, vpn, …)
+#   Firewall.Profile      get/list/clone/create/delete/rename/set
+#   Firewall.Rules        load + save_start/save_status/save_stop  (two-phase save)
+#   Firewall.Geoip        get/list
+
+firewall:
+  enable: true
+  active_profile: default
+  port_check: true
+
+  profiles:
+    # The default profile holds the per-rule list. Rules detail wasn't captured cleanly
+    # (FW-PROFILE-DEFAULT/RULES-LOAD errored 120 — wrong param name; follow-up needed
+    # with profile_id= or rule_set= per the .lib's load semantics).
+    # TODO: capture the actual rule list (sources → ports/protocols, by adapter), then
+    # encode here. Adapters covered: eth0 (LAN), eth1/2/3 (link-down today), global,
+    # pppoe, vpn, wlan0.
+    default:
+      adapters: [eth0, global]    # what the live profile actually scopes; confirm + extend
+      rules: []                   # TODO from live load
+
+  # Geoip blocking — capture errored (114); follow-up to grab; spec target TBD.
+  # geoip: { enable: false }
+
+auto_block:
+  # Live: 3 attempts in 1440 min (24h), no expiry (0). Aggressive — matches the
+  # breach-driven hardening posture.
+  enable: true
+  attempts: 3
+  within_mins: 1440
+  # CONFIRMED 2026-05-28: keep 0 (never expire). The NAS is internet-exposed
+  # so attackers SHOULD stay blocked permanently — the trade-off (operator
+  # has to manually unblock a misfire) is right here.
+  #
+  # ⚠️ HONESTY UPDATE (2026-05-29 code review): the allow-list (sealab +
+  # machines + monitoring) is currently INFORMATIONAL ONLY — `synology_security`
+  # debug-prints it but does NOT push it to DSM, because the
+  # SYNO.Core.Security.AutoBlock.Rules param shape errored 5100 in the live
+  # captures and is deferred. So until that API is implemented, a misfire
+  # (bad credential rotation, an unannounced new scraper IP) results in a
+  # PERMANENT manual-unblock chore. Two ways to live with this:
+  #   (a) accept the operational cost (current posture) — IP-based ops are
+  #       low-volume, the sealab/machines hosts have known stable IPs;
+  #   (b) soften to expire_day: 7 until allow-list push lands, then revisit.
+  # Leaving at 0 — explicit choice — and tracking the API gap in plan.md.
+  expire_day: 0
+
+  # Allow-list (never block) + deny-list (always block). The allow-list is
+  # COMPUTED in the role from nix/networks/trusted.json (`krg_trusted` —
+  # loaded by group_vars/all.yml), so a change to the single source of truth
+  # flows here automatically. Same DRY pattern as the Debian fail2ban
+  # `ignoreip` and nix `krg.firewall.trustedNets`. See synology_security
+  # tasks/main.yml — the role debug-surfaces the resolved IP list.
+  # Push to DSM is DEFERRED: SYNO.Core.Security.AutoBlock.Rules errored 5100
+  # in 2026-05-28 captures (wrong method/param shape); add a subcommand once
+  # the rig is back up and we can probe the right form.
+  deny_list: []                                # TODO: confirm via follow-up capture
+
+# --- Hardening notes (drift the role will fix on apply) ---
+# (none in the global flags — already tight; the rule LIST is what needs review next)
