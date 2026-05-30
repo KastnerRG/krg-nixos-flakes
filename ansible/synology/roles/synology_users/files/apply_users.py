@@ -19,6 +19,8 @@ OUT_KEYS on first-apply drift):
   include_domain_users    -> enable_user_home_join_domain
 """
 import argparse
+import base64
+import binascii
 import json
 import os
 import pwd
@@ -110,12 +112,32 @@ def _normalize(keys):
 
 
 def do_authorized_keys(a):
+    # Accept the key list either as JSON (--keys) OR as base64-of-JSON
+    # (--keys-b64). The b64 variant exists because raw JSON contains spaces
+    # AND double-quotes — those get mangled when args travel through ssh +
+    # remote sh's word-splitter (the local single-quotes ansible's `quote`
+    # filter adds are stripped at the ssh boundary, leaving the remote shell
+    # to word-split on the spaces inside each key's `<algo> <base64> <comment>`
+    # form). Base64 has no shell-special characters, so it survives intact.
+    # The ansible task uses --keys-b64; --keys stays for unit-test convenience
+    # and ad-hoc operator use.
+    if getattr(a, "keys_b64", None):
+        try:
+            keys_str = base64.b64decode(a.keys_b64).decode("utf-8")
+        except (binascii.Error, UnicodeDecodeError) as e:
+            raise SystemExit("--keys-b64 is not valid base64-of-utf8: " + str(e))
+    elif getattr(a, "keys", None):
+        keys_str = a.keys
+    else:
+        raise SystemExit("authorized-keys: pass --keys (JSON) or --keys-b64 (base64-of-JSON)")
     try:
-        keys = json.loads(a.keys)
+        keys = json.loads(keys_str)
     except json.JSONDecodeError:
-        raise SystemExit("--keys must be a JSON list of strings")
+        raise SystemExit("decoded --keys must be a JSON list of strings (got: "
+                         + (keys_str[:60] + "..." if len(keys_str) > 60 else keys_str) + ")")
     if not isinstance(keys, list):
-        raise SystemExit("--keys must be a JSON list of strings")
+        raise SystemExit("decoded --keys must be a JSON list of strings (got type "
+                         + type(keys).__name__ + ")")
 
     desired = _normalize(keys)
     try:
@@ -193,7 +215,13 @@ def main(argv=None):
 
     k = sub.add_parser("authorized-keys", help="Write ~user/.ssh/authorized_keys")
     k.add_argument("--username", required=True)
-    k.add_argument("--keys", required=True, help="JSON list of public-key strings")
+    # Either --keys or --keys-b64 (b64 of the same JSON). The b64 form is
+    # shell-safe (no quotes, no spaces) and what the role uses; --keys is
+    # kept for unit-test + interactive operator use.
+    k_keys = k.add_mutually_exclusive_group(required=True)
+    k_keys.add_argument("--keys", help="JSON list of public-key strings (NOT shell-safe over ssh)")
+    k_keys.add_argument("--keys-b64", dest="keys_b64",
+                        help="base64-of-utf8 of the JSON list (shell-safe; preferred)")
     k.add_argument("--check", action="store_true")
     k.set_defaults(func=do_authorized_keys)
 

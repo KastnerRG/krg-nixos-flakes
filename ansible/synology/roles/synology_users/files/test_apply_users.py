@@ -161,6 +161,79 @@ def test_keys_invalid_json_errors():
     try:
         m.main(["authorized-keys", "--username", "x", "--keys", "not json"])
     except SystemExit as e:
-        assert "--keys" in str(e)
+        assert "--keys" in str(e) or "must be a JSON" in str(e)
     else:
         assert False, "should have raised SystemExit"
+
+
+# --- --keys-b64 (shell-safe variant used by the ansible role) ---------------
+import base64 as _b64    # noqa: E402
+
+
+def test_keys_b64_equivalent_to_keys(monkeypatch, capsys, tmp_path):
+    """--keys-b64 must produce the same result as --keys for the same payload."""
+    _fake_pwnam(monkeypatch, tmp_path)
+    payload = ["ssh-ed25519 AAAA chris@laptop", "ssh-ed25519 BBBB shperry@x"]
+    b64 = _b64.b64encode(json.dumps(payload).encode("utf-8")).decode("ascii")
+    rc = m.main([
+        "authorized-keys", "--username", "krg-admin", "--keys-b64", b64,
+    ])
+    assert rc == 0
+    assert capsys.readouterr().out.startswith("CHANGED")
+    written = (tmp_path / ".ssh" / "authorized_keys").read_text()
+    assert "chris@laptop" in written
+    assert "shperry@x" in written
+
+
+def test_keys_b64_handles_keys_with_spaces_and_quotes(monkeypatch, capsys, tmp_path):
+    """Regression for the shell-quoting bug discovered on prod bring-up:
+    keys contain SPACES (algo / base64 / comment) AND double-quotes (from JSON);
+    bare --keys breaks when transported through ssh + remote sh word-splitter.
+    --keys-b64 must survive any shell because base64 has no shell-special chars."""
+    _fake_pwnam(monkeypatch, tmp_path)
+    payload = [
+        'ssh-ed25519 AAAA user@host with spaces',
+        'ssh-rsa BBBB "weird" comment',
+    ]
+    b64 = _b64.b64encode(json.dumps(payload).encode("utf-8")).decode("ascii")
+    rc = m.main([
+        "authorized-keys", "--username", "krg-admin", "--keys-b64", b64,
+    ])
+    assert rc == 0
+    assert capsys.readouterr().out.startswith("CHANGED")
+    written = (tmp_path / ".ssh" / "authorized_keys").read_text()
+    assert "user@host with spaces" in written
+    assert 'ssh-rsa BBBB "weird" comment' in written
+
+
+def test_keys_b64_invalid_base64_errors():
+    try:
+        m.main(["authorized-keys", "--username", "x", "--keys-b64", "not!valid@base64"])
+    except SystemExit as e:
+        assert "--keys-b64" in str(e) or "base64" in str(e).lower()
+    else:
+        assert False, "should have raised SystemExit"
+
+
+def test_keys_b64_valid_base64_but_invalid_json_errors():
+    bad = _b64.b64encode(b"not actually json").decode("ascii")
+    try:
+        m.main(["authorized-keys", "--username", "x", "--keys-b64", bad])
+    except SystemExit as e:
+        assert "JSON" in str(e) or "list" in str(e)
+    else:
+        assert False, "should have raised SystemExit"
+
+
+def test_keys_and_keys_b64_are_mutually_exclusive():
+    """argparse should reject passing both."""
+    try:
+        m.main([
+            "authorized-keys", "--username", "x",
+            "--keys", "[]",
+            "--keys-b64", _b64.b64encode(b"[]").decode("ascii"),
+        ])
+    except SystemExit:
+        pass  # argparse exits on mutually-exclusive violation
+    else:
+        assert False, "should have rejected both flags together"
