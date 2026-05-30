@@ -1,5 +1,8 @@
-{# Managed by Ansible (krg-infra proxmox_firewall). IPSets come from the shared
-   nix/networks/trusted.json (krg_trusted). Edit there, not here. #}
+{# Managed by Ansible (krg-infra proxmox_firewall). IPSets come from the
+   shared nix/networks/trusted.json (krg_trusted) AND
+   nix/networks/geoip-us-{v4,v6}.json (krg_geoip_us — refreshed weekly by
+   fetch-geoip on krg-deploy from MaxMind GeoLite2-Country, issue #74).
+   Edit data there, not here. #}
 [OPTIONS]
 
 enable: 1
@@ -11,6 +14,20 @@ enable: 1
 {{ e.cidr }}{% if e.comment is defined %} # {{ e.comment }}{% endif %}
 
 {% endfor %}
+{% endfor %}
+[IPSET geoip_us]
+{# US v4 + v6 CIDR ranges from MaxMind GeoLite2-Country. Mixed-family in
+   one IPSet is supported by PVE 7+. Empty list means the IPSet is empty,
+   which means rules referencing +dc/geoip_us match NOTHING — fail-closed
+   until the fetch-geoip timer first populates the data files (see
+   nix/modules/security/firewall-geoip/maintainer.nix). Use +dc/geoip_us
+   for ports that should reach US-routed clients but NOT globally
+   (Authentik-gated lab web on krg-prod 80+443); strict-only services
+   keep +dc/ucsd / +dc/sealab instead — geoIP is the LOOSEST acceptable
+   source, not the default. #}
+{% for cidr in krg_geoip_us %}
+{{ cidr }}
+
 {% endfor %}
 [RULES]
 

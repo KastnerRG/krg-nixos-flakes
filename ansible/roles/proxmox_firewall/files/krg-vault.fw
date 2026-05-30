@@ -5,13 +5,23 @@ enable: 1
 [RULES]
 
 # krg-vault — OpenBao secrets manager.
-# SSH restricted to UCSD + off-campus admin.
-# Port 80 public for Let's Encrypt ACME HTTP-01 challenge only.
-# OpenBao API (8200/TLS) restricted to sealab, ops admins, and infra machines.
+#
+# Policy: "no public access — US is the floor" (issue #74). Port 80 is
+# the DOCUMENTED EXCEPTION to the fleet policy: globally reachable for
+# Let's Encrypt ACME HTTP-01 challenge ONLY. LE does multi-perspective
+# validation from US + EU + Asia validators; US-gating port 80 would
+# break cert renewals. nginx serves only /.well-known/acme-challenge/
+# on 80 — everything else 404s. Mirrors the nix layer's
+# `krg.firewall.publicPorts = [80]` in nix/hosts/krg-vault/default.nix.
+# See closed issue #89 for the DNS-01 alternative we considered.
+#
+# SSH restricted to UCSD + off-campus admin (sshSources / serviceHost).
+# OpenBao API (8200/TLS) sealab + ops + machines only — STRICTLY tighter
+# than the US+trusted floor (sealab ⊂ US+trusted).
 
 IN SSH(ACCEPT)                       -source +dc/ucsd     -log nolog
 IN SSH(ACCEPT)                       -source +dc/ops      -log nolog
-IN ACCEPT -p tcp -dport 80                                -log nolog
+IN ACCEPT -p tcp -dport 80                                -log nolog  # DOCUMENTED EXCEPTION: ACME HTTP-01, see header
 IN ACCEPT -p tcp -dport 8200         -source +dc/sealab   -log nolog
 IN ACCEPT -p tcp -dport 8200         -source +dc/ops      -log nolog
 IN ACCEPT -p tcp -dport 8200         -source +dc/machines -log nolog

@@ -39,3 +39,25 @@ krg_monitoring_host: "{{ krg_trusted.monitoring_host }}"
 # fail2ban allow-list: don't ban the sealab/admin hosts.
 krg_trusted_nets: "{{ krg_trusted.ipsets.sealab | map(attribute='cidr') | list }}"
 fail2ban_ignoreip: "{{ ['127.0.0.1/8', '::1'] + krg_trusted_nets }}"
+
+# GeoIP CIDR allow-list (issue #74) — SHARED source of truth at
+# nix/networks/geoip-<cc>-{v4,v6}.json. Refreshed weekly by the
+# fetch-geoip systemd timer on krg-deploy from MaxMind GeoLite2-Country
+# (see nix/modules/security/firewall-geoip/maintainer.nix); the seed
+# files ship with empty cidrs lists, so the +dc/geoip_us IPSet is empty
+# on a fresh fleet — fail-closed: rules referencing it match nothing
+# until the timer first runs.
+#
+# v4 + v6 are concatenated into one list per country because PVE 7+
+# IPSets accept mixed-family entries; keeps the cluster.fw template
+# simple (one IPSet per country, not two-per-country).
+#
+# The cluster.fw template emits a `+dc/geoip_us` IPSet from this list.
+# Per-guest .fw files reference it for ports that should be open to
+# US-routed clients but NOT globally (e.g. Authentik-gated lab web on
+# krg-prod 80+443). Strict-only services keep the +dc/ucsd / +dc/sealab
+# restriction instead — geoIP is the LOOSEST acceptable source, not
+# the default.
+krg_geoip_us_v4_file: "{{ (inventory_dir | dirname) | dirname }}/nix/networks/geoip-us-v4.json"
+krg_geoip_us_v6_file: "{{ (inventory_dir | dirname) | dirname }}/nix/networks/geoip-us-v6.json"
+krg_geoip_us: "{{ (lookup('file', krg_geoip_us_v4_file) | from_json).cidrs + (lookup('file', krg_geoip_us_v6_file) | from_json).cidrs }}"

@@ -36,16 +36,26 @@
   #   krg.oecQualysTrellix.installerArchive = /path/to/oec-qualys-trellix.tar.gz;
 
   # Ingress for the server role. The in-guest firewall is ON on every host
-  # (base.nix); serviceHost = true (set in krg.base above) source-restricts SSH
-  # to the trusted UCSD nets in-guest, and the Proxmox perimeter restricts the rest.
+  # (base.nix); serviceHost = true (inherited from base.nix default)
+  # source-restricts SSH (22) to ucsd + ops via sshSources; the Proxmox
+  # perimeter is the additive outer layer.
   krg.firewall = {
-    # 80/443 open globally (Traefik ingress); SSH (22) is source-restricted
-    # (serviceHost), so the firewall module moves it from the open list to a
-    # per-source rule. Traefik's 8080 (API/metrics) is intentionally NOT published
-    # to the host (docker-compose/krg-prod/compose.yml). When Prometheus is
-    # re-enabled it will scrape traefik:8080 over the Docker network instead of
-    # the host port (add prometheus to traefik_proxy at that time).
-    allowedTCPPorts = [ 22 80 443 ];
+    # 443: Traefik ingress for Authentik-gated lab services. Fleet-default
+    # geoIP gate routes this to US+trusted; international travelers add an
+    # `ops` entry per docs/working-remotely.md (same workflow as compute
+    # SSH). 22 comes from base.nix's default and is restricted by
+    # sshSources via serviceHost.
+    allowedTCPPorts = [ 22 443 ];
+    # 80: DOCUMENTED EXCEPTION to the "US is the floor" policy. Traefik
+    # handles ACME HTTP-01 on this port for the lab's public-facing
+    # domains. Let's Encrypt's multi-perspective validation issues
+    # challenges from validators in the US + EU + Asia and requires ALL
+    # perspectives to succeed; US-gating this port would fail renewals
+    # within ~60-90 days (cert lifetime). Mirrors the krg-vault publicPorts
+    # pattern. DNS-01 migration was considered + rejected (closed issue #89);
+    # HTTP-01 + publicPorts opt-in is the long-term answer.
+    # reason: ACME HTTP-01 — LE multi-perspective validators are global
+    publicPorts = [ 80 ];
     # Native node-exporter (9100), scraped from the monitoring host only. (The old
     # 9000 "service exporter" was the Ansible deploy-monitor, gone under autoUpgrade.)
     monitoringPorts = [ 9100 ];

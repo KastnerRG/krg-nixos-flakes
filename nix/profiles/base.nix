@@ -14,6 +14,7 @@ in {
     ../modules/security/oec-qualys-trellix.nix
     ../modules/security/fail2ban.nix
     ../modules/security/firewall.nix
+    ../modules/security/firewall-geoip.nix
     ../modules/services/node-exporter.nix
     ../modules/sssd-ad-client.nix
   ];
@@ -53,11 +54,18 @@ in {
 
     serviceHost = mkOption {
       type        = types.bool;
-      default     = false;
+      default     = true;
       description = ''
         Service host (vs compute): restrict in-guest SSH to the trusted UCSD nets
-        (mirrors the Proxmox perimeter). Compute hosts leave this false so lab
-        users can SSH from anywhere (protected by key-only auth + fail2ban).
+        (mirrors the Proxmox perimeter). **DEFAULT TRUE** — the base policy is
+        strict SSH (sealab + ops only). Compute hosts (waiter et al.) opt OUT
+        via `krg.base.serviceHost = false` in their profile, which clears
+        sshSources and lets the fleet-default geoIP gate route 22 to
+        US+trusted — broader access for traveling researchers, with the `ops`
+        IPSet as the manual override slot for foreign trips (see
+        docs/working-remotely.md). Per the fleet policy (issue #74) "no
+        public access — US is the floor": even relaxed compute SSH never
+        reaches the global public, only US+trusted.
       '';
     };
   };
@@ -71,9 +79,14 @@ in {
     # and only ed25519 public keys are accepted — RSA/ECDSA are rejected.
     services.openssh = {
       enable = true;
-      # Service hosts source-restrict SSH via krg.firewall.sshSources, so don't
-      # let openssh open port 22 globally; compute hosts keep it open.
-      openFirewall = !cfg.serviceHost;
+      # krg.firewall owns SSH gating (fleet policy — issue #74). With the
+      # default-on geoIP gate, putting 22 in `krg.firewall.allowedTCPPorts`
+      # auto-restricts it to US+trusted (compute hosts) or the operator's
+      # `sshSources` (service hosts). Letting openssh open 22 globally here
+      # would shadow that — concat-merge into networking.firewall would add
+      # a globally-open 22 rule alongside our source-restricted one, and
+      # globally-open wins.
+      openFirewall = false;
       settings = {
         PasswordAuthentication        = false;
         KbdInteractiveAuthentication  = false;
@@ -116,6 +129,25 @@ in {
     # Prometheus scrape source — sourced from the shared trusted-networks file
     # so the monitoring host isn't duplicated across nix / ansible / PVE.
     krg.firewall.monitoringSourceIp = mkDefault trusted.monitoring_host;
+
+    # Fleet-wide geoIP gate (issue #74): every host's `allowedTCPPorts`
+    # are AUTO-RESTRICTED to the US + trusted IPSets union by default.
+    # Operators don't write per-host geoip configuration unless they
+    # want a non-default country set or to override the applyToPorts
+    # default. The policy: NO PORT IS GLOBALLY OPEN unless explicitly
+    # listed in `krg.firewall.publicPorts` (ACME HTTP-01 etc.). See
+    # docs/working-remotely.md for the traveling-staff workflow.
+    # Disable per-host with `krg.firewall.geoip.enable = false` only if
+    # there's a documented reason (none today).
+    krg.firewall.geoip.enable = mkDefault true;
+
+    # Every host gets SSH reachable in-scope by default. With geoIP on
+    # (above), compute hosts auto-route 22 to US+trusted; with
+    # `serviceHost = true`, sshSources tightens 22 further to sealab+ops
+    # (the stricter rule wins, geoIP excludes 22 from its applyToPorts).
+    # Per-host configs only override to ADD ports (e.g. server.nix adds
+    # 80, 443) — they shouldn't need to re-declare 22.
+    krg.firewall.allowedTCPPorts = mkDefault [ 22 ];
 
     # Service hosts restrict in-guest SSH to the trusted nets (mirrors the Proxmox
     # perimeter); compute hosts keep SSH open (key-only auth + fail2ban).
