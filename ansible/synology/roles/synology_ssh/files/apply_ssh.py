@@ -9,11 +9,12 @@ Subcommands:
                 Writes the candidate atomically, then validates with `sshd -t`
                 and rolls back if validation fails (BEFORE any restart, so the
                 running daemon never reads a broken config). Restarts sshd via
-                `synoservicectl --restart sshd` only on change. DSM has no UI
-                toggle for these settings, so they must live in sshd_config —
-                and `template:` / `copy:` ansible modules don't work on DSM's
-                python 3.8 (below ansible's module floor), so the script ships
-                the file itself.
+                `systemctl restart sshd` only on change — DSM 7.x is
+                systemd-based and `sshd.service` is a standard OpenBSD-style
+                unit. DSM has no UI toggle for these settings, so they must
+                live in sshd_config — and `template:`/`copy:` ansible modules
+                don't work on DSM's python 3.8 (below ansible's module floor),
+                so the script ships the file itself.
 
 Invoked by the synology_ssh ansible role via the `script` module.
 Prints OK no-change / WOULD-CHANGE <json> / CHANGED <json> / FAIL <json>.
@@ -190,11 +191,19 @@ def do_sshd_drop_in(a):
                     f.write(old_content)
             print("FAIL " + json.dumps({"sshd -t": v.stderr.strip()[:400]}))
             return 1
-        # Restart sshd via DSM service manager (no systemd here).
-        r = subprocess.run(["synoservicectl", "--restart", "sshd"],
+        # Restart sshd via systemd (DSM 7.x IS systemd-based — `sshd.service`
+        # is a standard OpenBSD-style unit with a synorelay drop-in for DSM's
+        # service-aspect framework). The earlier `synoservicectl` invocation
+        # was a guess from old DSM 6 docs; it doesn't exist on this DSM 7.3
+        # build (empirical e4e-nas 2026-05-30). sshd survives a restart
+        # without dropping existing sessions because per-connection children
+        # are forked from the master daemon — only new connections see the
+        # restarted daemon. The drop-in has already been validated with
+        # `sshd -t` above, so we know the config is parseable.
+        r = subprocess.run(["systemctl", "restart", "sshd"],
                            capture_output=True, text=True)
         if r.returncode != 0:
-            print("FAIL " + json.dumps({"synoservicectl": r.stderr.strip()[:400]}))
+            print("FAIL " + json.dumps({"systemctl restart sshd": r.stderr.strip()[:400]}))
             return 1
     except OSError as e:
         print("FAIL " + json.dumps({"error": str(e)}))

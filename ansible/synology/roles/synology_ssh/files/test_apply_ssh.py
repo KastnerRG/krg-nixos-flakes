@@ -141,7 +141,7 @@ def test_drop_in_check_mode_no_write(monkeypatch, capsys, tmp_path):
 
 
 def test_drop_in_writes_validates_restarts(monkeypatch, capsys, tmp_path):
-    """Happy path: file written, sshd -t OK, synoservicectl --restart OK."""
+    """Happy path: file written, sshd -t OK, systemctl restart sshd OK."""
     target = tmp_path / "10-krg-hardening.conf"
     monkeypatch.setattr(m, "SSHD_DROP_IN", str(target))
 
@@ -167,10 +167,19 @@ def test_drop_in_writes_validates_restarts(monkeypatch, capsys, tmp_path):
     assert rc == 0 and out.startswith("CHANGED")
     assert target.exists()
     assert "PasswordAuthentication no" in target.read_text()
-    # validation MUST come before restart
+    # validation MUST come before restart; restart uses systemctl, NOT synoservicectl
+    # (DSM 7.x is systemd-based; the earlier synoservicectl guess was from DSM 6 docs).
     sshd_idx = next(i for i, c in enumerate(runs) if c[0] == "sshd")
-    restart_idx = next(i for i, c in enumerate(runs) if c[0] == "synoservicectl")
+    restart_idx = next(i for i, c in enumerate(runs) if c[0] == "systemctl")
     assert sshd_idx < restart_idx
+    # Specifically: `systemctl restart sshd` (not stop+start, not reload — the
+    # drop-in needs sshd's full config reparse).
+    restart_cmd = runs[restart_idx]
+    assert restart_cmd == ["systemctl", "restart", "sshd"], \
+        "expected `systemctl restart sshd`, got " + str(restart_cmd)
+    # And the OLD synoservicectl is NEVER invoked anywhere (regression guard).
+    assert not any(c[0] == "synoservicectl" for c in runs), \
+        "synoservicectl is gone on DSM 7.x; the helper must not call it"
 
 
 def test_drop_in_validation_failure_reverts(monkeypatch, capsys, tmp_path):
@@ -187,7 +196,7 @@ def test_drop_in_validation_failure_reverts(monkeypatch, capsys, tmp_path):
             self.stdout = ""
 
     def fake_run(cmd, *_, **__):
-        # sshd -t returns non-zero (config invalid); synoservicectl never invoked
+        # sshd -t returns non-zero (config invalid); systemctl restart never invoked
         if cmd[0] == "sshd":
             return FakeCompleted(1, "Bad configuration")
         return FakeCompleted(0)
