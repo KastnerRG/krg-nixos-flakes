@@ -130,40 +130,43 @@
   loop_control:
     label: "{{ item[0].name }} -> @{{ item[1] }}"
   register: group_memberadd
-  # DSM prints "already in" / "is a member" on no-op; suppress CHANGED for
-  # those so a converged box doesn't spam. Anything else (success on a real
-  # add, or actual error) keeps CHANGED/FAIL semantics.
+  # DSM 7.3 `synogroup --memberadd` empirical behaviour (2026-05-29):
+  #   rc=0 + minimal output                          — newly added
+  #   rc=1 + full membership listing in stdout       — user IS now a member
+  #                                                    (the listing IS the
+  #                                                    success confirmation;
+  #                                                    NOT a failure)
+  # The original assumption ("rc=0 with 'already in' / 'is a member' text")
+  # is wrong on this DSM build — DSM returns rc=1 for re-adds + lists the
+  # post-state. We accept rc=1 IFF the target user appears in stdout
+  # (the membership listing). True failures (missing group/user) still
+  # surface as rc=1 with EMPTY stdout, which trips failed_when normally.
   changed_when:
     - group_memberadd.rc == 0
     - "'already' not in (group_memberadd.stdout | default('') | lower)"
     - "'is a member' not in (group_memberadd.stdout | default('') | lower)"
-  failed_when: group_memberadd.rc != 0
+  failed_when:
+    - group_memberadd.rc != 0
+    - item[0].name not in (group_memberadd.stdout | default(''))
 
 # --- Disable built-in attack-surface accounts (admin, guest) — runbook §1 -------
-# `synouser --enum disabled` lists already-disabled accounts so re-runs are
-# no-ops (no CHANGED spam on a converged box). `synouser --get` confirms
-# existence (some DSM installs lack `guest`).
-- name: Enumerate already-disabled accounts (so re-runs are no-ops)
-  # Same 255-vs-failure translation as the --get probes above — `synouser
-  # --enum disabled` may return 255 if the argument isn't supported on this
-  # DSM version or the disabled set is empty. The downstream parser tolerates
-  # an empty/missing result (defaults to []); we just need rc!=0 to NOT trip
-  # ansible's UNREACHABLE handler.
-  ansible.builtin.raw: |
-    PATH={{ syno_path }}:$PATH synouser --enum disabled 2>&1
-    rc=$?
-    [ "$rc" = 255 ] && exit 1 || exit $rc
-  register: disabled_enum
-  changed_when: false
-  failed_when: false
-  check_mode: false
+# EMPIRICAL on DSM 7.3 (e4e-nas, 2026-05-29): `synouser --disable` and
+# `--enum disabled` BOTH return rc=255 ("unrecognized option"). On this build,
+# accounts are "disabled" by setting the Expired flag via `synouser --modify`.
+# Probe each --get output for `Expired: [true|false]`; only --modify when
+# currently `[false]`. The --modify form has signature:
+#   synouser --modify <name> "<fullname>" <expired{0|1}> "<email>"
+# so we MUST parse Fullname + User Mail from the probe output to round-trip
+# unmanaged fields. Stock DSM ships admin + guest already Expired:[true],
+# so this is a no-op on a fresh install.
 
 - name: Probe each built-in account before disabling
-  # Same 255-vs-missing translation as the local-user probe above. Built-in
-  # `guest` is missing on some DSM installs and must report as "not present"
-  # (rc=1), not "host unreachable" (rc=255).
+  # Capture full --get stdout (not just rc) so we can parse Expired / Fullname
+  # / User Mail. Same 255 → 1 translation as elsewhere — built-in `guest` is
+  # missing on some DSM installs and must report "not present" (rc=1) not
+  # "host unreachable" (rc=255).
   ansible.builtin.raw: |
-    PATH={{ syno_path }}:$PATH synouser --get {{ item | quote }} >/dev/null 2>&1
+    PATH={{ syno_path }}:$PATH synouser --get {{ item | quote }} 2>&1
     rc=$?
     [ "$rc" = 255 ] && exit 1 || exit $rc
   register: builtin_probe
@@ -174,26 +177,31 @@
   loop_control:
     label: "{{ item }}"
 
-# Normalize `synouser --enum disabled` output to a flat list. The DSM CLI
-# prints `User name ...` as a header then one name per line (best-known); we
-# strip blanks + the header. If parsing produces an empty list on a box that
-# DOES have disabled accounts, we'll re-disable them — DSM treats that as a
-# no-op, so safe direction. The drift exporter is the right tool to catch a
-# format change.
-- name: Parse already-disabled account list
+- name: Parse Expired flag from each built-in probe
   ansible.builtin.set_fact:
-    disabled_accounts: >-
-      {{ (disabled_enum.stdout_lines | default([]))
-         | map('trim')
-         | reject('equalto', '')
-         | reject('match', '^User\\s+name')
+    # accounts where Expired: [true] is in the --get output (i.e. already
+    # disabled — re-running --modify on these is unnecessary)
+    expired_builtins: >-
+      {{ builtin_probe.results
+         | selectattr('rc', 'equalto', 0)
+         | selectattr('stdout', 'search', 'Expired\\s*:\\s*\\[true\\]')
+         | map(attribute='item')
          | list }}
 
-- name: Disable built-in accounts (admin/guest) — only when present and currently enabled
-  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --disable {{ item.item | quote }}"
+- name: Disable built-in accounts (admin/guest) via synouser --modify expired=1
+  # synouser --modify <name> "<fullname>" <expired{0|1}> "<email>" — the only
+  # mechanism on DSM 7.3 (--disable doesn't exist). Fullname + email are
+  # parsed from the probe so unmanaged fields round-trip cleanly.
+  ansible.builtin.raw: |
+    PATH={{ syno_path }}:$PATH synouser --modify {{ item.item | quote }} {{ _full_name | quote }} 1 {{ _email | quote }}
+    rc=$?
+    [ "$rc" = 255 ] && exit 1 || exit $rc
+  vars:
+    _full_name: "{{ (item.stdout | regex_search('Fullname\\s*:\\s*\\[([^\\]]*)\\]', '\\1') | first) | default('') }}"
+    _email:     "{{ (item.stdout | regex_search('User Mail\\s*:\\s*\\[([^\\]]*)\\]', '\\1') | first) | default('') }}"
   when:
-    - (item.rc | default(1)) == 0             # account exists
-    - item.item not in disabled_accounts       # not already disabled (idempotent)
+    - (item.rc | default(1)) == 0          # account exists on this DSM
+    - item.item not in expired_builtins    # not already Expired:[true]
   changed_when: true
   loop: "{{ builtin_probe.results }}"
   loop_control:
