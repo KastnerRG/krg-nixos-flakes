@@ -32,7 +32,14 @@
     name: shares_spec
 
 - name: Probe each share (rc != 0 == missing)
-  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synoshare --get {{ item.name | quote }}"
+  # DSM CLIs return 255 for "not found", which collides with SSH's own 255
+  # "connection failed" — ansible's raw: would misclassify the missing-share
+  # case as UNREACHABLE and bypass failed_when: false. Translate 255 → 1 so
+  # ansible can distinguish remote-not-found from SSH-died.
+  ansible.builtin.raw: |
+    PATH={{ syno_path }}:$PATH synoshare --get {{ item.name | quote }} >/dev/null 2>&1
+    rc=$?
+    [ "$rc" = 255 ] && exit 1 || exit $rc
   register: synoshare_probe
   changed_when: false
   failed_when: false

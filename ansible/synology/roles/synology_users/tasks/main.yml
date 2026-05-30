@@ -43,7 +43,14 @@
   when: (groups_spec.type | default('ad')) == 'local'
   block:
     - name: Probe each local group (rc != 0 == missing)
-      ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synogroup --get {{ item.name | quote }}"
+      # DSM CLIs return EXIT 255 for "not found" instead of 1, which collides
+      # with SSH's own 255 "connection failed" — ansible's raw: misclassifies
+      # that as UNREACHABLE and ignores failed_when: false. Translate 255 → 1
+      # before exiting so ansible can distinguish remote-not-found from SSH-died.
+      ansible.builtin.raw: |
+        PATH={{ syno_path }}:$PATH synogroup --get {{ item.name | quote }} >/dev/null 2>&1
+        rc=$?
+        [ "$rc" = 255 ] && exit 1 || exit $rc
       register: synogroup_probe
       changed_when: false
       failed_when: false
@@ -62,7 +69,11 @@
 
 # --- Local users (service / break-glass accounts; humans come from AD) ----------
 - name: Probe each local user (rc != 0 == missing)
-  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --get {{ item.name | quote }}"
+  # See group probe above re: DSM 255-vs-missing — same translation here.
+  ansible.builtin.raw: |
+    PATH={{ syno_path }}:$PATH synouser --get {{ item.name | quote }} >/dev/null 2>&1
+    rc=$?
+    [ "$rc" = 255 ] && exit 1 || exit $rc
   register: synouser_probe
   changed_when: false
   failed_when: false
@@ -134,7 +145,13 @@
   check_mode: false
 
 - name: Probe each built-in account before disabling
-  ansible.builtin.raw: "PATH={{ syno_path }}:$PATH synouser --get {{ item | quote }}"
+  # Same 255-vs-missing translation as the local-user probe above. Built-in
+  # `guest` is missing on some DSM installs and must report as "not present"
+  # (rc=1), not "host unreachable" (rc=255).
+  ansible.builtin.raw: |
+    PATH={{ syno_path }}:$PATH synouser --get {{ item | quote }} >/dev/null 2>&1
+    rc=$?
+    [ "$rc" = 255 ] && exit 1 || exit $rc
   register: builtin_probe
   changed_when: false
   failed_when: false
