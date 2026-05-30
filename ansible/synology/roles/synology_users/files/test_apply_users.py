@@ -9,6 +9,13 @@ import apply_users as m  # noqa: E402
 
 def _factory(live):
     captured = []
+    # The AD-probe (DIRECTORY_DOMAIN_API GET) is called by do_home before any
+    # User.Home work. Default it to "joined" so existing User.Home tests
+    # aren't accidentally gated by the AD-aware logic. Tests that exercise
+    # the gate itself pass an explicit DIRECTORY_DOMAIN_API entry.
+    if m.DIRECTORY_DOMAIN_API not in live:
+        live = dict(live)
+        live[m.DIRECTORY_DOMAIN_API] = {"get": {"enable_domain": True}}
 
     def fake(api, *params):
         if "method=get" in params:
@@ -66,6 +73,95 @@ def test_home_preserves_unmanaged_keys(monkeypatch, capsys):
     capsys.readouterr()
     set_call = next(p for a, p in captured if a == m.HOME_API)
     assert "home_quota_default=10GB" in set_call
+
+
+# --- AD-aware gate on enable_domain (DSM err 3103 when not joined) ----------
+def test_home_ad_not_joined_pins_enable_domain_to_current(monkeypatch, capsys):
+    """When AD isn't joined and spec asks for include_domain_users=true,
+    DSM would return err 3103 on the SET. Gate forces desired to match
+    current (no drift on that field) and emits a WARN line on stderr."""
+    fake, captured = _factory({
+        m.HOME_API: {"get": {"enable": True, "enable_domain": False}},
+        m.DIRECTORY_DOMAIN_API: {"get": {"enable_domain": False}},  # NOT joined
+    })
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["home", "--enable", "true", "--include-domain-users", "true"])
+    assert rc == 0
+    captured_out = capsys.readouterr()
+    # No drift (current matches gated desired) -> OK no-change
+    assert "OK no-change" in captured_out.out
+    # WARN visible on stderr
+    assert "deferred" in captured_out.err
+    assert "AD-joined" in captured_out.err
+    # No SET call attempted
+    assert not any(a == m.HOME_API and "method=set" in p for a, p in captured)
+
+
+def test_home_ad_joined_applies_enable_domain_normally(monkeypatch, capsys):
+    """When AD IS joined, the gate is inert — enable_domain=true flows
+    through to the SET payload as usual."""
+    fake, captured = _factory({
+        m.HOME_API: {"get": {"enable": True, "enable_domain": False}},
+        m.DIRECTORY_DOMAIN_API: {"get": {"enable_domain": True}},  # joined
+    })
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["home", "--enable", "true", "--include-domain-users", "true"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert out.startswith("CHANGED")
+    set_call = next(p for a, p in captured if a == m.HOME_API)
+    assert "enable_domain=true" in set_call
+
+
+def test_home_ad_probe_failure_pins_conservatively(monkeypatch, capsys):
+    """If the AD-state probe itself raises (DSM down, namespace gone),
+    treat as 'not joined' (don't gamble on enable_domain=true → err 3103
+    halting the play). The home set should no-op when current matches."""
+    def fake(api, *params):
+        if api == m.DIRECTORY_DOMAIN_API:
+            raise RuntimeError("probe blew up — pretend DSM is mid-restart")
+        if api == m.HOME_API and "method=get" in params:
+            return {"data": {"enable": True, "enable_domain": False}, "success": True}
+        return {"success": True}
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["home", "--enable", "true", "--include-domain-users", "true"])
+    assert rc == 0
+    captured_out = capsys.readouterr()
+    assert "OK no-change" in captured_out.out
+    assert "deferred" in captured_out.err  # WARN emitted (conservative treat-as-not-joined)
+
+
+def test_home_ad_not_joined_with_already_enabled_enable_domain_is_noop(monkeypatch, capsys):
+    """Edge case: AD not joined but DSM already has enable_domain=true
+    (e.g. earlier join + later un-join). Gate pins to current=true, so
+    desired matches current → no drift → no SET attempted → no err 3103."""
+    fake, captured = _factory({
+        m.HOME_API: {"get": {"enable": True, "enable_domain": True}},
+        m.DIRECTORY_DOMAIN_API: {"get": {"enable_domain": False}},
+    })
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["home", "--enable", "true", "--include-domain-users", "true"])
+    assert rc == 0
+    assert "OK no-change" in capsys.readouterr().out
+    assert not any(a == m.HOME_API and "method=set" in p for a, p in captured)
+
+
+def test_home_ad_not_joined_but_spec_false_is_unaffected(monkeypatch, capsys):
+    """When spec already asks for include_domain_users=false, the gate
+    must not fire (nothing to defer). The set proceeds normally."""
+    fake, captured = _factory({
+        m.HOME_API: {"get": {"enable": False, "enable_domain": False}},
+        m.DIRECTORY_DOMAIN_API: {"get": {"enable_domain": False}},
+    })
+    monkeypatch.setattr(m, "_exec", fake)
+    rc = m.main(["home", "--enable", "true", "--include-domain-users", "false"])
+    assert rc == 0
+    captured_out = capsys.readouterr()
+    assert captured_out.out.startswith("CHANGED")
+    assert "deferred" not in captured_out.err  # no WARN
+    set_call = next(p for a, p in captured if a == m.HOME_API)
+    assert "enable=true" in set_call
+    assert "enable_domain=false" in set_call
 
 
 # --- authorized-keys ----------------------------------------------------------

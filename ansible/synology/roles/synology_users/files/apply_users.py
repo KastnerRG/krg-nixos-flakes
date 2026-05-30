@@ -30,6 +30,10 @@ import tempfile
 
 WEBAPI = "/usr/syno/bin/synowebapi"
 HOME_API = "SYNO.Core.User.Home"
+# AD-join probe API — Directory.Domain v1 get returns {enable_domain: true}
+# when the box is joined to an AD domain, false otherwise. Used to gate
+# User.Home enable_domain=true (DSM returns err 3103 on that set if not joined).
+DIRECTORY_DOMAIN_API = "SYNO.Core.Directory.Domain"
 
 # EMPIRICAL (DSM 7.3, e4e-nas 2026-05-29): User.Home v1 get returns
 # {enable, enable_domain, enable_ldap, enable_recycle_bin, encryption,
@@ -89,12 +93,46 @@ def _result(drift, check, apply_fn):
 
 
 # --- home (SYNO.Core.User.Home, full-object) --------------------------------------
+def _is_ad_joined():
+    """Returns True iff DSM is joined to an AD domain.
+
+    Probes SYNO.Core.Directory.Domain GET; the `enable_domain` field there
+    flips true when joined (distinct from User.Home.enable_domain which
+    governs whether DOMAIN-USER HOMES get provisioned). Conservative on
+    probe failure: returns False so we don't try to enable domain-user
+    homes against a box whose AD state we can't confirm.
+    """
+    try:
+        resp = _exec(DIRECTORY_DOMAIN_API, "version=1", "method=get")
+        return bool(resp.get("data", {}).get("enable_domain", False))
+    except Exception:
+        return False
+
+
 def do_home(a):
     desired = {
         OUT_KEYS["enable"]:               _bool(a.enable),
         OUT_KEYS["include_domain_users"]: _bool(a.include_domain_users),
     }
     current = _exec(HOME_API, "version=1", "method=get")["data"]
+
+    # AD-aware gate: User.Home set enable_domain=true returns DSM err 3103
+    # if the box isn't AD-joined (DSM refuses to enable domain-user home
+    # provisioning when there's no domain to provision FOR). Pin the
+    # `enable_domain` field of the desired payload to current when not
+    # joined, and surface a clear WARN line so the deferral is visible in
+    # the apply log. The full apply will re-converge on the next run after
+    # AD join lands. EMPIRICAL DSM 7.3 e4e-nas 2026-05-30.
+    domain_key = OUT_KEYS["include_domain_users"]
+    if desired[domain_key] and not _is_ad_joined():
+        current_val = current.get(domain_key, False)
+        sys.stderr.write(
+            "WARN: home_service.include_domain_users=true deferred — box is "
+            "not yet AD-joined (DSM would return err 3103 on the set). "
+            "Pinning to current value: {}. Re-run after AD join to converge.\n"
+            .format(current_val))
+        desired[domain_key] = current_val
+
     drift = {k: {"current": current.get(k), "desired": v}
              for k, v in desired.items() if current.get(k) != v}
 
