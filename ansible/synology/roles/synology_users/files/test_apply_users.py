@@ -22,8 +22,8 @@ def _factory(live):
 # --- home (SYNO.Core.User.Home) -----------------------------------------------
 def test_home_no_change(monkeypatch, capsys):
     fake, _ = _factory({m.HOME_API: {"get": {
-        "enable_homes": True,
-        "enable_user_home_join_domain": True,
+        "enable": True,
+        "enable_domain": True,
     }}})
     monkeypatch.setattr(m, "_exec", fake)
     rc = m.main(["home", "--enable", "true", "--include-domain-users", "true"])
@@ -32,8 +32,8 @@ def test_home_no_change(monkeypatch, capsys):
 
 def test_home_drift_enables(monkeypatch, capsys):
     fake, captured = _factory({m.HOME_API: {"get": {
-        "enable_homes": False,
-        "enable_user_home_join_domain": False,
+        "enable": False,
+        "enable_domain": False,
     }}})
     monkeypatch.setattr(m, "_exec", fake)
     rc = m.main(["home", "--enable", "true", "--include-domain-users", "true"])
@@ -41,13 +41,13 @@ def test_home_drift_enables(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert out.startswith("CHANGED")
     set_call = next(p for a, p in captured if a == m.HOME_API)
-    assert "enable_homes=true" in set_call
-    assert "enable_user_home_join_domain=true" in set_call
+    assert "enable=true" in set_call
+    assert "enable_domain=true" in set_call
 
 
 def test_home_check_mode_no_apply(monkeypatch, capsys):
     fake, captured = _factory({m.HOME_API: {"get": {
-        "enable_homes": False, "enable_user_home_join_domain": False,
+        "enable": False, "enable_domain": False,
     }}})
     monkeypatch.setattr(m, "_exec", fake)
     rc = m.main(["home", "--enable", "true", "--include-domain-users", "true", "--check"])
@@ -58,7 +58,7 @@ def test_home_check_mode_no_apply(monkeypatch, capsys):
 
 def test_home_preserves_unmanaged_keys(monkeypatch, capsys):
     fake, captured = _factory({m.HOME_API: {"get": {
-        "enable_homes": False, "enable_user_home_join_domain": False,
+        "enable": False, "enable_domain": False,
         "home_quota_default": "10GB",   # unmanaged
     }}})
     monkeypatch.setattr(m, "_exec", fake)

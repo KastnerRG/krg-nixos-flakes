@@ -31,9 +31,16 @@ import tempfile
 WEBAPI = "/usr/syno/bin/synowebapi"
 HOME_API = "SYNO.Core.User.Home"
 
+# EMPIRICAL (DSM 7.3, e4e-nas 2026-05-29): User.Home v1 get returns
+# {enable, enable_domain, enable_ldap, enable_recycle_bin, encryption,
+#  location, remote_location, userhome_in_s2s, userhome_is_tiering_bucket,
+#  userhome_is_tiering_share}. The earlier `enable_homes` /
+# `enable_user_home_join_domain` guess returned DSM err 3103 (invalid input).
+# Full-object round-trip preserves the unmanaged keys (location, encryption,
+# etc.) so DSM's home-folder root + recycle-bin policy aren't reset.
 OUT_KEYS = {
-    "enable":                "enable_homes",
-    "include_domain_users":  "enable_user_home_join_domain",
+    "enable":                "enable",
+    "include_domain_users":  "enable_domain",
 }
 
 
